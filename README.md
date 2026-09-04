@@ -20,6 +20,7 @@ machine unless the repository or exported files are shared deliberately.
 - Persistent jobs, live engine logs, cancellation, and CADO snapshot resume
 - Product verification before a factorization is marked complete
 - Fast probable-prime tests, rigorous proofs, and certificate exports
+- Native PARI/GP classification across 56 structural and sequence-based prime classes
 - Fixed-length, safe, Sophie Germain, Blum, and modular prime generation
 - Prime ranges, nearby primes, tuples, gaps, indexed primes, and exact counts
 - Automatic plain-text reports in `output/`
@@ -143,11 +144,33 @@ PARI candidate generators and iterators may provide pseudoprimes above `2^64`.
 Numerisect explicitly applies `isprime` before reporting generated, ranged,
 navigated, or tuple members as proven primes.
 
+### Prime classification
+
+The classifier runs a dedicated PARI/GP program and evaluates all 56 classes
+from the classification catalogue. Exact algebraic forms and recurrences replace
+finite lookup tables where practical. Each class has a selectable native-engine
+time budget; a timed-out test or a definition whose exhaustive search exceeds a
+documented safe bound is reported as **inconclusive**, never as a negative result.
+This distinction matters for open or computationally extreme classes such as
+Mills, Wilson, Wolstenholme, Higgs, cluster, and Fortunate primes.
+
+Enter an integer expression in **Prime Tools → Classify a prime**, select a
+one-to-ten-second budget for each class, and run the analysis. PARI/GP first
+proves that the input is prime. A prime result is separated into matches,
+definite non-matches, and inconclusive tests; a composite input stops before
+classification. The same result is saved automatically as a text report in
+`output/`.
+
+See [Prime classification](docs/PRIME_CLASSIFICATION.md) for the complete
+56-class catalogue, result semantics, computational limits, API example, and
+implementation architecture.
+
 ### Available operations
 
 | Tool | Behavior |
 |---|---|
 | Fixed-size generator | Produces up to 500 distinct, proven primes with exactly the requested decimal digits |
+| Prime classifier | Rigorously evaluates 56 digital, structural, sequence, and constellation classes with explicit inconclusive results |
 | Prime navigator | Finds up to 100,000 proven primes before or after an arbitrary-size integer |
 | Range search | Lists proven primes in an interval with a result limit and continuation point |
 | Prime tuples | Finds twin, cousin, sexy, triplet, quadruplet, or custom offset patterns |
@@ -166,8 +189,10 @@ endpoints, although work on very large inputs can take a long time.
 
 ```text
 numerisect/             Python backend and engine orchestration
+numerisect/prime_classifier.gp  Native PARI/GP classification engine
 static/                 HTML, CSS, and JavaScript interface
 tests/                  Regression tests
+docs/                   Feature and architecture documentation
 data/numerisect.sqlite3 Persistent factorization job history
 data/jobs/              Per-job work directories and native-engine logs
 data/tools/             User-local native engine sources and installation
@@ -210,6 +235,7 @@ POST /api/jobs/{id}/resume
 GET  /api/jobs/{id}/export
 
 POST /api/primes/check
+POST /api/primes/classify
 POST /api/primes/generate
 POST /api/primes/generate-special
 POST /api/primes/after

@@ -184,6 +184,25 @@
             <button class="primary" type="submit"><span>Check primality</span><span>→</span></button>
           </form>
 
+          <form id="prime-classify-form" class="panel utility-card">
+            <p class="eyebrow">CLASSIFIER</p>
+            <h2>Classify a prime</h2>
+            <p>Rigorously test a prime against 56 structural, digital, sequence, and constellation classes.</p>
+            <label>Integer or expression
+              <textarea id="prime-classify-input" rows="3" required placeholder="2^127 - 1"></textarea>
+            </label>
+            <label>Per-class time budget
+              <select id="prime-classify-budget">
+                <option value="1">1 second · quick</option>
+                <option value="2" selected>2 seconds · balanced</option>
+                <option value="5">5 seconds · deeper</option>
+                <option value="10">10 seconds · maximum</option>
+              </select>
+              <span class="field-note">Expensive unresolved classes are reported as inconclusive, never guessed.</span>
+            </label>
+            <button class="primary" type="submit"><span>Classify prime</span><span>→</span></button>
+          </form>
+
           <form id="prime-generate-form" class="panel utility-card">
             <p class="eyebrow">GENERATOR</p>
             <h2>Create fixed-size primes</h2>

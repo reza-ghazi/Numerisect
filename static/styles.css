@@ -151,6 +151,18 @@ footer { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 24px 0 
 .prime-chip.tuple { width: 100%; border-left-color: var(--accent); }
 .prime-verdict { width: 100%; padding: 28px; border-radius: 12px; background: var(--accent-soft); text-align: center; }
 .prime-verdict strong { display: block; color: var(--accent); font-size: 28px; margin-bottom: 8px; text-transform: capitalize; }
+.classification-summary { width: 100%; display: grid; gap: 8px; padding: 20px; border: 1px solid rgba(184,255,92,.25); border-radius: 12px; background: var(--accent-soft); }
+.classification-summary span { color: var(--accent); font-size: 24px; font-weight: 800; text-transform: capitalize; }
+.classification-summary code { overflow-wrap: anywhere; }
+.classification-summary small { color: var(--muted); }
+.classification-grid { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.classification-card { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: #0c0f11; }
+.classification-card strong { display: block; color: var(--accent); margin-bottom: 6px; }
+.classification-card code { display: block; color: #dbe4e8; overflow-wrap: anywhere; margin-bottom: 7px; }
+.classification-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.classification-unknown { width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; }
+.classification-unknown summary { cursor: pointer; color: var(--amber); font-weight: 700; }
+.classification-unknown p { margin: 10px 0 0; color: var(--muted); }
 .proof-badge { display: block; width: fit-content; margin: 15px auto 0; padding: 5px 9px; border-radius: 999px; color: #111; background: var(--accent); font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 .prime-metric { width: 100%; padding: 30px; border: 1px solid rgba(184,255,92,.25); border-radius: 12px; background: var(--accent-soft); text-align: center; }
 .prime-metric span { display: block; color: var(--muted); margin-bottom: 10px; font: 700 14px/1.4 "SFMono-Regular", Consolas, monospace; }
@@ -168,6 +180,7 @@ footer { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 24px 0 
   .job-list { max-height: 260px; }
   .hero { padding-top: 52px; }
   .prime-grid { grid-template-columns: 1fr; }
+  .classification-grid { grid-template-columns: 1fr; }
   .utility-wide { grid-column: auto; }
   .tuple-controls { grid-template-columns: 1fr 1fr; }
   .special-controls { grid-template-columns: 1fr 1fr; }

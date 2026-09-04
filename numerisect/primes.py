@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Literal
 
 
@@ -11,6 +12,67 @@ class PrimeEngineError(RuntimeError):
 
 
 PrimeKind = Literal["prime", "safe", "sophie", "blum", "congruence"]
+
+CLASSIFIER_PROGRAM = Path(__file__).with_name("prime_classifier.gp")
+
+PRIME_CLASSIFICATIONS: dict[str, tuple[str, str]] = {
+    "balanced": ("Balanced", "The nearest lower and upper prime gaps are equal."),
+    "chen": ("Chen", "p + 2 is prime or semiprime."),
+    "circular": ("Circular", "Every cyclic rotation of the decimal digits is prime."),
+    "cluster": ("Cluster", "Every eligible even difference occurs between primes not exceeding p."),
+    "cousin": ("Cousin", "Has a prime partner at distance 4."),
+    "cuban": ("Cuban", "Has one of the two cubic-difference forms."),
+    "cullen": ("Cullen", "Has the form n·2ⁿ + 1."),
+    "delicate": ("Digitally delicate", "Every one-digit decimal replacement is composite."),
+    "dihedral": ("Dihedral", "Seven-segment rotations and reflections remain prime."),
+    "double_mersenne": ("Double Mersenne", "Has the form 2^(2^q−1) − 1 for prime q."),
+    "emirp": ("Emirp", "Its distinct decimal reversal is also prime."),
+    "even": ("Even", "The unique even prime."),
+    "factorial": ("Factorial", "Differs by one from a factorial."),
+    "fermat": ("Fermat", "Has the form 2^(2^n) + 1."),
+    "fibonacci": ("Fibonacci", "Occurs in the Fibonacci sequence."),
+    "fortunate": ("Fortunate", "Occurs as the least prime offset after a primorial."),
+    "good": ("Good", "Dominates every symmetric pair of surrounding primes."),
+    "happy": ("Happy", "Repeated decimal digit-square sums reach 1."),
+    "higgs": ("Higgs", "Belongs to the exponent-2 Higgs-prime sequence."),
+    "left_and_right_truncatable": ("Left-and-right truncatable", "Simultaneous outer truncations remain prime."),
+    "left_truncatable": ("Left-truncatable", "Every successive left truncation remains prime."),
+    "lucas": ("Lucas", "Occurs in the Lucas sequence."),
+    "mersenne": ("Mersenne", "Is one less than a power of two."),
+    "mills": ("Mills", "Occurs in the established Mills-prime sequence."),
+    "minimal": ("Minimal", "No shorter decimal digit subsequence forms a prime."),
+    "motzkin": ("Motzkin", "Occurs in the Motzkin-number sequence."),
+    "non_insertable": ("Non-insertable", "Inserting any decimal digit produces a composite."),
+    "newman_shanks_williams": ("Newman–Shanks–Williams", "Occurs at an eligible odd index in the NSW sequence."),
+    "palindromic": ("Palindromic", "Its decimal digits read the same in reverse."),
+    "pell": ("Pell", "Occurs in the Pell sequence."),
+    "pell_lucas": ("Pell–Lucas", "Occurs in the half-companion Pell sequence."),
+    "permutable": ("Permutable", "All decimal digit permutations are prime."),
+    "pierpont": ("Pierpont", "Has the form 2^u·3^v + 1."),
+    "pillai": ("Pillai", "Satisfies the defining factorial congruence for some n."),
+    "prime_quadruplet": ("Prime quadruplet", "Belongs to a {q,q+2,q+6,q+8} constellation."),
+    "prime_triplet": ("Prime triplet", "Belongs to a three-prime constellation of diameter 6."),
+    "primorial": ("Primorial", "Differs by one from a prime primorial."),
+    "proth": ("Proth", "Has the form k·2^n + 1 with odd k < 2^n."),
+    "pythagorean": ("Pythagorean", "Is congruent to 1 modulo 4."),
+    "quartan": ("Quartan", "Is a sum of two positive fourth powers."),
+    "repunit": ("Repunit", "Its decimal representation contains only ones."),
+    "right_truncatable": ("Right-truncatable", "Every successive right truncation remains prime."),
+    "safe": ("Safe", "(p − 1)/2 is prime."),
+    "sexy": ("Sexy", "Has a prime partner at distance 6."),
+    "sophie_germain": ("Sophie Germain", "2p + 1 is prime."),
+    "strobogrammatic": ("Strobogrammatic", "Its decimal display is unchanged by a 180° rotation."),
+    "strong": ("Strong", "Exceeds the mean of its nearest prime neighbors."),
+    "superprime": ("Superprime", "Its index in the prime sequence is itself prime."),
+    "supersingular": ("Supersingular", "Divides the order of the Monster group."),
+    "twin": ("Twin", "Has a prime partner at distance 2."),
+    "wagstaff": ("Wagstaff", "Has the form (2^q + 1)/3 for an odd prime q."),
+    "wieferich": ("Wieferich", "Satisfies 2^(p−1) ≡ 1 modulo p²."),
+    "williams": ("Williams", "Has the form (b−1)b^n − 1 for a tested base."),
+    "wilson": ("Wilson", "Satisfies (p−1)! ≡ −1 modulo p²."),
+    "wolstenholme": ("Wolstenholme", "Satisfies the strengthened Wolstenholme congruence."),
+    "woodall": ("Woodall", "Has the form n·2ⁿ − 1."),
+}
 
 
 def _run_gp(program: str, timeout: int = 3600) -> list[str]:
@@ -30,7 +92,7 @@ def _run_gp(program: str, timeout: int = 3600) -> list[str]:
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raise PrimeEngineError("PARI/GP exceeded the one-hour operation limit") from exc
+        raise PrimeEngineError(f"PARI/GP exceeded the {timeout}-second operation limit") from exc
     if result.returncode:
         detail = result.stderr.strip() or result.stdout.strip()
         raise PrimeEngineError(f"PARI/GP failed: {detail[-1000:]}")
@@ -93,6 +155,64 @@ def primality_result(
         "note": note,
         "engine": "PARI/GP",
         "certificate": proof,
+    }
+
+
+def classify_prime(number: int, *, per_test_seconds: int = 2) -> dict[str, object]:
+    if not 1 <= per_test_seconds <= 10:
+        raise ValueError("The per-class time budget must be between 1 and 10 seconds")
+    try:
+        classifier = CLASSIFIER_PROGRAM.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise PrimeEngineError("The PARI/GP prime-classification program is unavailable") from exc
+
+    # Allow every native classification to consume its own budget before the
+    # subprocess-level safety timeout can fire.
+    timeout = max(60, per_test_seconds * len(PRIME_CLASSIFICATIONS) + 30)
+    lines = _run_gp(
+        f"{classifier}\nclassify_prime({number},{per_test_seconds});",
+        timeout=timeout,
+    )
+    prime_values = _tagged_values(lines, "PRIME")
+    if len(prime_values) != 1:
+        raise PrimeEngineError("PARI/GP did not return a prime-classification verdict")
+    is_prime = prime_values[0] == 1
+
+    matches: list[dict[str, str]] = []
+    inconclusive: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for line in lines:
+        if not (line.startswith("CLASS:") or line.startswith("UNKNOWN:")):
+            continue
+        status, identifier, detail = (line.split(":", 2) + [""])[:3]
+        if identifier not in PRIME_CLASSIFICATIONS or identifier in seen:
+            raise PrimeEngineError("PARI/GP produced an unexpected classification result")
+        seen.add(identifier)
+        name, description = PRIME_CLASSIFICATIONS[identifier]
+        item = {
+            "id": identifier,
+            "name": name,
+            "description": description,
+            "detail": detail.strip(),
+        }
+        (matches if status == "CLASS" else inconclusive).append(item)
+
+    tested = len(PRIME_CLASSIFICATIONS) if is_prime else 0
+    return {
+        "number": str(number),
+        "digits": len(str(abs(number))),
+        "is_prime": is_prime,
+        "classification": "prime" if is_prime else "composite",
+        "matches": matches,
+        "inconclusive": inconclusive,
+        "tested": tested,
+        "not_matched": tested - len(matches) - len(inconclusive),
+        "engine": "PARI/GP",
+        "note": (
+            f"PARI/GP rigorously proved the input prime and evaluated {tested} classifications."
+            if is_prime
+            else "PARI/GP rigorously determined that the input is composite; prime classifications were not run."
+        ),
     }
 
 

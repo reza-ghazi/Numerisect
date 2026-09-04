@@ -1,4 +1,9 @@
+import re
+
 from numerisect.primes import (
+    CLASSIFIER_PROGRAM,
+    PRIME_CLASSIFICATIONS,
+    classify_prime,
     generate_primes,
     generate_special_primes,
     nth_prime,
@@ -10,6 +15,10 @@ from numerisect.primes import (
     primes_before,
     primes_in_range,
 )
+
+
+def classification_ids(result):
+    return {item["id"] for item in result["matches"]}
 
 
 def test_primality_check():
@@ -24,6 +33,27 @@ def test_fast_primality_and_certificate():
     proven = primality_result(32416190071, certificate=True)
     assert proven["classification"] == "prime"
     assert "is prime" in str(proven["certificate"])
+
+
+def test_prime_classifier_uses_native_pari_program():
+    result = classify_prime(17, per_test_seconds=1)
+    assert result["is_prime"] is True
+    assert result["tested"] == len(PRIME_CLASSIFICATIONS) == 56
+    assert {"fermat", "proth", "pythagorean", "quartan"} <= classification_ids(result)
+
+
+def test_prime_classifier_catalogue_and_native_dispatch_stay_synchronized():
+    program = CLASSIFIER_PROGRAM.read_text(encoding="utf-8")
+    dispatched = re.findall(r'pc_(?:run|emit)\("([a-z_]+)"', program)
+    assert len(dispatched) == len(set(dispatched)) == 56
+    assert set(dispatched) == set(PRIME_CLASSIFICATIONS)
+
+
+def test_prime_classifier_skips_classes_for_composites():
+    result = classify_prime(15, per_test_seconds=1)
+    assert result["classification"] == "composite"
+    assert result["tested"] == 0
+    assert result["matches"] == []
 
 
 def test_generate_exact_digit_primes():

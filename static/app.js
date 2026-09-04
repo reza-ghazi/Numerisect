@@ -250,6 +250,13 @@ function showPrimeResult(title, data, type) {
   $('#prime-result-note').textContent = note;
   if (type === 'check') {
     content.innerHTML = `<div class="prime-verdict"><strong>${escapeHtml(data.classification)}</strong><code>${escapeHtml(data.number)}</code>${data.certificate_included ? '<span class="proof-badge">Certificate saved</span>' : ''}</div>`;
+  } else if (type === 'classify') {
+    const summary = `<div class="classification-summary"><span>${escapeHtml(data.classification)}</span><code>${escapeHtml(data.number)}</code><small>${data.is_prime ? `${data.matches.length} matched · ${data.not_matched} not matched · ${data.inconclusive.length} inconclusive` : 'Prime classes were not evaluated'}</small></div>`;
+    const matches = data.matches.map((item) => `<article class="classification-card"><strong>${escapeHtml(item.name)}</strong>${item.detail ? `<code>${escapeHtml(item.detail)}</code>` : ''}<p>${escapeHtml(item.description)}</p></article>`).join('');
+    const unknown = data.inconclusive.length
+      ? `<details class="classification-unknown"><summary>${data.inconclusive.length} inconclusive classification${data.inconclusive.length === 1 ? '' : 's'}</summary>${data.inconclusive.map((item) => `<p><strong>${escapeHtml(item.name)}</strong> · ${escapeHtml(item.detail)}</p>`).join('')}</details>`
+      : '';
+    content.innerHTML = summary + (matches ? `<div class="classification-grid">${matches}</div>` : (data.is_prime ? '<div class="empty">No supported special class matched.</div>' : '')) + unknown;
   } else if (type === 'metric') {
     content.innerHTML = `<div class="prime-metric"><span>${escapeHtml(data.label)}</span><strong>${escapeHtml(data.value)}</strong></div>`;
   } else if (type === 'gaps') {
@@ -310,6 +317,16 @@ $('#prime-check-mode').addEventListener('change', (event) => {
   const fast = event.target.value === 'fast';
   $('#prime-certificate').disabled = fast;
   if (fast) $('#prime-certificate').checked = false;
+});
+
+$('#prime-classify-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/classify', {
+    expression: $('#prime-classify-input').value,
+    per_test_seconds: Number($('#prime-classify-budget').value),
+  }, (data) => data.is_prime
+    ? `${data.matches.length} of ${data.tested} prime classifications matched`
+    : 'Composite input', 'classify');
 });
 
 $('#prime-generate-form').addEventListener('submit', (event) => {

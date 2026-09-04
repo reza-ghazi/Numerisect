@@ -29,6 +29,7 @@ from .installer import EngineInstaller
 from .outputs import safe_output_path, save_prime_output
 from .primes import (
     PrimeEngineError,
+    classify_prime,
     generate_primes,
     generate_special_primes,
     nth_prime,
@@ -81,6 +82,11 @@ class PrimeCheckRequest(BaseModel):
     expression: str = Field(min_length=1, max_length=100_000)
     mode: Literal["fast", "proven"] = "proven"
     certificate: bool = False
+
+
+class PrimeClassificationRequest(BaseModel):
+    expression: str = Field(min_length=1, max_length=100_000)
+    per_test_seconds: int = Field(default=2, ge=1, le=10)
 
 
 class PrimeGenerateRequest(BaseModel):
@@ -202,6 +208,43 @@ def check_prime(request: PrimeCheckRequest) -> dict[str, object]:
     )
     result["output_file"] = path.name
     result["certificate_included"] = bool(certificate)
+    return result
+
+
+@app.post("/api/primes/classify")
+def classify_prime_number(request: PrimeClassificationRequest) -> dict[str, object]:
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+        result = classify_prime(number, per_test_seconds=request.per_test_seconds)
+    except (ExpressionError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    lines = [
+        f"Input: {number}",
+        f"Verdict: {result['classification']}",
+        f"Engine: {result['engine']}",
+        "",
+        "Matched classifications",
+        "-----------------------",
+    ]
+    matches = result["matches"]
+    if isinstance(matches, list) and matches:
+        for item in matches:
+            detail = f" — {item['detail']}" if item["detail"] else ""
+            lines.append(f"{item['name']}{detail}: {item['description']}")
+    else:
+        lines.append("None")
+
+    inconclusive = result["inconclusive"]
+    if isinstance(inconclusive, list) and inconclusive:
+        lines.extend(["", "Inconclusive classifications", "----------------------------"])
+        for item in inconclusive:
+            lines.append(f"{item['name']}: {item['detail']}")
+
+    path = save_prime_output("prime-classification", "Prime classification", lines)
+    result["output_file"] = path.name
     return result
 
 
