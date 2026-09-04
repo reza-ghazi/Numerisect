@@ -1,5 +1,7 @@
 # Numerisect
 
+**Multi-Engine Integer Factorization and Prime Analysis**
+
 Numerisect 0.2.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, and prime exploration. Python handles validation,
 process orchestration, persistence, and the HTTP API; plain JavaScript provides
@@ -26,7 +28,7 @@ machine unless the repository or exported files are shared deliberately.
 ## Start and stop
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/numerisect
+cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
 ./run.sh
 ```
 
@@ -47,7 +49,7 @@ Numerisect requires Python 3.11 or newer, FastAPI, and Uvicorn. To create an
 isolated development environment:
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/numerisect
+cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
 python3 -m venv .venv
 .venv/bin/pip install -e '.[test]'
 .venv/bin/uvicorn numerisect.main:app --host 127.0.0.1 --port 8765
@@ -224,7 +226,7 @@ POST /api/primes/gaps
 Run the complete regression suite and the JavaScript syntax check with:
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/numerisect
+cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
 python3 -m pytest
 node --check static/app.js
 ```

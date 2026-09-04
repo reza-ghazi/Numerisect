@@ -1,7 +1,7 @@
 [project]
 name = "numerisect"
 version = "0.2.0"
-description = "A friendly local workbench for integer factorization and prime tools"
+description = "Multi-Engine Integer Factorization and Prime Analysis"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.110",
