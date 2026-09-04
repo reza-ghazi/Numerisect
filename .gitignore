@@ -5,3 +5,5 @@ __pycache__/
 data/
 output/*.txt
 !output/.gitkeep
+AGENTS.md
+codex_resume_command.txt
