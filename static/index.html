@@ -165,10 +165,22 @@
           <form id="prime-check-form" class="panel utility-card">
             <p class="eyebrow">PRIMALITY</p>
             <h2>Check a number</h2>
-            <p>Test an arbitrary-size integer or expression.</p>
+            <p>Choose a quick probable-prime test or a rigorous proof.</p>
             <label>Integer or expression
               <textarea id="prime-check-input" rows="3" required placeholder="2^127 - 1"></textarea>
             </label>
+            <div class="controls-grid">
+              <label>Test mode
+                <select id="prime-check-mode">
+                  <option value="proven">Rigorous · proven</option>
+                  <option value="fast">Fast · probable</option>
+                </select>
+              </label>
+              <label class="inline-check">
+                <input id="prime-certificate" type="checkbox" />
+                Include certificate
+              </label>
+            </div>
             <button class="primary" type="submit"><span>Check primality</span><span>→</span></button>
           </form>
 
@@ -183,15 +195,21 @@
             <button class="primary" type="submit"><span>Generate primes</span><span>→</span></button>
           </form>
 
-          <form id="prime-after-form" class="panel utility-card">
-            <p class="eyebrow">NEXT PRIMES</p>
-            <h2>Continue after a number</h2>
-            <p>For example, find the next 100 primes after 5000.</p>
-            <div class="controls-grid">
-              <label>After<input id="prime-after-start" value="5000" required /></label>
+          <form id="prime-nearby-form" class="panel utility-card">
+            <p class="eyebrow">PRIME NAVIGATOR</p>
+            <h2>Primes near a number</h2>
+            <p>Walk forward or backward from an arbitrary-size integer.</p>
+            <div class="triple-controls">
+              <label>Direction
+                <select id="prime-nearby-direction">
+                  <option value="after">After</option>
+                  <option value="before">Before</option>
+                </select>
+              </label>
+              <label>Number<input id="prime-nearby-start" value="5000" required /></label>
               <label>Count<input id="prime-after-count" type="number" min="1" max="100000" value="100" required /></label>
             </div>
-            <button class="primary" type="submit"><span>Find next primes</span><span>→</span></button>
+            <button class="primary" type="submit"><span>Navigate primes</span><span>→</span></button>
           </form>
 
           <form id="prime-range-form" class="panel utility-card">
@@ -204,6 +222,60 @@
             </div>
             <label>Maximum results<input id="prime-range-limit" type="number" min="1" max="100000" value="10000" required /></label>
             <button class="primary" type="submit"><span>Find primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-special-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">SPECIAL GENERATOR</p>
+            <h2>Generate primes with structure</h2>
+            <p>Create rigorously proven safe, Sophie Germain, Blum, or modular primes.</p>
+            <div class="special-controls">
+              <label>Kind
+                <select id="prime-special-kind">
+                  <option value="safe">Safe prime · (p−1)/2 prime</option>
+                  <option value="sophie">Sophie Germain · 2p+1 prime</option>
+                  <option value="blum">Blum prime · p mod 4 = 3</option>
+                  <option value="congruence">Modular · p mod m = r</option>
+                </select>
+              </label>
+              <label>How many<input id="prime-special-count" type="number" min="1" max="500" value="5" required /></label>
+              <label>Digits each<input id="prime-special-digits" type="number" min="1" max="10000" value="20" required /></label>
+              <label class="modular-only hidden">Modulus m<input id="prime-modulus" type="number" min="2" max="1000000" value="4" /></label>
+              <label class="modular-only hidden">Remainder r<input id="prime-remainder" type="number" value="1" /></label>
+            </div>
+            <button class="primary" type="submit"><span>Generate special primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-nth-form" class="panel utility-card">
+            <p class="eyebrow">PRIME INDEX</p>
+            <h2>Find the n-th prime</h2>
+            <p>Look up p(n), with indexed checkpoints and PARI's native sieve.</p>
+            <label>Positive index n
+              <input id="prime-index" type="number" min="1" max="100000000000" value="1000000" required />
+            </label>
+            <button class="primary" type="submit"><span>Find indexed prime</span><span>→</span></button>
+          </form>
+
+          <form id="prime-count-form" class="panel utility-card">
+            <p class="eyebrow">PRIME COUNTING</p>
+            <h2>Calculate π(x)</h2>
+            <p>Count every positive prime less than or equal to x, exactly.</p>
+            <label>Integer or expression
+              <input id="prime-count-through" value="10^8" required />
+              <span class="field-note">Safety limit: 10¹² because exact counting is memory intensive</span>
+            </label>
+            <button class="primary" type="submit"><span>Count primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-gaps-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GAP ANALYZER</p>
+            <h2>Measure consecutive prime gaps</h2>
+            <p>Inspect each gap and highlight the largest gap found in an interval.</p>
+            <div class="triple-controls">
+              <label>From<input id="prime-gaps-start" value="2" required /></label>
+              <label>Through<input id="prime-gaps-end" value="10000" required /></label>
+              <label>Maximum gaps<input id="prime-gaps-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze gaps</span><span>→</span></button>
           </form>
 
           <form id="prime-tuples-form" class="panel utility-card utility-wide">

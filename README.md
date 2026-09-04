@@ -16,8 +16,11 @@ orchestration layers only.
 - Verified factors: a job is complete only if the factors multiply to the input
 - Beautiful factor equations and automatic plain-text exports in `output/`
 - Adjustable CPU count, defaulting to every available processor
-- Primality checks and exact-decimal-digit prime generation
-- Prime ranges, next-N-primes queries, and prime tuples such as twins
+- Fast probable-prime checks, rigorous primality proofs, and certificate exports
+- Exact-decimal-digit prime generation with rigorous verification
+- Prime ranges, forward/backward navigation, and prime tuples such as twins
+- Safe, Sophie Germain, Blum, and modular prime generators
+- N-th-prime lookup, exact prime counting, and prime-gap analysis
 - Automatic first-run source installation for missing engines
 - Local-only HTTP binding by default
 
@@ -66,14 +69,26 @@ Completed text reports and prime lists are stored in `output/`.
 ## Prime tools
 
 - Check whether an arbitrary-precision integer is prime
+- Choose a fast BPSW probable-prime test or a rigorous proof
+- Export human-readable PARI primality/ECPP certificates
 - Generate up to 500 distinct primes of a requested decimal length per request
-- Find up to 100,000 primes in a range or immediately after a starting integer
+- Generate safe, Sophie Germain, Blum, or congruence-constrained primes
+- Find up to 100,000 proven primes in a range, before, or after a starting integer
 - Find prime tuples using built-in twin, cousin, sexy, triplet, and quadruplet
   patterns, or custom offsets
+- Look up p(n), calculate exact π(x), and inspect consecutive prime gaps
 
 Prime checking uses PARI/GP's `isprime`, so a positive result is a proof rather
-than only a probable-prime classification. Range, next-prime, random-prime, and
-prime-tuple operations also execute in PARI/GP subprocesses.
+than only a probable-prime classification. A separate fast mode uses
+`ispseudoprime` and is clearly labeled as non-rigorous. Range, navigation,
+random-prime, certificate, counting, gap, and prime-tuple operations execute in
+PARI/GP subprocesses. Candidate primes above 2^64 are explicitly passed through
+`isprime` before Numerisect reports them as proven primes.
+
+Exact prime counting is capped at 10^12 because PARI/GP's `primepi` uses a
+memory-intensive sieve. N-th-prime lookup is capped at PARI's largest documented
+checkpoint, 10^11. These limits prevent an innocent browser request from
+exhausting the workstation.
 
 ## API
 

@@ -225,14 +225,21 @@ $('#expression').addEventListener('input', (event) => {
     : 'Expression will be evaluated safely';
 });
 
+function activateView(button) {
+  document.querySelectorAll('.mode-tab').forEach((tab) => tab.classList.remove('active'));
+  document.querySelectorAll('.tool-view').forEach((view) => view.classList.add('hidden'));
+  button.classList.add('active');
+  $(`#${button.dataset.view}`).classList.remove('hidden');
+  history.replaceState(null, '', button.dataset.view === 'prime-view' ? '#primes' : '#factor');
+}
+
 document.querySelectorAll('.mode-tab').forEach((button) => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.mode-tab').forEach((tab) => tab.classList.remove('active'));
-    document.querySelectorAll('.tool-view').forEach((view) => view.classList.add('hidden'));
-    button.classList.add('active');
-    $(`#${button.dataset.view}`).classList.remove('hidden');
-  });
+  button.addEventListener('click', () => activateView(button));
 });
+
+if (location.hash === '#primes') {
+  activateView(document.querySelector('[data-view="prime-view"]'));
+}
 
 function showPrimeResult(title, data, type) {
   const panel = $('#prime-result-panel');
@@ -242,7 +249,16 @@ function showPrimeResult(title, data, type) {
   if (data.truncated) note += `${note ? ' ' : ''}Display/export stopped at the requested limit. Continue from ${data.next_start}.`;
   $('#prime-result-note').textContent = note;
   if (type === 'check') {
-    content.innerHTML = `<div class="prime-verdict"><strong>${escapeHtml(data.classification)}</strong><code>${escapeHtml(data.number)}</code></div>`;
+    content.innerHTML = `<div class="prime-verdict"><strong>${escapeHtml(data.classification)}</strong><code>${escapeHtml(data.number)}</code>${data.certificate_included ? '<span class="proof-badge">Certificate saved</span>' : ''}</div>`;
+  } else if (type === 'metric') {
+    content.innerHTML = `<div class="prime-metric"><span>${escapeHtml(data.label)}</span><strong>${escapeHtml(data.value)}</strong></div>`;
+  } else if (type === 'gaps') {
+    const largest = data.largest
+      ? `<div class="gap-highlight"><span>Largest displayed gap</span><strong>${data.largest.gap}</strong><code>${escapeHtml(data.largest.from)} → ${escapeHtml(data.largest.to)}</code></div>`
+      : '';
+    const shown = data.gaps.slice(0, 2000);
+    content.innerHTML = largest + (shown.map((gap) => `<div class="gap-row"><code>${escapeHtml(gap.from)}</code><span>+${gap.gap}</span><code>${escapeHtml(gap.to)}</code></div>`).join('') || '<div class="empty">Fewer than two primes occur in this interval.</div>');
+    if (data.gaps.length > shown.length) $('#prime-result-note').textContent += ` Showing the first ${shown.length.toLocaleString()} gaps in the browser.`;
   } else if (type === 'tuples') {
     const shown = data.tuples.slice(0, 2000);
     content.innerHTML = shown.map((tuple) => `<div class="prime-chip tuple">${tuple.map(escapeHtml).join(' &nbsp; · &nbsp; ')}</div>`).join('') || '<div class="empty">No matching tuples in this interval.</div>';
@@ -282,8 +298,18 @@ async function submitPrimeForm(form, path, payload, title, type) {
 $('#prime-check-form').addEventListener('submit', (event) => {
   event.preventDefault();
   submitPrimeForm(event.currentTarget, '/api/primes/check',
-    { expression: $('#prime-check-input').value },
+    {
+      expression: $('#prime-check-input').value,
+      mode: $('#prime-check-mode').value,
+      certificate: $('#prime-certificate').checked,
+    },
     (data) => `${data.digits}-digit input`, 'check');
+});
+
+$('#prime-check-mode').addEventListener('change', (event) => {
+  const fast = event.target.value === 'fast';
+  $('#prime-certificate').disabled = fast;
+  if (fast) $('#prime-certificate').checked = false;
 });
 
 $('#prime-generate-form').addEventListener('submit', (event) => {
@@ -293,11 +319,12 @@ $('#prime-generate-form').addEventListener('submit', (event) => {
   }, (data) => `${data.count.toLocaleString()} generated primes`, 'list');
 });
 
-$('#prime-after-form').addEventListener('submit', (event) => {
+$('#prime-nearby-form').addEventListener('submit', (event) => {
   event.preventDefault();
-  submitPrimeForm(event.currentTarget, '/api/primes/after', {
-    start: $('#prime-after-start').value, count: Number($('#prime-after-count').value)
-  }, (data) => `${data.count.toLocaleString()} primes after ${shortNumber(data.start, 24)}`, 'list');
+  const direction = $('#prime-nearby-direction').value;
+  submitPrimeForm(event.currentTarget, `/api/primes/${direction}`, {
+    start: $('#prime-nearby-start').value, count: Number($('#prime-after-count').value)
+  }, (data) => `${data.count.toLocaleString()} primes ${direction} ${shortNumber(data.start, 24)}`, 'list');
 });
 
 $('#prime-range-form').addEventListener('submit', (event) => {
@@ -307,6 +334,47 @@ $('#prime-range-form').addEventListener('submit', (event) => {
     end: $('#prime-range-end').value,
     limit: Number($('#prime-range-limit').value)
   }, (data) => `${data.count.toLocaleString()} primes in range`, 'list');
+});
+
+$('#prime-special-kind').addEventListener('change', (event) => {
+  document.querySelectorAll('.modular-only').forEach((field) => {
+    field.classList.toggle('hidden', event.target.value !== 'congruence');
+  });
+});
+
+$('#prime-special-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const kind = $('#prime-special-kind').value;
+  submitPrimeForm(event.currentTarget, '/api/primes/generate-special', {
+    kind,
+    count: Number($('#prime-special-count').value),
+    digits: Number($('#prime-special-digits').value),
+    modulus: kind === 'congruence' ? Number($('#prime-modulus').value) : null,
+    remainder: kind === 'congruence' ? Number($('#prime-remainder').value) : null,
+  }, (data) => `${data.count.toLocaleString()} ${data.kind.replace('_', ' ')} primes`, 'list');
+});
+
+$('#prime-nth-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/nth', {
+    index: Number($('#prime-index').value),
+  }, (data) => `${data.label} · ${data.digits} digits`, 'metric');
+});
+
+$('#prime-count-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/count', {
+    expression: $('#prime-count-through').value,
+  }, () => 'Exact prime count', 'metric');
+});
+
+$('#prime-gaps-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/gaps', {
+    start: $('#prime-gaps-start').value,
+    end: $('#prime-gaps-end').value,
+    limit: Number($('#prime-gaps-limit').value),
+  }, (data) => `${data.count.toLocaleString()} consecutive prime gaps`, 'gaps');
 });
 
 $('#tuple-pattern').addEventListener('change', (event) => {

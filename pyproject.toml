@@ -1,6 +1,6 @@
 [project]
 name = "numerisect"
-version = "0.1.0"
+version = "0.2.0"
 description = "A friendly local workbench for integer factorization and prime tools"
 requires-python = ">=3.11"
 dependencies = [

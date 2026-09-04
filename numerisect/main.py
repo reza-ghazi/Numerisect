@@ -30,9 +30,14 @@ from .outputs import safe_output_path, save_prime_output
 from .primes import (
     PrimeEngineError,
     generate_primes,
+    generate_special_primes,
+    nth_prime,
+    prime_count,
+    prime_gaps,
     primality_result,
     prime_tuples_in_range,
     primes_after,
+    primes_before,
     primes_in_range,
 )
 
@@ -74,11 +79,19 @@ class JobRequest(BaseModel):
 
 class PrimeCheckRequest(BaseModel):
     expression: str = Field(min_length=1, max_length=100_000)
+    mode: Literal["fast", "proven"] = "proven"
+    certificate: bool = False
 
 
 class PrimeGenerateRequest(BaseModel):
     count: int = Field(ge=1, le=500)
     digits: int = Field(ge=1, le=10_000)
+
+
+class SpecialPrimeRequest(PrimeGenerateRequest):
+    kind: Literal["safe", "sophie", "blum", "congruence"]
+    modulus: int | None = Field(default=None, ge=2, le=1_000_000)
+    remainder: int | None = None
 
 
 class PrimeRangeRequest(BaseModel):
@@ -90,6 +103,18 @@ class PrimeRangeRequest(BaseModel):
 class PrimesAfterRequest(BaseModel):
     start: str = Field(min_length=1, max_length=100_000)
     count: int = Field(ge=1, le=100_000)
+
+
+class PrimeIndexRequest(BaseModel):
+    index: int = Field(ge=1, le=100_000_000_000)
+
+
+class PrimeCountRequest(BaseModel):
+    expression: str = Field(min_length=1, max_length=100_000)
+
+
+class PrimeGapRequest(PrimeRangeRequest):
+    pass
 
 
 class PrimeTupleRequest(BaseModel):
@@ -154,19 +179,29 @@ def check_prime(request: PrimeCheckRequest) -> dict[str, object]:
     except ExpressionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
-        result = primality_result(number)
+        result = primality_result(
+            number, mode=request.mode, certificate=request.certificate
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except PrimeEngineError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    certificate = str(result.pop("certificate"))
+    lines = [
+        f"Input: {number}",
+        f"Mode: {request.mode}",
+        f"Classification: {result['classification']}",
+        str(result["note"]),
+    ]
+    if certificate:
+        lines.extend(["", "Primality certificate", "---------------------", certificate])
     path = save_prime_output(
         "primality",
         "Primality check",
-        [
-            f"Input: {number}",
-            f"Classification: {result['classification']}",
-            str(result["note"]),
-        ],
+        lines,
     )
     result["output_file"] = path.name
+    result["certificate_included"] = bool(certificate)
     return result
 
 
@@ -187,6 +222,42 @@ def create_primes(request: PrimeGenerateRequest) -> dict[str, object]:
         "primes": [str(value) for value in values],
         "output_file": path.name,
         "note": "Generated values are distinct primes produced and proven by PARI/GP.",
+    }
+
+
+@app.post("/api/primes/generate-special")
+def create_special_primes(request: SpecialPrimeRequest) -> dict[str, object]:
+    try:
+        values = generate_special_primes(
+            request.count,
+            request.digits,
+            request.kind,
+            request.modulus,
+            request.remainder,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    label = {
+        "safe": "safe primes",
+        "sophie": "Sophie Germain primes",
+        "blum": "Blum primes",
+        "congruence": "modular primes",
+    }[request.kind]
+    detail = ""
+    if request.kind == "congruence":
+        detail = f" congruent to {request.remainder} modulo {request.modulus}"
+    path = save_prime_output(
+        "special-primes",
+        f"{request.count} {request.digits}-digit {label}{detail}",
+        (str(value) for value in values),
+    )
+    return {
+        "kind": request.kind,
+        "count": len(values),
+        "digits": request.digits,
+        "primes": [str(value) for value in values],
+        "output_file": path.name,
+        "note": f"Generated {label}; every returned value was rigorously proven by PARI/GP.",
     }
 
 
@@ -211,6 +282,7 @@ def create_prime_range(request: PrimeRangeRequest) -> dict[str, object]:
         "truncated": truncated,
         "next_start": str(next_start) if next_start is not None else None,
         "output_file": path.name,
+        "note": "Every returned value was rigorously proven by PARI/GP.",
     }
 
 
@@ -231,6 +303,104 @@ def create_primes_after(request: PrimesAfterRequest) -> dict[str, object]:
         "count": len(values),
         "primes": [str(value) for value in values],
         "output_file": path.name,
+        "note": "Every returned value was rigorously proven by PARI/GP.",
+    }
+
+
+@app.post("/api/primes/before")
+def create_primes_before(request: PrimesAfterRequest) -> dict[str, object]:
+    try:
+        start = evaluate_arbitrary_integer(request.start)
+        values = primes_before(start, request.count)
+    except (ExpressionError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    path = save_prime_output(
+        "previous-primes",
+        f"{len(values)} primes before {start}",
+        (str(value) for value in values),
+    )
+    note = "Every returned value was rigorously proven by PARI/GP."
+    if len(values) < request.count:
+        note += " The sequence reached the beginning of the positive primes."
+    return {
+        "start": str(start),
+        "count": len(values),
+        "primes": [str(value) for value in values],
+        "output_file": path.name,
+        "note": note,
+    }
+
+
+@app.post("/api/primes/nth")
+def find_nth_prime(request: PrimeIndexRequest) -> dict[str, object]:
+    try:
+        value = nth_prime(request.index)
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    path = save_prime_output(
+        "nth-prime", f"Prime number {request.index}", [str(value)]
+    )
+    return {
+        "label": f"p({request.index:,})",
+        "value": str(value),
+        "digits": len(str(value)),
+        "output_file": path.name,
+        "note": "Calculated by PARI/GP's indexed-prime table and sieve.",
+    }
+
+
+@app.post("/api/primes/count")
+def count_primes(request: PrimeCountRequest) -> dict[str, object]:
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+        value = prime_count(number)
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    path = save_prime_output(
+        "prime-count", f"Prime count through {number}", [f"pi({number}) = {value}"]
+    )
+    return {
+        "label": f"π({number})",
+        "value": str(value),
+        "output_file": path.name,
+        "note": "Exact count of positive primes less than or equal to the input.",
+    }
+
+
+@app.post("/api/primes/gaps")
+def analyze_prime_gaps(request: PrimeGapRequest) -> dict[str, object]:
+    try:
+        start = evaluate_arbitrary_integer(request.start)
+        end = evaluate_arbitrary_integer(request.end)
+        gaps, truncated, next_start = prime_gaps(start, end, request.limit)
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    largest = max(gaps, key=lambda item: item["gap"], default=None)
+    path = save_prime_output(
+        "prime-gaps",
+        f"Prime gaps from {start} through {end}",
+        (
+            f"{item['from']} -> {item['to']}  gap {item['gap']}"
+            for item in gaps
+        ),
+    )
+    return {
+        "start": str(start),
+        "end": str(end),
+        "count": len(gaps),
+        "gaps": [
+            {"from": str(item["from"]), "to": str(item["to"]), "gap": item["gap"]}
+            for item in gaps
+        ],
+        "largest": (
+            {"from": str(largest["from"]), "to": str(largest["to"]), "gap": largest["gap"]}
+            if largest
+            else None
+        ),
+        "truncated": truncated,
+        "next_start": str(next_start) if next_start is not None else None,
+        "output_file": path.name,
+        "note": "Gaps are measured between consecutive proven primes inside the interval.",
     }
 
 
@@ -259,6 +429,7 @@ def create_prime_tuples(request: PrimeTupleRequest) -> dict[str, object]:
         "truncated": truncated,
         "next_start": str(next_start) if next_start is not None else None,
         "output_file": path.name,
+        "note": "Every member of every tuple was rigorously proven by PARI/GP.",
     }
 
 
