@@ -1,101 +1,243 @@
 # Numerisect
 
-A friendly local number-theory workbench. It routes integer-factorization jobs
-across YAFU, Msieve, GMP-ECM pretesting, and CADO-NFS. Arbitrary-precision
-prime operations run in PARI/GP; Python and JavaScript are interface and
-orchestration layers only.
+Numerisect 0.2.0 is a local web workbench for integer factorization, primality
+proofs, prime generation, and prime exploration. Python handles validation,
+process orchestration, persistence, and the HTTP API; plain JavaScript provides
+the browser interface. Native number-theory programs perform the expensive
+mathematics.
 
-## Features
+The server listens only on `127.0.0.1` by default. Results stay on the local
+machine unless the repository or exported files are shared deliberately.
 
-- Safe integer-expression input (`+`, `-`, `*`, `//`, `%`, `^`, `**`)
-- Automatic engine selection
-- YAFU → CADO hybrid mode for large inputs
-- Automatic CADO parameter discovery and next-larger selection
-- Persistent SQLite job history and per-job work directories
-- Live logs, phase indicators, cancellation, and CADO snapshot resume
-- Verified factors: a job is complete only if the factors multiply to the input
-- Beautiful factor equations and automatic plain-text exports in `output/`
-- Adjustable CPU count, defaulting to every available processor
-- Fast probable-prime checks, rigorous primality proofs, and certificate exports
-- Exact-decimal-digit prime generation with rigorous verification
-- Prime ranges, forward/backward navigation, and prime tuples such as twins
-- Safe, Sophie Germain, Blum, and modular prime generators
-- N-th-prime lookup, exact prime counting, and prime-gap analysis
-- Automatic first-run source installation for missing engines
-- Local-only HTTP binding by default
+## Highlights
 
-## Run
+- Automatic YAFU-to-CADO factorization strategy based on decimal length
+- Manual YAFU, Msieve, hybrid, and CADO-NFS strategies
+- Automatic CADO parameter discovery and next-larger parameter selection
+- CPU-thread selector that defaults to every available logical CPU
+- Persistent jobs, live engine logs, cancellation, and CADO snapshot resume
+- Product verification before a factorization is marked complete
+- Fast probable-prime tests, rigorous proofs, and certificate exports
+- Fixed-length, safe, Sophie Germain, Blum, and modular prime generation
+- Prime ranges, nearby primes, tuples, gaps, indexed primes, and exact counts
+- Automatic plain-text reports in `output/`
+- First-start, user-local source installation for missing native engines
 
-The required Python packages are already installed on this machine:
+## Start and stop
 
 ```bash
 cd /home/reza/dev_dir/my_apps/mathematics/numerisect
 ./run.sh
 ```
 
-Open <http://127.0.0.1:8765>.
+Open the main interface at <http://127.0.0.1:8765> or open Prime Tools directly
+at <http://127.0.0.1:8765/#primes>.
 
-On first start Numerisect checks for `gp`, `ecm`, `msieve`, `yafu`, and
-`cado-nfs.py`.
-Missing engines are fetched from their official upstream repositories, compiled,
-and installed under `data/tools/`, without root access. Setup status is visible in
-the web interface and its detailed build log is `data/engine-setup.log`. A compiler,
-Git, Make, CMake, GMP development headers, Autoconf, Automake, and Libtool must be
-available for source builds.
-
-For a project-specific virtual environment:
+Keep the terminal open while using Numerisect. Press `Ctrl+C` in that terminal
+to stop it. If it was started from another terminal, find and stop only its PID:
 
 ```bash
+pgrep -af 'uvicorn numerisect.main:app'
+kill PID_FROM_THE_PREVIOUS_COMMAND
+```
+
+## Python setup
+
+Numerisect requires Python 3.11 or newer, FastAPI, and Uvicorn. To create an
+isolated development environment:
+
+```bash
+cd /home/reza/dev_dir/my_apps/mathematics/numerisect
 python3 -m venv .venv
 .venv/bin/pip install -e '.[test]'
 .venv/bin/uvicorn numerisect.main:app --host 127.0.0.1 --port 8765
 ```
 
-## Strategy
+Python is not used to replace the native factoring or prime engines.
 
-`Automatic` uses YAFU below 95 decimal digits. At 95 digits and above it first
-runs YAFU's small-factor/ECM pretest and sends a still-large residual to CADO-NFS.
-If pretesting reduces the residual below the threshold, YAFU finishes it with SIQS.
+## Native engines
 
-Direct CADO mode accepts inputs outside CADO's normal parameter lookup gaps. It
-chooses the smallest installed parameter set at least as large as the input (for
-example, c60 for a 55-digit input). The advanced selector can override this.
+| Engine | Numerisect responsibility |
+|---|---|
+| YAFU | Default pipeline for small and medium inputs; small-factor, ECM, and SIQS work |
+| Msieve | Optional manually selected general factoring pipeline |
+| GMP-ECM | Detected and installed as the standalone ECM utility available to native workflows |
+| CADO-NFS | Number field sieve for large residual composites |
+| PARI/GP | Primality tests and proofs, certificates, prime generation, navigation, tuples, gaps, `prime(n)`, and `primepi(x)` |
 
-State is stored in `data/`, which is intentionally ignored by Git. Set
-`NUMERISECT_STATE_DIR` to relocate it. The application processes one CPU-heavy job
-at a time by default; set `NUMERISECT_MAX_PARALLEL_JOBS` to change that.
-Completed text reports and prime lists are stored in `output/`.
+The status line at the top of the interface shows which executables are
+available. Engine commands are launched as argument arrays rather than through
+shell interpolation.
 
-## Prime tools
+## First-run engine installation
 
-- Check whether an arbitrary-precision integer is prime
-- Choose a fast BPSW probable-prime test or a rigorous proof
-- Export human-readable PARI primality/ECPP certificates
-- Generate up to 500 distinct primes of a requested decimal length per request
-- Generate safe, Sophie Germain, Blum, or congruence-constrained primes
-- Find up to 100,000 proven primes in a range, before, or after a starting integer
-- Find prime tuples using built-in twin, cousin, sexy, triplet, and quadruplet
-  patterns, or custom offsets
-- Look up p(n), calculate exact π(x), and inspect consecutive prime gaps
+At startup, Numerisect checks for these commands:
 
-Prime checking uses PARI/GP's `isprime`, so a positive result is a proof rather
-than only a probable-prime classification. A separate fast mode uses
-`ispseudoprime` and is clearly labeled as non-rigorous. Range, navigation,
-random-prime, certificate, counting, gap, and prime-tuple operations execute in
-PARI/GP subprocesses. Candidate primes above 2^64 are explicitly passed through
-`isprime` before Numerisect reports them as proven primes.
+```text
+yafu  msieve  ecm  cado-nfs.py  gp
+```
 
-Exact prime counting is capped at 10^12 because PARI/GP's `primepi` uses a
-memory-intensive sieve. N-th-prime lookup is capped at PARI's largest documented
-checkpoint, 10^11. These limits prevent an innocent browser request from
-exhausting the workstation.
+If any are missing, a background setup task fetches current upstream source,
+builds it, and installs it under `data/tools/`. It does not request root access
+or overwrite an existing system installation. The managed `bin` and `lib`
+directories are added to the Numerisect process environment automatically.
 
-## API
+Source builds require network access plus Git, Make, a C/C++ compiler, CMake,
+GMP development headers, Autoconf, Automake, and Libtool. Progress appears in
+the setup banner. Detailed output is stored in:
 
-Interactive API documentation is available at <http://127.0.0.1:8765/api/docs>.
+```text
+data/engine-setup.log
+```
 
-## Security
+If installation fails, install the missing build prerequisite, restart
+Numerisect, and inspect that log. The setup API can also retry installation:
 
-The server binds only to `127.0.0.1`. Do not expose it on a network without adding
-authentication and request limits. Engine commands are launched as argument arrays,
-not interpolated shell commands.
+```bash
+curl -X POST http://127.0.0.1:8765/api/setup/install
+```
+
+## Factorization workflow
+
+Enter a decimal integer or a safe integer expression. Supported operators are
+`+`, `-`, `*`, `//`, `%`, `^`, and `**`, with parentheses. In number-theory
+expressions, `^` is treated as exponentiation. Function calls, names, floating
+point operations, and arbitrary Python code are rejected.
+
+The default automatic strategy is:
+
+1. Below 95 decimal digits, run YAFU.
+2. At 95 digits and above, run a YAFU small-factor/ECM pretest.
+3. If the residual falls below 95 digits, finish it with YAFU/SIQS.
+4. Otherwise, send the residual to CADO-NFS.
+
+Direct CADO mode fills gaps in CADO's default parameter lookup. It chooses the
+smallest installed parameter set that is at least as large as the input. For
+example, a 55-digit input uses `params.c60` when `params.c55` is unavailable.
+The advanced selector allows an explicit installed parameter set.
+
+The thread count defaults to all detected logical CPUs. Only one CPU-heavy job
+runs at a time unless `NUMERISECT_MAX_PARALLEL_JOBS` is changed. Very large
+factorizations may still take hours, days, or substantially longer; thread count
+and digit count alone cannot predict completion time.
+
+Each completed factorization receives an equation view, per-factor status, and
+a text report. A job is considered successful only when the returned factors
+multiply exactly to the input.
+
+## Prime Tools
+
+All prime operations use PARI/GP subprocesses.
+
+### Primality modes
+
+- **Rigorous:** uses `isprime`; a positive result is a mathematical proof.
+- **Fast:** uses the BPSW-based `ispseudoprime`; a positive result is labeled
+  “probable prime,” not proven prime.
+- **Certificate:** rigorous mode can export a human-readable PARI
+  primality/ECPP certificate with the result.
+
+PARI candidate generators and iterators may provide pseudoprimes above `2^64`.
+Numerisect explicitly applies `isprime` before reporting generated, ranged,
+navigated, or tuple members as proven primes.
+
+### Available operations
+
+| Tool | Behavior |
+|---|---|
+| Fixed-size generator | Produces up to 500 distinct, proven primes with exactly the requested decimal digits |
+| Prime navigator | Finds up to 100,000 proven primes before or after an arbitrary-size integer |
+| Range search | Lists proven primes in an interval with a result limit and continuation point |
+| Prime tuples | Finds twin, cousin, sexy, triplet, quadruplet, or custom offset patterns |
+| Special generator | Produces safe, Sophie Germain, Blum, or `p mod m = r` primes |
+| N-th prime | Calculates `p(n)` for positive indices through `10^11` |
+| Prime counting | Calculates exact `π(x)` for `x` through `10^12` |
+| Gap analyzer | Measures gaps between consecutive proven primes in an interval |
+
+The `10^12` exact-counting limit protects the workstation because PARI/GP's
+`primepi` implementation uses a memory-intensive sieve. The `10^11` indexed
+prime limit matches PARI's largest documented checkpoint. These limits do not
+restrict primality testing, navigation, generation, tuple searches, or range
+endpoints, although work on very large inputs can take a long time.
+
+## Files and persistence
+
+```text
+numerisect/             Python backend and engine orchestration
+static/                 HTML, CSS, and JavaScript interface
+tests/                  Regression tests
+data/numerisect.sqlite3 Persistent factorization job history
+data/jobs/              Per-job work directories and native-engine logs
+data/tools/             User-local native engine sources and installation
+output/                 Completed text reports and prime exports
+```
+
+`data/` and generated `output/*.txt` files are intentionally ignored by Git.
+The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
+
+## Configuration
+
+| Environment variable | Default | Purpose |
+|---|---:|---|
+| `NUMERISECT_STATE_DIR` | `./data` | Database, jobs, setup state, and managed engines |
+| `NUMERISECT_OUTPUT_DIR` | `./output` | Completed text exports |
+| `NUMERISECT_CADO_THRESHOLD` | `95` | Decimal-digit boundary for automatic hybrid routing |
+| `NUMERISECT_PRETEST_LEVEL` | `20` | Default YAFU pretest level |
+| `NUMERISECT_MAX_PARALLEL_JOBS` | `1` | Simultaneous CPU-heavy factorization workers |
+| `NUMERISECT_MAX_EXPRESSION_CHARACTERS` | `100000` | Expression input length limit |
+| `NUMERISECT_MAX_RESULT_DIGITS` | `100000` | Evaluated integer size limit |
+
+## HTTP API
+
+Interactive OpenAPI documentation is available at
+<http://127.0.0.1:8765/api/docs> while the server is running.
+
+Important routes include:
+
+```text
+GET  /api/capabilities
+GET  /api/setup
+POST /api/setup/install
+
+POST /api/jobs
+GET  /api/jobs
+GET  /api/jobs/{id}
+GET  /api/jobs/{id}/log
+POST /api/jobs/{id}/cancel
+POST /api/jobs/{id}/resume
+GET  /api/jobs/{id}/export
+
+POST /api/primes/check
+POST /api/primes/generate
+POST /api/primes/generate-special
+POST /api/primes/after
+POST /api/primes/before
+POST /api/primes/range
+POST /api/primes/tuples
+POST /api/primes/nth
+POST /api/primes/count
+POST /api/primes/gaps
+```
+
+## Tests
+
+Run the complete regression suite and the JavaScript syntax check with:
+
+```bash
+cd /home/reza/dev_dir/my_apps/mathematics/numerisect
+python3 -m pytest
+node --check static/app.js
+```
+
+The prime tests invoke the installed `gp` executable. They will fail clearly if
+PARI/GP is unavailable.
+
+## Security notes
+
+- The provided launcher binds only to `127.0.0.1`.
+- Do not expose the service to a network without authentication, TLS, and
+  stricter operational quotas.
+- Integer expressions are parsed through a restricted AST evaluator.
+- Result downloads are constrained to Numerisect's output directory.
+- Native commands receive validated values through explicit argument arrays or
+  controlled standard input.
