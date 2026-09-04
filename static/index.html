@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Numerisect</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">ƒ</span>
+        <span><strong>Numerisect</strong><small>Number theory workbench</small></span>
+      </a>
+      <div id="engine-status" class="engine-status">Checking engines…</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">LOCAL NUMBER THEORY WORKBENCH</p>
+        <h1>Big integers, handled beautifully.</h1>
+        <p class="lede">
+          Automatic routing across YAFU, Msieve, ECM pretesting, and CADO-NFS—with
+          persistent jobs, prime exploration, and honest progress.
+        </p>
+      </section>
+
+      <div id="setup-banner" class="message warning setup-banner hidden"></div>
+      <nav class="mode-tabs" aria-label="Tools">
+        <button class="mode-tab active" data-view="factor-view">Factor integers</button>
+        <button class="mode-tab" data-view="prime-view">Prime tools</button>
+      </nav>
+
+      <div id="factor-view" class="tool-view">
+
+      <section class="submit-card panel">
+        <form id="factor-form">
+          <label for="expression">Integer or expression</label>
+          <textarea
+            id="expression"
+            name="expression"
+            rows="4"
+            spellcheck="false"
+            placeholder="9762764972076045602745703475074502450747777777777611191"
+            required
+          ></textarea>
+          <div class="input-meta">
+            <span>Supports + − × // % ^ and parentheses</span>
+            <span id="digit-preview">Waiting for input</span>
+          </div>
+
+          <div class="controls-grid">
+            <label>
+              Strategy
+              <select id="backend" name="backend">
+                <option value="auto">Automatic · recommended</option>
+                <option value="yafu">YAFU pipeline</option>
+                <option value="hybrid">YAFU pretest → CADO</option>
+                <option value="cado">CADO-NFS directly</option>
+                <option value="msieve">Msieve</option>
+              </select>
+            </label>
+            <label>
+              CPU threads
+              <input id="threads" name="threads" type="number" min="1" max="256" value="24" />
+              <span class="field-note">Defaults to every available CPU</span>
+            </label>
+          </div>
+
+          <details>
+            <summary>Advanced settings</summary>
+            <div class="controls-grid advanced">
+              <label>
+                ECM pretest level
+                <input id="pretest-level" type="number" min="1" max="100" value="20" />
+              </label>
+              <label>
+                CADO parameters
+                <select id="cado-parameter">
+                  <option value="">Choose automatically</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <div id="form-error" class="message error hidden"></div>
+          <button class="primary" type="submit">
+            <span>Start factorization</span><span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel history-panel">
+          <div class="section-heading">
+            <div><p class="eyebrow">QUEUE</p><h2>Jobs</h2></div>
+            <button id="refresh-jobs" class="icon-button" title="Refresh">↻</button>
+          </div>
+          <div id="job-list" class="job-list">
+            <div class="empty">No jobs yet.</div>
+          </div>
+        </aside>
+
+        <section class="panel detail-panel">
+          <div id="empty-detail" class="empty-detail">
+            <span class="empty-glyph">01</span>
+            <h2>Submit a number to begin</h2>
+            <p>Your factors, engine decisions, progress, and logs will appear here.</p>
+          </div>
+
+          <div id="job-detail" class="hidden">
+            <div class="detail-header">
+              <div>
+                <p id="detail-id" class="eyebrow"></p>
+                <h2 id="detail-status">Queued</h2>
+              </div>
+              <div class="actions">
+                <button id="resume-job" class="secondary hidden">Resume / restart</button>
+                <button id="cancel-job" class="danger hidden">Stop</button>
+              </div>
+            </div>
+
+            <div class="number-block">
+              <span id="detail-digits" class="number-badge"></span>
+              <code id="detail-number"></code>
+            </div>
+
+            <div class="progress-row">
+              <div class="progress-track"><div id="progress-bar"></div></div>
+              <span id="progress-value">0%</span>
+            </div>
+            <p id="detail-phase" class="phase"></p>
+            <div id="job-warning" class="message warning hidden"></div>
+            <div id="job-error" class="message error hidden"></div>
+
+            <div class="result-section">
+              <div class="section-heading compact">
+                <div><p class="eyebrow">RESULT</p><h3>Factors</h3></div>
+                <div class="actions">
+                  <a id="download-result" class="secondary button-link hidden" href="#">Save .txt</a>
+                  <button id="copy-result" class="secondary hidden">Copy</button>
+                </div>
+              </div>
+              <div id="factor-equation" class="factor-equation hidden"></div>
+              <div id="factor-list" class="factor-list">
+                <div class="empty">Factors will appear when verified.</div>
+              </div>
+            </div>
+
+            <div class="log-section">
+              <div class="section-heading compact">
+                <div><p class="eyebrow">PROCESS</p><h3>Live output</h3></div>
+                <button id="toggle-log" class="secondary">Show log</button>
+              </div>
+              <pre id="job-log" class="hidden"></pre>
+            </div>
+          </div>
+        </section>
+      </section>
+      </div>
+
+      <div id="prime-view" class="tool-view hidden">
+        <section class="prime-grid">
+          <form id="prime-check-form" class="panel utility-card">
+            <p class="eyebrow">PRIMALITY</p>
+            <h2>Check a number</h2>
+            <p>Test an arbitrary-size integer or expression.</p>
+            <label>Integer or expression
+              <textarea id="prime-check-input" rows="3" required placeholder="2^127 - 1"></textarea>
+            </label>
+            <button class="primary" type="submit"><span>Check primality</span><span>→</span></button>
+          </form>
+
+          <form id="prime-generate-form" class="panel utility-card">
+            <p class="eyebrow">GENERATOR</p>
+            <h2>Create fixed-size primes</h2>
+            <p>Generate distinct primes with an exact decimal length.</p>
+            <div class="controls-grid">
+              <label>How many<input id="prime-count" type="number" min="1" max="500" value="10" required /></label>
+              <label>Digits each<input id="prime-digits" type="number" min="1" max="10000" value="20" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Generate primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-after-form" class="panel utility-card">
+            <p class="eyebrow">NEXT PRIMES</p>
+            <h2>Continue after a number</h2>
+            <p>For example, find the next 100 primes after 5000.</p>
+            <div class="controls-grid">
+              <label>After<input id="prime-after-start" value="5000" required /></label>
+              <label>Count<input id="prime-after-count" type="number" min="1" max="100000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find next primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-range-form" class="panel utility-card">
+            <p class="eyebrow">RANGE</p>
+            <h2>Primes in an interval</h2>
+            <p>Results are paginated, even when the endpoints are huge.</p>
+            <div class="controls-grid">
+              <label>From<input id="prime-range-start" value="2" required /></label>
+              <label>Through<input id="prime-range-end" value="10000" required /></label>
+            </div>
+            <label>Maximum results<input id="prime-range-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            <button class="primary" type="submit"><span>Find primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-tuples-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME TUPLES</p>
+            <h2>Find twins and constellations</h2>
+            <p>Search by offsets from a prime base. Custom offsets must begin with 0.</p>
+            <div class="tuple-controls">
+              <label>Pattern
+                <select id="tuple-pattern">
+                  <option value="0,2">Twin primes · 0, 2</option>
+                  <option value="0,4">Cousin primes · 0, 4</option>
+                  <option value="0,6">Sexy primes · 0, 6</option>
+                  <option value="0,2,6">Prime triplet · 0, 2, 6</option>
+                  <option value="0,4,6">Prime triplet · 0, 4, 6</option>
+                  <option value="0,2,6,8">Prime quadruplet · 0, 2, 6, 8</option>
+                  <option value="custom">Custom offsets</option>
+                </select>
+              </label>
+              <label>Offsets<input id="tuple-offsets" value="0,2" disabled required /></label>
+              <label>From<input id="tuple-start" value="2" required /></label>
+              <label>Through<input id="tuple-end" value="100000" required /></label>
+              <label>Maximum tuples<input id="tuple-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find prime tuples</span><span>→</span></button>
+          </form>
+        </section>
+
+        <section id="prime-result-panel" class="panel prime-result-panel hidden">
+          <div class="section-heading">
+            <div><p class="eyebrow">PRIME RESULT</p><h2 id="prime-result-title"></h2></div>
+            <a id="prime-download" class="secondary button-link hidden" href="#">Save .txt</a>
+          </div>
+          <p id="prime-result-note" class="phase"></p>
+          <div id="prime-result-content" class="prime-results"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      Local-only by default · <a href="/api/docs">API documentation</a>
+    </footer>
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>
