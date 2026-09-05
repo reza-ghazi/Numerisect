@@ -6,6 +6,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
+NATIVE_DIR = BASE_DIR / "native"
 STATE_DIR = Path(os.environ.get("NUMERISECT_STATE_DIR", BASE_DIR / "data"))
 JOBS_DIR = STATE_DIR / "jobs"
 DATABASE_PATH = STATE_DIR / "numerisect.sqlite3"
@@ -37,8 +38,12 @@ def prepend_managed_tools_to_path() -> None:
     managed = str(TOOLS_BIN_DIR)
     if managed not in entries:
         os.environ["PATH"] = os.pathsep.join([managed, *entries])
-    managed_lib = str(TOOLS_DIR / "prefix" / "lib")
     current_lib = os.environ.get("LD_LIBRARY_PATH", "")
     lib_entries = current_lib.split(os.pathsep) if current_lib else []
-    if managed_lib not in lib_entries:
-        os.environ["LD_LIBRARY_PATH"] = os.pathsep.join([managed_lib, *lib_entries])
+    managed_libs = [
+        str(TOOLS_DIR / "prefix" / "lib"),
+        str(TOOLS_DIR / "prefix" / "lib64"),
+    ]
+    os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(
+        [path for path in managed_libs if path not in lib_entries] + lib_entries
+    )

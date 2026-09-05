@@ -1,0 +1,129 @@
+from __future__ import annotations
+
+import os
+import shlex
+import shutil
+import subprocess
+import threading
+from pathlib import Path
+
+from .config import NATIVE_DIR, TOOLS_BIN_DIR, TOOLS_DIR
+
+
+_BUILD_LOCK = threading.Lock()
+ZETA_TOOL_NAME = "numerisect-zeta"
+
+
+def _pkg_config_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    candidates = [
+        TOOLS_DIR / "prefix" / "lib" / "pkgconfig",
+        TOOLS_DIR / "prefix" / "lib64" / "pkgconfig",
+    ]
+    existing = environment.get("PKG_CONFIG_PATH", "")
+    values = [str(path) for path in candidates]
+    if existing:
+        values.append(existing)
+    environment["PKG_CONFIG_PATH"] = os.pathsep.join(values)
+    return environment
+
+
+def flint_available() -> bool:
+    pkg_config = shutil.which("pkg-config")
+    if pkg_config:
+        result = subprocess.run(
+            [pkg_config, "--exists", "flint"],
+            env=_pkg_config_environment(),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            return True
+    return (TOOLS_DIR / "prefix" / "include" / "flint" / "flint.h").is_file()
+
+
+def build_zeta_tool() -> Path:
+    destination = TOOLS_BIN_DIR / ZETA_TOOL_NAME
+    source = NATIVE_DIR / "numerisect_zeta.c"
+    with _BUILD_LOCK:
+        if not source.is_file():
+            raise RuntimeError("The Numerisect FLINT zeta source file is missing")
+        if destination.is_file() and destination.stat().st_mtime >= source.stat().st_mtime:
+            return destination
+        compiler = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+        if not compiler:
+            raise RuntimeError("A C compiler is required to build the FLINT zeta helper")
+        environment = _pkg_config_environment()
+        pkg_config = shutil.which("pkg-config")
+        flags: list[str] = []
+        if pkg_config:
+            query = subprocess.run(
+                [pkg_config, "--cflags", "--libs", "flint"],
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            if query.returncode == 0:
+                flags = shlex.split(query.stdout)
+        if not flags:
+            prefix = TOOLS_DIR / "prefix"
+            if not (prefix / "include" / "flint" / "flint.h").is_file():
+                raise RuntimeError("FLINT development headers and libraries are unavailable")
+            flags = [
+                f"-I{prefix / 'include'}",
+                f"-L{prefix / 'lib'}",
+                f"-L{prefix / 'lib64'}",
+                f"-Wl,-rpath,{prefix / 'lib'}",
+                f"-Wl,-rpath,{prefix / 'lib64'}",
+                "-lflint",
+                "-lmpfr",
+                "-lgmp",
+            ]
+
+        TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+        command = [
+            compiler,
+            "-O3",
+            "-std=c11",
+            "-fopenmp",
+            str(source),
+            "-o",
+            str(temporary),
+            *flags,
+            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib'}",
+            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib64'}",
+            "-lm",
+            "-lpthread",
+        ]
+        result = subprocess.run(
+            command,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        if result.returncode:
+            temporary.unlink(missing_ok=True)
+            raise RuntimeError(f"Failed to build the FLINT zeta helper: {result.stdout[-2000:]}")
+        temporary.chmod(0o755)
+        temporary.replace(destination)
+        return destination
+
+
+def zeta_tool_path() -> Path:
+    discovered = shutil.which(ZETA_TOOL_NAME)
+    if discovered:
+        path = Path(discovered)
+        source = NATIVE_DIR / "numerisect_zeta.c"
+        if (
+            path != TOOLS_BIN_DIR / ZETA_TOOL_NAME
+            or not source.is_file()
+            or path.stat().st_mtime >= source.stat().st_mtime
+        ):
+            return path
+    return build_zeta_tool()

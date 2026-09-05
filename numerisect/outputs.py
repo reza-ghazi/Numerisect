@@ -51,6 +51,20 @@ def save_prime_output(kind: str, heading: str, lines: Iterable[str]) -> Path:
     return _atomic_write(path, content)
 
 
+def native_output_paths(kind: str) -> tuple[Path, Path]:
+    filename = f"{kind}-{uuid.uuid4().hex[:12]}.txt"
+    final_path = OUTPUT_DIR / filename
+    temporary_path = final_path.with_suffix(final_path.suffix + ".tmp")
+    return temporary_path, final_path
+
+
+def finalize_native_output(temporary_path: Path, final_path: Path) -> Path:
+    if not temporary_path.is_file():
+        raise OSError("The native engine did not create its output file")
+    temporary_path.replace(final_path)
+    return final_path
+
+
 def safe_output_path(filename: str) -> Path | None:
     if Path(filename).name != filename:
         return None

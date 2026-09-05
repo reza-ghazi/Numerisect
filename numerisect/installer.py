@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import STATE_DIR, TOOLS_BIN_DIR, TOOLS_DIR, TOOLS_SOURCE_DIR
+from .native_tools import build_zeta_tool, flint_available
 
 
 ENGINE_COMMANDS = {
@@ -18,6 +19,7 @@ ENGINE_COMMANDS = {
     "Msieve": "msieve",
     "YAFU": "yafu",
     "CADO-NFS": "cado-nfs.py",
+    "FLINT/Zeta": "numerisect-zeta",
 }
 
 REPOSITORIES = {
@@ -26,6 +28,7 @@ REPOSITORIES = {
     "Msieve": "https://github.com/radii/msieve.git",
     "YAFU": "https://github.com/bbuhrow/yafu.git",
     "CADO-NFS": "https://gitlab.inria.fr/cado-nfs/cado-nfs.git",
+    "FLINT": "https://github.com/flintlib/flint.git",
 }
 
 
@@ -146,6 +149,29 @@ class EngineInstaller:
         launcher.unlink(missing_ok=True)
         launcher.symlink_to(source / "cado-nfs.py")
 
+    def _install_flint(self) -> None:
+        source = self._clone("FLINT")
+        prefix = TOOLS_DIR / "prefix"
+        build = source / "build-numerisect"
+        self._run(
+            [
+                "cmake",
+                "-S",
+                str(source),
+                "-B",
+                str(build),
+                f"-DCMAKE_INSTALL_PREFIX={prefix}",
+                "-DBUILD_SHARED_LIBS=ON",
+            ]
+        )
+        self._run(["cmake", "--build", str(build), "-j", str(os.cpu_count() or 1)])
+        self._run(["cmake", "--install", str(build)])
+
+    def _install_flint_zeta(self) -> None:
+        if not flint_available():
+            self._install_flint()
+        build_zeta_tool()
+
     def _install(self) -> None:
         recipes: dict[str, Callable[[], None]] = {
             "PARI/GP": self._install_pari,
@@ -153,6 +179,7 @@ class EngineInstaller:
             "Msieve": self._install_msieve,
             "YAFU": self._install_yafu,
             "CADO-NFS": self._install_cado,
+            "FLINT/Zeta": self._install_flint_zeta,
         }
         missing = self.missing()
         if not missing:

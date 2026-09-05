@@ -12,7 +12,10 @@ A PARTICULAR PURPOSE. See the GNU General Public License below for details.
 
 Third-party libraries and external engines remain under their respective
 licenses. Numerisect invokes YAFU, Msieve, GMP-ECM, CADO-NFS, and PARI/GP as
-separate programs and does not relicense them.
+separate programs and does not relicense them. The native zeta helper links to
+FLINT/Arb, which is distributed under the GNU Lesser General Public License,
+version 2.1 or later; Numerisect's GPLv3-or-later terms are compatible with that
+dependency and do not alter FLINT's own license.
 
 -------------------------------------------------------------------------------
 GNU GENERAL PUBLIC LICENSE

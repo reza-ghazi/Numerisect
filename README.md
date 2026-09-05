@@ -3,13 +3,16 @@
 **Multi-Engine Integer Factorization and Prime Analysis**
 
 Numerisect 0.2.0 is a local web workbench for integer factorization, primality
-proofs, prime generation, and prime exploration. Python handles validation,
+proofs, prime generation, prime exploration, and rigorous Riemann-zeta analysis. Python handles validation,
 process orchestration, persistence, and the HTTP API; plain JavaScript provides
 the browser interface. Native number-theory programs perform the expensive
 mathematics.
 
 The server listens only on `127.0.0.1` by default. Results stay on the local
 machine unless the repository or exported files are shared deliberately.
+
+This is a private, pre-release project run from its source checkout. Release
+packages and a packaging workflow have not been published or designed yet.
 
 ## Highlights
 
@@ -21,8 +24,18 @@ machine unless the repository or exported files are shared deliberately.
 - Product verification before a factorization is marked complete
 - Fast probable-prime tests, rigorous proofs, and certificate exports
 - Native PARI/GP classification across 56 structural and sequence-based prime classes
+- Exact reciprocal periods, full-reptend tests, and decimal repetend exports
 - Fixed-length, safe, Sophie Germain, Blum, and modular prime generation
 - Prime ranges, nearby primes, tuples, gaps, indexed primes, and exact counts
+- The nth proven prime strictly before or after an arbitrary-size integer
+- Batch primality checks, interval residue-class searches, and exact prime-modulus arithmetic
+- 38 individually routed Prime Tools pages with searchable navigation and local results
+- Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
+- Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
+- Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches
+- Exact arithmetic-function profiles, semiprime detection, and coprime navigation
+- Prime-density/residue charts, digit-constrained primes, exact polynomial exploration, and certified prime-indicator constants
+- Rigorous zeta evaluation, certified critical-line zeros, exact Turing-method zero counts, and native-sampled plots
 - Automatic plain-text reports in `output/`
 - First-start, user-local source installation for missing native engines
 
@@ -33,8 +46,18 @@ cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
 ./run.sh
 ```
 
-Open the main interface at <http://127.0.0.1:8765> or open Prime Tools directly
-at <http://127.0.0.1:8765/#primes>.
+The launcher prints the exact source and interface directories it serves and
+opens a versioned URL in the default browser when `xdg-open` is available. It
+prefers `.venv/bin/python` when present and explicitly loads this source tree.
+Set `NUMERISECT_NO_BROWSER=1`
+if you prefer to open it manually. The main routes are Prime Tools at
+<http://127.0.0.1:8765/?ui=20260905-workstation#primes/prime-check> and Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260905-workstation#zeta>.
+
+After updating the source, restart the server and reload the browser page.
+The application shell and assets send `no-store` headers; restarting a server
+does not itself replace a document already loaded in a tab. The current layout
+uses an `N` brand mark and blue/graphite colors.
 
 Keep the terminal open while using Numerisect. Press `Ctrl+C` in that terminal
 to stop it. If it was started from another terminal, find and stop only its PID:
@@ -66,7 +89,8 @@ Python is not used to replace the native factoring or prime engines.
 | Msieve | Optional manually selected general factoring pipeline |
 | GMP-ECM | Detected and installed as the standalone ECM utility available to native workflows |
 | CADO-NFS | Number field sieve for large residual composites |
-| PARI/GP | Primality tests and proofs, certificates, prime generation, navigation, tuples, gaps, `prime(n)`, and `primepi(x)` |
+| PARI/GP | Primality, classification, reciprocal periods, arithmetic functions, coprimes, prime generation/distribution, polynomial and sequence searches, certificates, `prime(n)`, and `primepi(x)` |
+| FLINT/Arb | Rigorous complex zeta evaluation, certified Hardy Z zeros, Turing-method zero counting, and multithreaded plot sampling |
 
 The status line at the top of the interface shows which executables are
 available. Engine commands are launched as argument arrays rather than through
@@ -77,7 +101,7 @@ shell interpolation.
 At startup, Numerisect checks for these commands:
 
 ```text
-yafu  msieve  ecm  cado-nfs.py  gp
+yafu  msieve  ecm  cado-nfs.py  gp  numerisect-zeta
 ```
 
 If any are missing, a background setup task fetches current upstream source,
@@ -86,7 +110,9 @@ or overwrite an existing system installation. The managed `bin` and `lib`
 directories are added to the Numerisect process environment automatically.
 
 Source builds require network access plus Git, Make, a C/C++ compiler, CMake,
-GMP development headers, Autoconf, Automake, and Libtool. Progress appears in
+GMP, MPFR, and FLINT development headers, Autoconf, Automake, and Libtool. If
+FLINT is unavailable, Numerisect builds its latest source release and then its
+small OpenMP-enabled zeta helper. Progress appears in
 the setup banner. Detailed output is stored in:
 
 ```text
@@ -132,6 +158,15 @@ multiply exactly to the input.
 
 All prime operations use PARI/GP subprocesses.
 
+Prime Tools has 38 pages with searchable navigation in six groups. Every
+operation has its own page and direct hash URL, such as
+`#primes/prime-check`, `#primes/prime-reciprocal`, or
+`#primes/integer-profile`; only the selected operation is displayed. On narrow
+screens, a compact operation selector replaces the navigation sidebar.
+Results, errors, the automatic `output/<filename>` confirmation, and the
+report-download control appear immediately below the operation that produced
+them.
+
 ### Primality modes
 
 - **Rigorous:** uses `isprime`; a positive result is a mathematical proof.
@@ -143,6 +178,42 @@ All prime operations use PARI/GP subprocesses.
 PARI candidate generators and iterators may provide pseudoprimes above `2^64`.
 Numerisect explicitly applies `isprime` before reporting generated, ranged,
 navigated, or tuple members as proven primes.
+
+### Nth prime before or after an integer
+
+Open **Prime Tools → Primality & navigation → Primes near a number**
+(`/#primes/prime-nearby`). Choose **Find the nth prime**, the direction, the
+starting integer or expression, and position n. For example, the 100th prime
+strictly after 1289 is **2039**, and the 50th prime strictly before 98798 is
+**98221**. The input itself is always excluded, even when it is prime; n = 1
+means the nearest prime in the selected direction.
+
+The same page retains **List consecutive primes**. Indexed searches count and
+prove candidates entirely in PARI/GP and return only the requested prime.
+The starting integer supports arbitrary precision; n is limited to 100,000
+and the existing one-hour engine timeout applies. Backward searches report an
+error if too few positive primes exist. Successful results are saved to a text
+report in `output/`, with the exact path and download link shown below the form.
+
+### Batch, progression, and prime-modulus tools
+
+Three dedicated pages extend the existing operations:
+
+- **Primality & navigation → Check a list of integers** tests up to 1,000 decimal
+  integers in one GP process, preserving order and duplicates. Rigorous and
+  probable-prime modes are clearly distinguished; integers below 2 are neither
+  prime nor composite.
+- **Prime generation → Primes in a residue class** finds proven primes
+  `p ≡ r (mod m)` in an inclusive interval. Results include their exact sum and,
+  when paginated, the next start. Modulus 1 selects all primes in the interval.
+- **Arithmetic & factors → Calculate modulo a prime** supports modular inverses,
+  powers (including negative exponents for nonzero residues), multiplicative
+  orders, all square roots, and a primitive root. The modulus is rigorously
+  proven before calculation.
+
+These operations use decimal integer inputs, native PARI/GP computation, and
+automatic text reports. See [Prime manipulation](docs/PRIME_MANIPULATION.md)
+for examples, API details, limits, and audit coverage.
 
 ### Prime classification
 
@@ -165,19 +236,66 @@ See [Prime classification](docs/PRIME_CLASSIFICATION.md) for the complete
 56-class catalogue, result semantics, computational limits, API example, and
 implementation architecture.
 
+### Reciprocals of primes
+
+The reciprocal analyzer rigorously proves the input prime, calculates the
+decimal period as the multiplicative order of 10 modulo the prime, and reports
+whether 10 is a primitive root. It therefore also identifies base-10
+full-reptend primes. Decimal expansion digits are generated with exact native
+integer arithmetic, preserving leading zeros. The complete finite expansion or
+repetend is streamed directly by PARI/GP into the automatic text export, while
+only the requested preview enters the HTTP response and browser. Inputs 2 and 5
+are handled as terminating decimals with period zero.
+
+Period calculation supports arbitrary-precision primes. Factoring `p - 1`,
+which is required to establish an exact multiplicative order, may be expensive
+for very large inputs; the interface provides optional engine timeouts and a
+no-time-limit mode. The browser preview is independently capped at 100,000
+digits, but the saved report has no application-imposed digit limit. Available
+time, memory, and disk space remain practical constraints for enormous periods.
+
+See [Prime reciprocals](docs/PRIME_RECIPROCALS.md) for definitions, API usage,
+limits, and implementation details.
+
 ### Available operations
 
 | Tool | Behavior |
 |---|---|
 | Fixed-size generator | Produces up to 500 distinct, proven primes with exactly the requested decimal digits |
 | Prime classifier | Rigorously evaluates 56 digital, structural, sequence, and constellation classes with explicit inconclusive results |
-| Prime navigator | Finds up to 100,000 proven primes before or after an arbitrary-size integer |
+| Reciprocal analyzer | Computes the exact period of `1/p`, tests full-reptend status, and exports exact decimal digits |
+| Prime navigator | Returns the nth proven prime or a list of primes strictly before/after an integer; position/count up to 100,000 |
+| Batch primality | Tests up to 1,000 decimal integers in order, with rigorous/probable modes and explicit neither-prime-nor-composite results below 2 |
+| Residue-class search | Finds proven primes in an inclusive interval with `p ≡ r (mod m)`, exact page sum, and continuation start |
+| Prime-modulus arithmetic | Computes inverses, powers, multiplicative orders, all square roots, and a primitive root for a proven prime modulus |
 | Range search | Lists proven primes in an interval with a result limit and continuation point |
 | Prime tuples | Finds twin, cousin, sexy, triplet, quadruplet, or custom offset patterns |
 | Special generator | Produces safe, Sophie Germain, Blum, or `p mod m = r` primes |
 | N-th prime | Calculates `p(n)` for positive indices through `10^11` |
 | Prime counting | Calculates exact `π(x)` for `x` through `10^12` |
 | Gap analyzer | Measures gaps between consecutive proven primes in an interval |
+| Absolute-prime search | Groups circular primes by their complete decimal-rotation orbit |
+| Gaussian tools | Applies the exact Gaussian-prime criterion and searches bounded complex lattices |
+| Paterson search | Proves both p and the decimal companion formed from p's base-4 digits |
+| Perfect numbers | Generates even perfect numbers from rigorously proven Mersenne primes |
+| Full-reptend search | Finds primes satisfying exact `ord_p(10) = p - 1` |
+| Prime pyramids | Recreates the source digit-insertion sequence and native-tested multiplication pyramid |
+| Special-number search | Finds Carmichael numbers, corrected pseudoprimes, lucky primes, and Jacobsthal primes |
+| Witness analyzer | Applies the complete strong Miller–Rabin criterion to arbitrary-size odd inputs |
+| Gap statistics | Computes exact frequency tables, extrema, rational mean/median, and mode over bounded gap samples |
+| Primorials | Generates cumulative products of rigorously generated consecutive primes |
+| Random range sampler | Returns distinct rigorously proven random primes from an arbitrary-precision interval |
+| Contiguous digits | Finds every distinct prime formed by an unreordered decimal substring |
+| Goldbach partitions | Finds all displayed proven-prime partitions of one even integer; it does not claim a proof of the conjecture |
+| Bounded prime problems | Searches four exact equation/factor/divisor-sum problems from the imported notebook |
+| Integer arithmetic profile | Factors one nonzero integer and computes τ, σ, aliquot sum, φ, Carmichael λ, Möbius μ, radical, ω/Ω, semiprime status, and divisor class |
+| Coprime navigator | Computes φ(m), previews the reduced residue system, and finds requested integers coprime to m after an arbitrary-size start |
+| Prime distribution | Counts proven primes by equal interval bins and residue class, plus twins and the largest internal gap |
+| Prime-factor distribution | Factors every integer in a bounded range and compares exact `ω(n)` and `Ω(n)` frequencies |
+| Digit-constrained primes | Generates candidates from a selected decimal alphabet and rigorously proves matching primes |
+| Prime polynomial | Evaluates `n²−n+k`, finds prime values and consecutive runs, and identifies exact small-prime modular obstructions |
+| Palindrome-derived sequence | Finds prime values of `|n−reverse(n)|+1` over a finite range |
+| Prime-indicator constant | Computes certified decimal digits of `Σ [n is prime]·2⁻ⁿ` from rigorously tested binary coefficients |
 
 The `10^12` exact-counting limit protects the workstation because PARI/GP's
 `primepi` implementation uses a memory-intensive sieve. The `10^11` indexed
@@ -185,11 +303,50 @@ prime limit matches PARI's largest documented checkpoint. These limits do not
 restrict primality testing, navigation, generation, tuple searches, or range
 endpoints, although work on very large inputs can take a long time.
 
+Arbitrary precision does not mean unlimited input or runtime. Most expression
+requests accept at most 100,000 characters, with configured expression-size
+limits; individual tools also impose documented result, scan, or time bounds.
+Factorization and zeta have thread controls. GP prime tools run individual
+subprocesses and do not currently provide general interactive cancellation or
+parallel thread selection.
+
+See [Prime structures and related numbers](docs/PRIME_STRUCTURES.md) for the
+definitions, corrections made to the imported prototypes, limits, and API
+examples.
+
+See [Prime exploration and notebook problems](docs/PRIME_EXPLORATION.md) for
+gap distributions, primorials, Goldbach analysis, substring and random-range
+tools, and the four bounded problem searches.
+
+See [Arithmetic and distribution tools](docs/ARITHMETIC_AND_DISTRIBUTION.md)
+for the final source-tree audit, mathematical definitions, native-engine
+architecture, resource limits, and the eight additional API routes.
+
+## Riemann Zeta
+
+The Zeta workspace uses a compiled C helper linked to FLINT/Arb. It evaluates
+`ζ(σ + it)` as rigorous complex balls, isolates consecutive Hardy Z zeros on
+the critical line, and counts all nontrivial zeros through a requested height
+with FLINT's Turing-method implementation. Critical-line graphs, Argand traces,
+and complex-plane heatmaps are computed point-by-point in native code; JavaScript
+only draws the returned samples. Plot coordinates use enclosure midpoints and
+are exploratory, while evaluation enclosures, zero intervals, and counts retain
+their explicit rigorous semantics.
+
+See [Riemann zeta tools](docs/RIEMANN_ZETA.md) for mathematical scope, API
+examples, precision/thread controls, and the distinction between certification
+and visualization.
+
 ## Files and persistence
 
 ```text
 numerisect/             Python backend and engine orchestration
 numerisect/prime_classifier.gp  Native PARI/GP classification engine
+numerisect/prime_reciprocal.gp  Native reciprocal-period and digit engine
+numerisect/prime_structures.gp  Native structural, sequence, witness, and related-number engine
+numerisect/prime_manipulation.py  Validation and GP boundary for batches, progressions, and prime-modulus operations
+numerisect/zeta.py       FLINT helper process boundary and strict result parsing
+native/numerisect_zeta.c  Compiled FLINT/Arb and OpenMP zeta engine
 static/                 HTML, CSS, and JavaScript interface
 tests/                  Regression tests
 docs/                   Feature and architecture documentation
@@ -235,7 +392,11 @@ POST /api/jobs/{id}/resume
 GET  /api/jobs/{id}/export
 
 POST /api/primes/check
+POST /api/primes/batch-check
+POST /api/primes/progression
+POST /api/primes/modular
 POST /api/primes/classify
+POST /api/primes/reciprocal
 POST /api/primes/generate
 POST /api/primes/generate-special
 POST /api/primes/after
@@ -243,8 +404,39 @@ POST /api/primes/before
 POST /api/primes/range
 POST /api/primes/tuples
 POST /api/primes/nth
+POST /api/primes/nth-near
 POST /api/primes/count
 POST /api/primes/gaps
+POST /api/primes/absolute
+POST /api/primes/gaussian/check
+POST /api/primes/gaussian/range
+POST /api/primes/modular-wheel
+POST /api/primes/paterson
+POST /api/primes/perfect
+POST /api/primes/reptend
+POST /api/primes/pyramid
+POST /api/primes/special-numbers
+POST /api/primes/miller-rabin-witnesses
+POST /api/primes/gap-statistics
+POST /api/primes/primorials
+POST /api/primes/random-range
+POST /api/primes/contiguous-digits
+POST /api/primes/goldbach
+POST /api/primes/problems
+POST /api/primes/integer-profile
+POST /api/primes/coprimes
+POST /api/primes/distribution
+POST /api/primes/factor-count-distribution
+POST /api/primes/digit-constrained
+POST /api/primes/polynomial
+POST /api/primes/palindrome-derived
+POST /api/primes/indicator-constant
+
+POST /api/zeta/evaluate
+POST /api/zeta/zeros
+POST /api/zeta/count
+POST /api/zeta/line
+POST /api/zeta/heatmap
 ```
 
 ## Tests
@@ -257,8 +449,24 @@ python3 -m pytest
 node --check static/app.js
 ```
 
-The prime tests invoke the installed `gp` executable. They will fail clearly if
-PARI/GP is unavailable.
+The native integration tests invoke `gp` and compile or run the FLINT zeta
+helper. They fail clearly when the corresponding native prerequisites are unavailable.
+
+The current suite contains 126 tests. A separate browser audit verified one
+visible form on each of the 38 Prime Tools routes, native submissions from the
+three manipulation pages, saved-report notices, and mobile layout widths.
+
+## Documentation
+
+| Guide | Scope |
+| --- | --- |
+| [Prime classification](docs/PRIME_CLASSIFICATION.md) | 56 classes and inconclusive-result semantics |
+| [Prime reciprocals](docs/PRIME_RECIPROCALS.md) | Exact periods and complete streamed decimal reports |
+| [Prime structures](docs/PRIME_STRUCTURES.md) | Structural searches, sequences, and witness analysis |
+| [Prime exploration](docs/PRIME_EXPLORATION.md) | Gap statistics, primorials, Goldbach, and notebook problems |
+| [Arithmetic and distribution](docs/ARITHMETIC_AND_DISTRIBUTION.md) | Arithmetic profiles, distributions, and source audit |
+| [Prime manipulation](docs/PRIME_MANIPULATION.md) | Batches, relative-index navigation, residue classes, and modular arithmetic |
+| [Riemann zeta](docs/RIEMANN_ZETA.md) | FLINT/Arb computations, threads, and certification boundaries |
 
 ## Security notes
 

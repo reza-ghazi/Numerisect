@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260905-workstation" />
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="/">
-        <span class="brand-mark">ƒ</span>
+        <span class="brand-mark">N</span>
         <span><strong>Numerisect</strong><small>Multi-Engine Integer Factorization and Prime Analysis</small></span>
       </a>
       <div id="engine-status" class="engine-status">Checking engines…</div>
@@ -18,11 +18,11 @@
 
     <main>
       <section class="hero">
-        <p class="eyebrow">LOCAL NUMBER THEORY WORKBENCH</p>
-        <h1>Big integers, handled beautifully.</h1>
+        <p class="eyebrow">COMPUTATIONAL NUMBER THEORY WORKSTATION</p>
+        <h1>Native engines. One precise workflow.</h1>
         <p class="lede">
-          Automatic routing across YAFU, Msieve, ECM pretesting, and CADO-NFS—with
-          persistent jobs, prime exploration, and honest progress.
+          Automatic routing across YAFU, Msieve, GMP-ECM, and CADO-NFS, with
+          persistent jobs, native prime analysis, and rigorous FLINT/Arb zeta computation.
         </p>
       </section>
 
@@ -30,6 +30,7 @@
       <nav class="mode-tabs" aria-label="Tools">
         <button class="mode-tab active" data-view="factor-view">Factor integers</button>
         <button class="mode-tab" data-view="prime-view">Prime tools</button>
+        <button class="mode-tab" data-view="zeta-view">Riemann zeta</button>
       </nav>
 
       <div id="factor-view" class="tool-view">
@@ -161,7 +162,82 @@
       </div>
 
       <div id="prime-view" class="tool-view hidden">
-        <section class="prime-grid">
+        <div class="tool-shell">
+          <aside class="panel tool-sidebar" aria-label="Prime Tools navigation">
+            <header class="tool-sidebar-header">
+              <p class="eyebrow">PRIME TOOLS</p>
+              <h2>Operations</h2>
+              <p id="prime-operation-total">Native-engine analyses</p>
+            </header>
+            <label class="tool-search-label" for="prime-tool-search">Find an operation</label>
+            <input id="prime-tool-search" class="tool-search" type="search" placeholder="Search prime tools" autocomplete="off" />
+            <nav id="prime-tool-navigation" class="tool-navigation" aria-label="Prime operations"></nav>
+          </aside>
+
+          <section id="prime-tool-page" class="tool-stage" aria-labelledby="prime-page-title">
+            <div class="tool-mobile-nav">
+              <label for="prime-tool-select">Prime operation</label>
+              <select id="prime-tool-select" aria-label="Choose a Prime Tools operation"></select>
+            </div>
+            <header class="prime-page-intro">
+              <div>
+                <p id="prime-tool-section" class="eyebrow">PRIMALITY &amp; NAVIGATION</p>
+                <h2 id="prime-page-title">Check a number</h2>
+                <p id="prime-page-description">Choose a quick probable-prime test or a rigorous proof.</p>
+              </div>
+              <span id="prime-page-count" class="tool-count"></span>
+            </header>
+
+            <section id="prime-page-grid" class="prime-grid">
+          <form id="prime-batch-form" class="panel utility-card">
+            <p class="eyebrow">BATCH PRIMALITY</p>
+            <h2>Check a list of integers</h2>
+            <p>Test up to 1,000 decimal integers together. Separate entries with spaces, commas, semicolons, or newlines; order and duplicates are preserved.</p>
+            <label>Integers<textarea id="prime-batch-input" rows="5" required placeholder="2, 13, 561, 1289, 98798"></textarea></label>
+            <div class="controls-grid">
+              <label>Test mode<select id="prime-batch-mode"><option value="proven">Rigorous · proven</option><option value="fast">Fast · probable prime</option></select></label>
+              <label>Engine time limit (seconds)<input id="prime-batch-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Check integers</span><span>→</span></button>
+          </form>
+
+          <form id="prime-progression-form" class="panel utility-card">
+            <p class="eyebrow">ARITHMETIC PROGRESSIONS</p>
+            <h2>Primes in a residue class</h2>
+            <p>Find proven primes p ≡ r (mod m) in an inclusive interval. All inputs are decimal integers; use m = 1 to include every prime.</p>
+            <div class="controls-grid">
+              <label>Start<input id="prime-progression-start" value="1" required /></label>
+              <label>End<input id="prime-progression-end" value="1000" required /></label>
+              <label>Modulus m<input id="prime-progression-modulus" value="4" required /></label>
+              <label>Residue r<input id="prime-progression-residue" value="1" required /></label>
+              <label>Result limit<input id="prime-progression-limit" type="number" min="1" max="100000" value="1000" required /></label>
+              <label>Engine time limit (seconds)<input id="prime-progression-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <span class="field-note">Up to 1,000,000 progression candidates per scan. Partial results include a continuation start and the sum of the returned primes.</span>
+            <button class="primary" type="submit"><span>Find progression primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-modular-form" class="panel utility-card">
+            <p class="eyebrow">PRIME MODULUS ARITHMETIC</p>
+            <h2>Calculate modulo a prime</h2>
+            <p>Calculate inverses, powers, multiplicative orders, all square roots, or a primitive root. PARI/GP proves the modulus first.</p>
+            <label>Operation<select id="prime-modular-operation">
+              <option value="inverse">Inverse · a⁻¹ mod p</option>
+              <option value="power">Power · aᵉ mod p</option>
+              <option value="order">Multiplicative order of a</option>
+              <option value="roots">All square roots · x² ≡ a mod p</option>
+              <option value="generator">A primitive root modulo p</option>
+            </select></label>
+            <div class="controls-grid">
+              <label>Prime modulus p<input id="prime-modular-modulus" value="17" required /></label>
+              <label id="prime-modular-value-field">Integer a<input id="prime-modular-value" value="4" required /></label>
+              <label id="prime-modular-exponent-field" class="hidden">Exponent e<input id="prime-modular-exponent" value="2" required disabled /></label>
+              <label>Engine time limit (seconds)<input id="prime-modular-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <span class="field-note">Decimal integers of arbitrary size within input limits. Orders and primitive roots may require expensive factorization of p − 1. Runs use one GP process. For powers, a⁰ = 1, including a = 0.</span>
+            <button class="primary" type="submit"><span>Calculate modular result</span><span>→</span></button>
+          </form>
+
           <form id="prime-check-form" class="panel utility-card">
             <p class="eyebrow">PRIMALITY</p>
             <h2>Check a number</h2>
@@ -203,6 +279,33 @@
             <button class="primary" type="submit"><span>Classify prime</span><span>→</span></button>
           </form>
 
+          <form id="prime-reciprocal-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">RECIPROCAL ANALYZER</p>
+            <h2>Analyze 1/p</h2>
+            <p>Find the exact decimal period, test whether 10 is a primitive root modulo p, and export decimal digits.</p>
+            <div class="reciprocal-controls">
+              <label>Prime or expression
+                <input id="prime-reciprocal-input" value="7" required />
+              </label>
+              <label>Maximum browser digits
+                <input id="prime-reciprocal-digits" type="number" min="0" max="100000" value="1000" required />
+                <span class="field-note">The text report still receives the complete repetend</span>
+              </label>
+              <label>Engine time limit
+                <select id="prime-reciprocal-timeout">
+                  <option value="0" selected>No time limit · complete</option>
+                  <option value="10">10 seconds</option>
+                  <option value="60">1 minute</option>
+                  <option value="300">5 minutes</option>
+                  <option value="900">15 minutes</option>
+                  <option value="3600">1 hour</option>
+                </select>
+                <span class="field-note">Factoring p−1 may dominate for very large p</span>
+              </label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze reciprocal</span><span>→</span></button>
+          </form>
+
           <form id="prime-generate-form" class="panel utility-card">
             <p class="eyebrow">GENERATOR</p>
             <h2>Create fixed-size primes</h2>
@@ -217,7 +320,13 @@
           <form id="prime-nearby-form" class="panel utility-card">
             <p class="eyebrow">PRIME NAVIGATOR</p>
             <h2>Primes near a number</h2>
-            <p>Walk forward or backward from an arbitrary-size integer.</p>
+            <p>Find the nth prime or list consecutive primes strictly before or after an arbitrary-size integer. The starting integer is excluded.</p>
+            <label>Result
+              <select id="prime-nearby-result">
+                <option value="nth">Find the nth prime</option>
+                <option value="list">List consecutive primes</option>
+              </select>
+            </label>
             <div class="triple-controls">
               <label>Direction
                 <select id="prime-nearby-direction">
@@ -226,8 +335,9 @@
                 </select>
               </label>
               <label>Number<input id="prime-nearby-start" value="5000" required /></label>
-              <label>Count<input id="prime-after-count" type="number" min="1" max="100000" value="100" required /></label>
+              <label><span id="prime-nearby-count-label">Position (n)</span><input id="prime-after-count" type="number" min="1" max="100000" value="100" required /></label>
             </div>
+            <span class="field-note">Position/count: 1–100,000; engine time limit: 1 hour. Backward searches stop at 2.</span>
             <button class="primary" type="submit"><span>Navigate primes</span><span>→</span></button>
           </form>
 
@@ -320,15 +430,396 @@
             </div>
             <button class="primary" type="submit"><span>Find prime tuples</span><span>→</span></button>
           </form>
+
+          <form id="absolute-prime-form" class="panel utility-card">
+            <p class="eyebrow">ABSOLUTE PRIMES</p>
+            <h2>Find circular primes</h2>
+            <p>Find primes whose every cyclic decimal rotation is also prime, grouped by orbit.</p>
+            <div class="controls-grid">
+              <label>From<input id="absolute-start" value="2" required /></label>
+              <label>Through<input id="absolute-end" value="100000" required /></label>
+            </div>
+            <label>Maximum orbits<input id="absolute-limit" type="number" min="1" max="10000" value="1000" required /></label>
+            <button class="primary" type="submit"><span>Find absolute primes</span><span>→</span></button>
+          </form>
+
+          <form id="paterson-prime-form" class="panel utility-card">
+            <p class="eyebrow">PATERSON PRIMES</p>
+            <h2>Search by base-4 form</h2>
+            <p>Find prime p when its base-4 digits, read as a decimal integer, are also prime.</p>
+            <div class="controls-grid">
+              <label>From<input id="paterson-start" value="2" required /></label>
+              <label>Through<input id="paterson-end" value="10000" required /></label>
+            </div>
+            <label>Maximum results<input id="paterson-limit" type="number" min="1" max="10000" value="1000" required /></label>
+            <button class="primary" type="submit"><span>Find Paterson primes</span><span>→</span></button>
+          </form>
+
+          <form id="gaussian-check-form" class="panel utility-card">
+            <p class="eyebrow">GAUSSIAN PRIMALITY</p>
+            <h2>Check a + bi</h2>
+            <p>Apply the exact norm and rational-axis criteria in the Gaussian integers.</p>
+            <div class="controls-grid">
+              <label>Real part a<input id="gaussian-real" value="1" required /></label>
+              <label>Imaginary part b<input id="gaussian-imaginary" value="2" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Check Gaussian prime</span><span>→</span></button>
+          </form>
+
+          <form id="gaussian-range-form" class="panel utility-card">
+            <p class="eyebrow">GAUSSIAN LATTICE</p>
+            <h2>Find Gaussian primes</h2>
+            <p>Search the square −B ≤ a,b ≤ B and inspect the prime lattice.</p>
+            <div class="controls-grid">
+              <label>Bound B<input id="gaussian-bound" type="number" min="1" max="500" value="20" required /></label>
+              <label>Maximum points<input id="gaussian-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search Gaussian lattice</span><span>→</span></button>
+          </form>
+
+          <form id="perfect-number-form" class="panel utility-card">
+            <p class="eyebrow">PERFECT NUMBERS</p>
+            <h2>Generate even perfect numbers</h2>
+            <p>Use the Euclid–Euler theorem with rigorously proven Mersenne primes.</p>
+            <label>How many<input id="perfect-count" type="number" min="1" max="20" value="5" required /></label>
+            <label>Engine time limit
+              <select id="perfect-timeout">
+                <option value="0">No time limit</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="3600">1 hour</option>
+              </select>
+            </label>
+            <button class="primary" type="submit"><span>Generate perfect numbers</span><span>→</span></button>
+          </form>
+
+          <form id="modular-wheel-form" class="panel utility-card">
+            <p class="eyebrow">MODULAR WHEEL</p>
+            <h2>Visualize residue structure</h2>
+            <p>Plot native primality and coprimality results around modular rings.</p>
+            <div class="controls-grid">
+              <label>Modulus<input id="wheel-modulus" type="number" min="2" max="360" value="30" required /></label>
+              <label>Maximum<input id="wheel-maximum" type="number" min="0" max="20000" value="300" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Draw modular wheel</span><span>→</span></button>
+          </form>
+
+          <form id="reptend-prime-form" class="panel utility-card">
+            <p class="eyebrow">FULL-REPTEND PRIMES</p>
+            <h2>Find maximal decimal periods</h2>
+            <p>Find primes p for which 1/p has the maximum possible period p−1.</p>
+            <div class="controls-grid">
+              <label>From<input id="reptend-start" value="3" required /></label>
+              <label>Through<input id="reptend-end" value="100000" required /></label>
+            </div>
+            <label>Maximum results<input id="reptend-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            <button class="primary" type="submit"><span>Find full-reptend primes</span><span>→</span></button>
+          </form>
+
+          <form id="witness-form" class="panel utility-card">
+            <p class="eyebrow">MILLER–RABIN WITNESSES</p>
+            <h2>Analyze witness bases</h2>
+            <p>Use the complete strong test—not the incomplete aᵈ = 1 shortcut—to distinguish witnesses and passing bases.</p>
+            <div class="controls-grid">
+              <label>Odd integer n<input id="witness-number" value="91" required /></label>
+              <label>Selected base a<input id="witness-base" value="2" required /></label>
+            </div>
+            <label>Maximum bases in each preview<input id="witness-limit" type="number" min="0" max="10000" value="1000" required /></label>
+            <button class="primary" type="submit"><span>Analyze witnesses</span><span>→</span></button>
+          </form>
+
+          <form id="prime-pyramid-form" class="panel utility-card">
+            <p class="eyebrow">PRIME PYRAMIDS</p>
+            <h2>Construct number pyramids</h2>
+            <p>Recreate the digit-insertion sequence or a multiplication pyramid with native primality flags.</p>
+            <div class="controls-grid">
+              <label>Construction
+                <select id="pyramid-kind"><option value="insertion">Digit insertion</option><option value="multiplication">Multiplication</option></select>
+              </label>
+              <label>Levels / rows<input id="pyramid-size" type="number" min="1" max="30" value="8" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Build pyramid</span><span>→</span></button>
+          </form>
+
+          <form id="special-number-form" class="panel utility-card">
+            <p class="eyebrow">SPECIAL-NUMBER SEARCH</p>
+            <h2>Explore related sequences</h2>
+            <p>Search finite ranges using corrected exact definitions for pseudoprimes and prime-bearing sequences.</p>
+            <label>Kind
+              <select id="special-number-kind">
+                <option value="carmichael">Carmichael numbers</option>
+                <option value="fermat_pseudoprime_base2">Base-2 Fermat pseudoprimes</option>
+                <option value="strong_pseudoprime_bases2_3">Strong pseudoprimes · bases 2 and 3</option>
+                <option value="lucky_prime">Lucky primes</option>
+                <option value="jacobsthal_prime">Jacobsthal primes</option>
+              </select>
+            </label>
+            <div class="triple-controls">
+              <label>From<input id="special-number-start" value="2" required /></label>
+              <label>Through<input id="special-number-end" value="10000" required /></label>
+              <label>Limit<input id="special-number-limit" type="number" min="1" max="10000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search special numbers</span><span>→</span></button>
+          </form>
+
+          <form id="gap-statistics-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GAP DISTRIBUTION</p>
+            <h2>Analyze prime-gap statistics</h2>
+            <p>Compute exact frequencies, extrema, rational mean and median, and mode over consecutive prime gaps.</p>
+            <div class="triple-controls">
+              <label>From<input id="gap-stats-start" value="2" required /></label>
+              <label>Through<input id="gap-stats-end" value="100000" required /></label>
+              <label>Maximum gaps<input id="gap-stats-limit" type="number" min="1" max="100000" value="100000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze gap distribution</span><span>→</span></button>
+          </form>
+
+          <form id="primorial-form" class="panel utility-card">
+            <p class="eyebrow">PRIMORIALS</p>
+            <h2>Generate p# products</h2>
+            <p>Multiply the first n rigorously generated primes cumulatively with arbitrary precision.</p>
+            <label>How many<input id="primorial-count" type="number" min="1" max="500" value="10" required /></label>
+            <button class="primary" type="submit"><span>Generate primorials</span><span>→</span></button>
+          </form>
+
+          <form id="random-range-form" class="panel utility-card">
+            <p class="eyebrow">RANDOM RANGE</p>
+            <h2>Sample proven primes</h2>
+            <p>Select distinct random primes inside an arbitrary-precision interval.</p>
+            <div class="triple-controls">
+              <label>From<input id="random-range-start" value="10^19" required /></label>
+              <label>Through<input id="random-range-end" value="10^20" required /></label>
+              <label>Count<input id="random-range-count" type="number" min="1" max="10000" value="10" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Sample range primes</span><span>→</span></button>
+          </form>
+
+          <form id="contiguous-digits-form" class="panel utility-card">
+            <p class="eyebrow">DIGIT SUBSTRINGS</p>
+            <h2>Find primes inside a number</h2>
+            <p>Test every distinct contiguous decimal substring without changing digit order.</p>
+            <label>Integer or expression<input id="contiguous-number" value="3797" required /></label>
+            <button class="primary" type="submit"><span>Find substring primes</span><span>→</span></button>
+          </form>
+
+          <form id="goldbach-form" class="panel utility-card">
+            <p class="eyebrow">GOLDBACH PARTITIONS</p>
+            <h2>Split one even integer</h2>
+            <p>Find unique proven-prime pairs whose sum is the supplied even integer.</p>
+            <div class="controls-grid">
+              <label>Even integer<input id="goldbach-number" value="100" required /></label>
+              <label>Maximum pairs<input id="goldbach-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find Goldbach pairs</span><span>→</span></button>
+          </form>
+
+          <form id="prime-problem-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">BOUNDED PRIME PROBLEMS</p>
+            <h2>Run exact equation searches</h2>
+            <p>Explore four problems from the source notebook with native factorizations and rigorous primality checks.</p>
+            <div class="problem-controls">
+              <label>Problem
+                <select id="prime-problem-kind">
+                  <option value="square_sum">p² + 1 = q² + r²</option>
+                  <option value="quartan">Prime = a⁴ + b⁴</option>
+                  <option value="three_factors">n² − 1 has Ω = 3</option>
+                  <option value="sigma_square">σ(p⁴) is a square</option>
+                </select>
+              </label>
+              <label>Start / first candidate<input id="prime-problem-start" value="2" required /></label>
+              <label>Upper bound / candidate count<input id="prime-problem-end" value="1000" required /></label>
+              <label>Maximum results<input id="prime-problem-limit" type="number" min="1" max="10000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Solve bounded problem</span><span>→</span></button>
+          </form>
+
+          <form id="integer-profile-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INTEGER STRUCTURE</p>
+            <h2>Analyze arithmetic functions</h2>
+            <p>Factor one arbitrary-size integer and calculate its divisor, totient, Carmichael, Möbius, radical, and semiprime data.</p>
+            <div class="controls-grid">
+              <label>Nonzero integer or expression<input id="integer-profile-number" value="360" required /></label>
+              <label>Divisors to preview<input id="integer-profile-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze integer</span><span>→</span></button>
+          </form>
+
+          <form id="coprime-profile-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COPRIME NAVIGATOR</p>
+            <h2>Explore relative primality</h2>
+            <p>Compute φ(m), preview the reduced residue system, and find consecutive integers coprime to m after any starting point.</p>
+            <div class="problem-controls">
+              <label>Modulus m<input id="coprime-modulus" value="210" required /></label>
+              <label>Start after<input id="coprime-start" value="5000" required /></label>
+              <label>How many<input id="coprime-count" type="number" min="1" max="100000" value="20" required /></label>
+              <label>Residue preview<input id="coprime-residue-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze coprimes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-distribution-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME DISTRIBUTION</p>
+            <h2>Measure density and residues</h2>
+            <p>Count proven primes per interval bin and residue class while measuring twin pairs and the largest internal gap.</p>
+            <div class="problem-controls">
+              <label>From<input id="distribution-start" value="2" required /></label>
+              <label>Through<input id="distribution-end" value="100000" required /></label>
+              <label>Bins<input id="distribution-bins" type="number" min="2" max="500" value="50" required /></label>
+              <label>Residues modulo<input id="distribution-modulus" type="number" min="2" max="360" value="30" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze distribution</span><span>→</span></button>
+          </form>
+
+          <form id="factor-count-distribution-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-FACTOR DISTRIBUTION</p>
+            <h2>Compare ω(n) and Ω(n)</h2>
+            <p>Factor every integer in a finite range and compare distinct prime-factor counts with counts that include multiplicity.</p>
+            <div class="controls-grid">
+              <label>From<input id="factor-distribution-start" value="1" required /></label>
+              <label>Through<input id="factor-distribution-end" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze factor counts</span><span>→</span></button>
+          </form>
+
+          <form id="digit-constrained-form" class="panel utility-card">
+            <p class="eyebrow">DIGIT-CONSTRAINED PRIMES</p>
+            <h2>Search a digit alphabet</h2>
+            <p>Generate only candidates composed of selected decimal digits, then rigorously prove the primes.</p>
+            <label>Allowed digits<input id="constrained-digits" value="1379" pattern="[0-9]+" required /></label>
+            <div class="triple-controls">
+              <label>Min digits<input id="constrained-min" type="number" min="1" max="1000" value="1" required /></label>
+              <label>Max digits<input id="constrained-max" type="number" min="1" max="1000" value="6" required /></label>
+              <label>Limit<input id="constrained-limit" type="number" min="1" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find constrained primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-polynomial-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME POLYNOMIAL</p>
+            <h2>Explore n² − n + k</h2>
+            <p>Find rigorous prime values, the longest consecutive run, and residue classes forced divisible by small primes.</p>
+            <div class="five-controls">
+              <label>Constant k<input id="polynomial-k" value="41" required /></label>
+              <label>n from<input id="polynomial-start" value="0" required /></label>
+              <label>n through<input id="polynomial-end" value="100" required /></label>
+              <label>Result limit<input id="polynomial-limit" type="number" min="1" max="100000" value="1000" required /></label>
+              <label>Obstruction primes ≤<input id="polynomial-obstruction" type="number" min="2" max="1000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze polynomial</span><span>→</span></button>
+          </form>
+
+          <form id="palindrome-derived-form" class="panel utility-card">
+            <p class="eyebrow">PALINDROME-DERIVED SEQUENCE</p>
+            <h2>Test |n − reverse(n)| + 1</h2>
+            <p>Reproduce the source sequence with exact decimal reversal and rigorous primality tests.</p>
+            <div class="triple-controls">
+              <label>From<input id="palindrome-derived-start" value="1" required /></label>
+              <label>Through<input id="palindrome-derived-end" value="10000" required /></label>
+              <label>Limit<input id="palindrome-derived-limit" type="number" min="1" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find derived primes</span><span>→</span></button>
+          </form>
+
+          <form id="prime-constant-form" class="panel utility-card">
+            <p class="eyebrow">PRIME-INDICATOR CONSTANT</p>
+            <h2>Encode primality as binary digits</h2>
+            <p>Calculate C = Σ [n is prime]·2⁻ⁿ with a certified tail bound and arbitrary-precision decimal output.</p>
+            <label>Decimal digits<input id="prime-constant-digits" type="number" min="1" max="100000" value="100" required /></label>
+            <button class="primary" type="submit"><span>Calculate constant</span><span>→</span></button>
+          </form>
+            </section>
+
+            <section id="prime-result-panel" class="panel prime-result-panel hidden" aria-live="polite">
+              <div class="section-heading">
+                <div><p class="eyebrow">PRIME RESULT</p><h2 id="prime-result-title"></h2></div>
+                <div class="result-actions">
+                  <a id="prime-download" class="secondary button-link hidden" href="#">Download report</a>
+                  <button id="prime-result-close" class="secondary" type="button" aria-label="Close this result">Close</button>
+                </div>
+              </div>
+              <p id="prime-result-note" class="phase"></p>
+              <div id="prime-result-content" class="prime-results"></div>
+            </section>
+          </section>
+        </div>
+      </div>
+
+      <div id="zeta-view" class="tool-view hidden">
+        <section class="prime-grid">
+          <form id="zeta-evaluate-form" class="panel utility-card">
+            <p class="eyebrow">RIGOROUS EVALUATION</p>
+            <h2>Evaluate ζ(s)</h2>
+            <p>Compute certified complex enclosures with FLINT/Arb ball arithmetic.</p>
+            <div class="controls-grid">
+              <label>Real part σ<input id="zeta-sigma" value="0.5" required /></label>
+              <label>Imaginary part t<input id="zeta-ordinate" value="14.134725" required /></label>
+            </div>
+            <label>Decimal precision<input id="zeta-evaluate-precision" type="number" min="16" max="1000" value="50" required /></label>
+            <button class="primary" type="submit"><span>Evaluate zeta</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-count-form" class="panel utility-card">
+            <p class="eyebrow">TURING-METHOD COUNT</p>
+            <h2>Count nontrivial zeros</h2>
+            <p>Certify the exact number of zeros from ordinate 0 through T.</p>
+            <div class="controls-grid">
+              <label>Height T<input id="zeta-count-height" value="100" required /></label>
+              <label>Precision<input id="zeta-count-precision" type="number" min="16" max="1000" value="50" required /></label>
+            </div>
+            <label>CPU threads<input class="zeta-threads" id="zeta-count-threads" type="number" min="1" max="256" value="1" required /></label>
+            <button class="primary" type="submit"><span>Certify zero count</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-zeros-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CERTIFIED ZEROS</p>
+            <h2>Isolate consecutive critical-line zeros</h2>
+            <p>Return rigorous intervals for consecutive Hardy Z zeros, starting at any positive index.</p>
+            <div class="zeta-controls">
+              <label>Starting index<input id="zeta-zero-start" value="1" required /></label>
+              <label>How many<input id="zeta-zero-count" type="number" min="1" max="1000" value="10" required /></label>
+              <label>Precision<input id="zeta-zero-precision" type="number" min="16" max="1000" value="50" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-zero-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find certified zeros</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-line-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CRITICAL-LINE EXPLORER</p>
+            <h2>Plot ζ(½ + it)</h2>
+            <p>FLINT evaluates every point; select a component or trace the complex values in an Argand plot.</p>
+            <div class="zeta-controls">
+              <label>From t<input id="zeta-line-lower" value="0" required /></label>
+              <label>Through t<input id="zeta-line-upper" value="50" required /></label>
+              <label>Samples<input id="zeta-line-samples" type="number" min="2" max="10000" value="800" required /></label>
+              <label>Display
+                <select id="zeta-line-component"><option value="magnitude">|ζ|</option><option value="real">Re ζ</option><option value="imaginary">Im ζ</option><option value="argument">arg ζ</option><option value="argand">Argand trace</option></select>
+              </label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-line-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Plot critical line</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-heatmap-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COMPLEX-PLANE EXPLORER</p>
+            <h2>Render a ζ(s) heatmap</h2>
+            <p>Color magnitude and phase across a sampled complex region. The pole at s=1 is marked as undefined.</p>
+            <div class="heatmap-controls">
+              <label>σ min<input id="zeta-heat-sigma-min" value="-2" required /></label>
+              <label>σ max<input id="zeta-heat-sigma-max" value="2" required /></label>
+              <label>t min<input id="zeta-heat-t-min" value="-30" required /></label>
+              <label>t max<input id="zeta-heat-t-max" value="30" required /></label>
+              <label>Width<input id="zeta-heat-width" type="number" min="2" max="500" value="120" required /></label>
+              <label>Height<input id="zeta-heat-height" type="number" min="2" max="500" value="100" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-heat-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Render heatmap</span><span>→</span></button>
+          </form>
         </section>
 
-        <section id="prime-result-panel" class="panel prime-result-panel hidden">
+        <section id="zeta-result-panel" class="panel prime-result-panel hidden">
           <div class="section-heading">
-            <div><p class="eyebrow">PRIME RESULT</p><h2 id="prime-result-title"></h2></div>
-            <a id="prime-download" class="secondary button-link hidden" href="#">Save .txt</a>
+            <div><p class="eyebrow">ZETA RESULT</p><h2 id="zeta-result-title"></h2></div>
+            <a id="zeta-download" class="secondary button-link hidden" href="#">Save .txt</a>
           </div>
-          <p id="prime-result-note" class="phase"></p>
-          <div id="prime-result-content" class="prime-results"></div>
+          <p id="zeta-result-note" class="phase"></p>
+          <div id="zeta-result-content" class="prime-results"></div>
         </section>
       </div>
     </main>
@@ -336,6 +827,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js" defer></script>
+    <script src="/assets/app.js?v=20260905-workstation" defer></script>
   </body>
 </html>

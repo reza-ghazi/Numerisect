@@ -8,7 +8,7 @@ performs the classification mathematics.
 ## Using the classifier
 
 1. Start Numerisect with `./run.sh` and open
-   <http://127.0.0.1:8765/#primes>.
+   <http://127.0.0.1:8765/#primes/prime-classify>.
 2. In **Classify a prime**, enter a decimal integer or a supported integer
    expression such as `2^127 - 1`.
 3. Choose the per-class time budget. The default is two seconds; available
@@ -18,7 +18,10 @@ performs the classification mathematics.
 PARI/GP rigorously tests the input with `isprime` before classification. A
 composite input is reported immediately and the 56 membership tests are not
 run. A prime result is rendered as classification cards and saved as a text
-file in `output/`.
+file in `output/`. Its result appears beneath the form with the exact saved
+path and a download control. The page is in **Primality & navigation**; for
+testing a list without classification, use **Check a list of integers** in the
+same group (see [Prime manipulation](PRIME_MANIPULATION.md)).
 
 ## Result meanings
 
@@ -139,8 +142,9 @@ and Numerisect records that class as inconclusive. The overall subprocess has a
 larger safety timeout so all 56 tests normally have time to finish.
 
 Arbitrary-precision arithmetic is provided by PARI/GP and GMP. There is no
-general decimal-digit limit on primality testing or on exact algebraic tests,
-but running time and memory still grow with input size. Explicit boundaries in
+fixed-precision limit in the native primality and exact algebraic operations,
+but API expressions are capped at 100,000 characters and evaluated results
+follow the configured expression-size limit. Time and memory grow with input size. Explicit boundaries in
 the table protect interactive use where a definition requires an exhaustive
 search or where mathematical knowledge is catalogue-based.
 
