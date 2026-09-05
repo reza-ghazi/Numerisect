@@ -103,6 +103,9 @@ POST /api/primes/miller-rabin-witnesses
 All successful requests write a text report automatically and explicitly show
 its exact `output/<filename>.txt` path in the UI.
 
+See [Installation and versioning](INSTALLATION.md) for Linux, Windows WSL, and
+macOS deployment and native-engine setup.
+
 ## Implementation map
 
 | File | Responsibility |

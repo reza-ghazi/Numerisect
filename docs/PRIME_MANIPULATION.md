@@ -125,3 +125,6 @@ The application-wide suite currently contains 126 passing tests. A separate
 headless-browser audit exercised navigation on all 38 Prime Tools routes and
 submitted the three new forms against real GP endpoints, checked local result
 placement and saved-path notices, and checked mobile width handling.
+
+For installing a versioned copy on Linux, Windows WSL, or macOS, see
+[Installation and versioning](INSTALLATION.md).

@@ -89,3 +89,5 @@ POST /api/primes/problems
 
 Every successful response includes `output_file`, and the browser explicitly
 shows that the report was saved to `output/<filename>`.
+
+See [Installation and versioning](INSTALLATION.md) for supported host setup.

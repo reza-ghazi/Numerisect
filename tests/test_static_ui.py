@@ -44,5 +44,5 @@ def test_interface_assets_are_cache_busted():
     assert '/assets/app.js?v=20260905-workstation' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
     assert '?ui=20260905-workstation#primes/prime-check' in RUNNER
-    assert 'xdg-open "$ui_url"' in RUNNER
+    assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER

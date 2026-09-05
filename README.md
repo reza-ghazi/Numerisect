@@ -2,7 +2,7 @@
 
 **Multi-Engine Integer Factorization and Prime Analysis**
 
-Numerisect 0.2.0 is a local web workbench for integer factorization, primality
+Numerisect 0.3.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, and rigorous Riemann-zeta analysis. Python handles validation,
 process orchestration, persistence, and the HTTP API; plain JavaScript provides
 the browser interface. Native number-theory programs perform the expensive
@@ -13,6 +13,9 @@ machine unless the repository or exported files are shared deliberately.
 
 This is a private, pre-release project run from its source checkout. Release
 packages and a packaging workflow have not been published or designed yet.
+For Linux, Windows WSL, and macOS installation, see
+[Installation and versioning](docs/INSTALLATION.md).
+Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Highlights
 
@@ -66,6 +69,23 @@ to stop it. If it was started from another terminal, find and stop only its PID:
 pgrep -af 'uvicorn numerisect.main:app'
 kill PID_FROM_THE_PREVIOUS_COMMAND
 ```
+
+## User installation
+
+To install a versioned copy outside the source checkout, run:
+
+```bash
+./install.sh
+```
+
+The installer supports Linux, Windows WSL, and macOS with Homebrew. It checks
+the required toolchain and development libraries, installs missing packages
+through the host package manager, creates a release-specific Python virtual
+environment, and creates a stable user launcher under
+`~/.local/share/numerisect/bin/numerisect`. Native number engines are installed
+on the first application start under the shared user state directory. See
+[Installation and versioning](docs/INSTALLATION.md) for prefixes, upgrades,
+package-manager behavior, and troubleshooting.
 
 ## Python setup
 
@@ -348,6 +368,7 @@ numerisect/prime_manipulation.py  Validation and GP boundary for batches, progre
 numerisect/zeta.py       FLINT helper process boundary and strict result parsing
 native/numerisect_zeta.c  Compiled FLINT/Arb and OpenMP zeta engine
 static/                 HTML, CSS, and JavaScript interface
+install.sh              Cross-platform user-space installer
 tests/                  Regression tests
 docs/                   Feature and architecture documentation
 data/numerisect.sqlite3 Persistent factorization job history

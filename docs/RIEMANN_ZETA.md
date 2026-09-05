@@ -14,6 +14,10 @@ precision and any available thread settings, then submit it. The zeta result
 panel contains the native result, exact report path, and download control.
 Restart the server and refresh the browser after source updates.
 
+The versioned user installer and Linux/WSL/macOS prerequisites are documented
+in [Installation and versioning](INSTALLATION.md). FLINT development headers
+are required for the zeta helper.
+
 ## Available operations
 
 | Tool | Native operation | Result semantics |

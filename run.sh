@@ -16,10 +16,13 @@ echo "Numerisect source: $project_dir"
 echo "Numerisect interface: $project_dir/static"
 echo "Opening: $ui_url"
 
-if [[ "${NUMERISECT_NO_BROWSER:-0}" != "1" ]] && command -v xdg-open >/dev/null 2>&1; then
+browser_open=""
+if command -v xdg-open >/dev/null 2>&1; then browser_open="xdg-open"; fi
+if [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then browser_open="open"; fi
+if [[ "${NUMERISECT_NO_BROWSER:-0}" != "1" && -n "$browser_open" ]]; then
   (
     sleep 1
-    xdg-open "$ui_url" >/dev/null 2>&1 || true
+    "$browser_open" "$ui_url" >/dev/null 2>&1 || true
   ) &
 fi
 

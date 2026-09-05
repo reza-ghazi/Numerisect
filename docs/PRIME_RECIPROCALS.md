@@ -15,6 +15,9 @@ JavaScript only validate, orchestrate, persist, and present the native result.
 4. Choose a native-engine time limit, or keep the default **No time limit**, and
    select **Analyze reciprocal**.
 
+The source installer and supported hosts are documented in
+[Installation and versioning](INSTALLATION.md).
+
 The result shows:
 
 - whether the decimal terminates or repeats;

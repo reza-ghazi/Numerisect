@@ -15,6 +15,9 @@ performs the classification mathematics.
    choices range from one to ten seconds.
 4. Select **Classify prime**.
 
+For a versioned user installation on Linux, Windows WSL, or macOS, see
+[Installation and versioning](INSTALLATION.md).
+
 PARI/GP rigorously tests the input with `isprime` before classification. A
 composite input is reported immediately and the 56 membership tests are not
 run. A prime result is rendered as classification cards and saved as a text

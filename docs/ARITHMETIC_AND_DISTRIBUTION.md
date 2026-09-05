@@ -130,6 +130,10 @@ POST /api/primes/indicator-constant
 Every successful call writes a text report to `output/` and returns its filename.
 The interface explicitly confirms the saved path and provides a download link.
 
+Installation and versioned user-local deployment are documented in
+[Installation and versioning](INSTALLATION.md). The arithmetic tools remain
+available on Linux, WSL, and macOS wherever PARI/GP can be built and run.
+
 ## Audit exclusions
 
 Educational AKS, Fermat, Miller–Rabin, trial-division, and hand-written sieve
