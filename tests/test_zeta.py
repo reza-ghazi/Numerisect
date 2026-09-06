@@ -1,5 +1,6 @@
 import pytest
 
+from numerisect.native_tools import _ensure_flint_link_flag
 from numerisect.zeta import (
     ZetaEngineError,
     count_zeta_zeros,
@@ -9,6 +10,17 @@ from numerisect.zeta import (
     sample_zeta_line,
     validated_real,
 )
+
+
+def test_ubuntu_flint_pkg_config_link_flag_is_repaired():
+    assert _ensure_flint_link_flag(["-I/usr/include", "-lgmp", "-lmpfr"]) == [
+        "-I/usr/include",
+        "-lflint",
+        "-lgmp",
+        "-lmpfr",
+    ]
+    complete = ["-I/opt/flint/include", "-L/opt/flint/lib", "-lflint", "-lgmp"]
+    assert _ensure_flint_link_flag(complete) == complete
 
 
 def test_rigorous_zeta_evaluation():

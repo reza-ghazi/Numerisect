@@ -42,6 +42,18 @@ def flint_available() -> bool:
     return (TOOLS_DIR / "prefix" / "include" / "flint" / "flint.h").is_file()
 
 
+def _ensure_flint_link_flag(flags: list[str]) -> list[str]:
+    """Repair pkg-config output that omits FLINT's own linker flag."""
+
+    if "-lflint" in flags:
+        return flags
+    first_library = next(
+        (index for index, flag in enumerate(flags) if flag.startswith("-l")),
+        len(flags),
+    )
+    return [*flags[:first_library], "-lflint", *flags[first_library:]]
+
+
 def build_zeta_tool() -> Path:
     destination = TOOLS_BIN_DIR / ZETA_TOOL_NAME
     source = NATIVE_DIR / "numerisect_zeta.c"
@@ -66,7 +78,7 @@ def build_zeta_tool() -> Path:
                 check=False,
             )
             if query.returncode == 0:
-                flags = shlex.split(query.stdout)
+                flags = _ensure_flint_link_flag(shlex.split(query.stdout))
         if not flags:
             prefix = TOOLS_DIR / "prefix"
             if not (prefix / "include" / "flint" / "flint.h").is_file():
