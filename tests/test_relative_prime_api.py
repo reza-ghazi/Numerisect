@@ -1,14 +1,21 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from numerisect import outputs
 from numerisect.main import app
 
 
+def local_client() -> TestClient:
+    client = TestClient(app, base_url="http://127.0.0.1")
+    token = client.get("/api/session").json()["request_token"]
+    client.headers["X-Numerisect-Token"] = token
+    return client
+
+
 def test_relative_prime_api_and_report(tmp_path, monkeypatch):
     monkeypatch.setattr(outputs, "OUTPUT_DIR", tmp_path)
     # No lifespan: API tests must not trigger first-start engine installation.
-    client = TestClient(app)
+    client = local_client()
     response = client.post("/api/primes/nth-near", json={
         "start": "1289", "index": 100, "direction": "after",
     })
@@ -44,7 +51,7 @@ def test_relative_prime_api_and_report(tmp_path, monkeypatch):
 ])
 def test_manipulation_api_report_download(endpoint, payload, expected, tmp_path, monkeypatch):
     monkeypatch.setattr(outputs, 'OUTPUT_DIR', tmp_path)
-    client = TestClient(app)
+    client = local_client()
     response = client.post('/api/primes/' + endpoint, json=payload)
     assert response.status_code == 200, response.text
     result = response.json()
@@ -67,6 +74,6 @@ def test_manipulation_api_report_download(endpoint, payload, expected, tmp_path,
 ])
 def test_manipulation_api_failure_does_not_save(endpoint, payload, tmp_path, monkeypatch):
     monkeypatch.setattr(outputs, 'OUTPUT_DIR', tmp_path)
-    response = TestClient(app).post('/api/primes/' + endpoint, json=payload)
+    response = local_client().post('/api/primes/' + endpoint, json=payload)
     assert response.status_code == 422
     assert list(tmp_path.iterdir()) == []

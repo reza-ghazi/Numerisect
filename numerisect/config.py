@@ -3,14 +3,20 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "static"
-NATIVE_DIR = BASE_DIR / "native"
-STATE_DIR = Path(os.environ.get("NUMERISECT_STATE_DIR", BASE_DIR / "data"))
+PACKAGE_DIR = Path(__file__).resolve().parent
+BASE_DIR = PACKAGE_DIR.parent
+STATIC_DIR = PACKAGE_DIR / "static"
+NATIVE_DIR = PACKAGE_DIR / "native"
+SOURCE_CHECKOUT = (BASE_DIR / "pyproject.toml").is_file()
+USER_DATA_ROOT = Path(
+    os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")
+) / "numerisect"
+DEFAULT_STATE_DIR = BASE_DIR / "data" if SOURCE_CHECKOUT else USER_DATA_ROOT / "state"
+DEFAULT_OUTPUT_DIR = BASE_DIR / "output" if SOURCE_CHECKOUT else USER_DATA_ROOT / "output"
+STATE_DIR = Path(os.environ.get("NUMERISECT_STATE_DIR", DEFAULT_STATE_DIR))
 JOBS_DIR = STATE_DIR / "jobs"
 DATABASE_PATH = STATE_DIR / "numerisect.sqlite3"
-OUTPUT_DIR = Path(os.environ.get("NUMERISECT_OUTPUT_DIR", BASE_DIR / "output"))
+OUTPUT_DIR = Path(os.environ.get("NUMERISECT_OUTPUT_DIR", DEFAULT_OUTPUT_DIR))
 TOOLS_DIR = STATE_DIR / "tools"
 TOOLS_BIN_DIR = TOOLS_DIR / "bin"
 TOOLS_SOURCE_DIR = TOOLS_DIR / "src"

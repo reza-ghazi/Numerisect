@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a focused mathematical or interface capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+    validations:
+      required: true
+  - type: textarea
+    id: definition
+    attributes:
+      label: Mathematical definition or expected behavior
+      description: Include authoritative references when the definition is specialized.
+    validations:
+      required: true
+  - type: textarea
+    id: engine
+    attributes:
+      label: Proposed native engine or library
+      description: Python and JavaScript must remain orchestration and interface layers.
+  - type: textarea
+    id: limits
+    attributes:
+      label: Correctness, resource, and platform considerations

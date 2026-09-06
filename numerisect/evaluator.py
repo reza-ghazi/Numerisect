@@ -6,7 +6,6 @@ import sys
 
 from .config import MAX_EXPRESSION_CHARACTERS, MAX_RESULT_DIGITS
 
-
 sys.set_int_max_str_digits(0)
 
 

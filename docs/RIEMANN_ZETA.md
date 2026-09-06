@@ -65,16 +65,19 @@ panel shows the exact `output/<filename>.txt` path and a download button.
 
 ## API examples
 
+First create the local session cookie described in
+[the security model](SECURITY_MODEL.md).
+
 ```bash
-curl -X POST http://127.0.0.1:8765/api/zeta/evaluate \
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/evaluate \
   -H 'Content-Type: application/json' \
   -d '{"sigma":"0.5","ordinate":"14.134725","precision":50}'
 
-curl -X POST http://127.0.0.1:8765/api/zeta/zeros \
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/zeros \
   -H 'Content-Type: application/json' \
   -d '{"start_index":"1","count":10,"precision":50,"threads":8}'
 
-curl -X POST http://127.0.0.1:8765/api/zeta/count \
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/count \
   -H 'Content-Type: application/json' \
   -d '{"height":"100","precision":50,"threads":8}'
 ```
@@ -86,10 +89,10 @@ reports contain the native samples used by the browser.
 
 | File | Responsibility |
 |---|---|
-| `native/numerisect_zeta.c` | FLINT/Arb evaluation, zero isolation/counting, OpenMP sampling, tagged output |
+| `numerisect/native/numerisect_zeta.c` | FLINT/Arb evaluation, zero isolation/counting, OpenMP sampling, tagged output |
 | `numerisect/native_tools.py` | Detect FLINT and compile the helper into the managed tools directory |
 | `numerisect/zeta.py` | Validation, subprocess boundary, and strict result parsing |
 | `numerisect/main.py` | HTTP models, endpoints, error mapping, and report persistence |
-| `static/index.html` | Zeta workspace and precision/thread controls |
-| `static/app.js` | Result presentation and canvas drawing only |
+| `numerisect/static/index.html` | Zeta workspace and precision/thread controls |
+| `numerisect/static/app.js` | Result presentation and canvas drawing only |
 | `tests/test_zeta.py` | Known values, certified zeros/count, sampling, pole, and validation tests |

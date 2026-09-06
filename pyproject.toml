@@ -2,25 +2,81 @@
 name = "numerisect"
 version = "0.3.0"
 description = "Multi-Engine Integer Factorization and Prime Analysis"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "NOTICE.md", "THIRD_PARTY_LICENSES.md"]
+authors = [{ name = "Reza Ghazi" }]
+maintainers = [{ name = "Reza Ghazi", email = "contact@brightarcadia.com" }]
 requires-python = ">=3.11"
+keywords = ["factorization", "number-theory", "prime-numbers", "pari-gp", "cado-nfs"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C",
+  "Programming Language :: JavaScript",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
 dependencies = [
-  "fastapi>=0.110",
-  "uvicorn>=0.29",
+  "fastapi>=0.110,<0.137",
+  "starlette>=0.40,<1",
+  "uvicorn>=0.29,<0.53",
 ]
 
+[project.urls]
+Homepage = "https://numerisect.com"
+Repository = "https://github.com/reza-ghazi/Numerisect"
+Documentation = "https://github.com/reza-ghazi/Numerisect/tree/main/docs"
+Issues = "https://github.com/reza-ghazi/Numerisect/issues"
+
 [project.optional-dependencies]
-test = ["pytest>=8", "httpx>=0.27"]
+test = ["pytest>=8,<10", "httpx>=0.27,<1"]
+dev = ["build>=1.2,<2", "mypy>=1.17,<2", "ruff>=0.12,<1"]
 
 [project.scripts]
 numerisect = "numerisect.main:run"
 
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["numerisect"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["numerisect*"]
+
+[tool.setuptools.package-data]
+numerisect = [
+  "*.gp",
+  "engine_manifest.toml",
+  "native/*.c",
+  "static/*.html",
+  "static/*.css",
+  "static/*.js",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["numerisect/security.py"]

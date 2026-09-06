@@ -7,16 +7,18 @@ from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import __version__
 from .config import (
+    BASE_DIR,
     DATABASE_PATH,
     DEFAULT_CADO_THRESHOLD,
     DEFAULT_PRETEST_LEVEL,
     OUTPUT_DIR,
+    STATE_DIR,
     STATIC_DIR,
     ensure_state_dirs,
     prepend_managed_tools_to_path,
@@ -24,15 +26,15 @@ from .config import (
 from .database import Database
 from .engines import discover_cado_parameters, executable_path
 from .evaluator import ExpressionError, evaluate_arbitrary_integer, evaluate_integer
-from .jobs import JobManager
 from .installer import EngineInstaller
-from .prime_manipulation import batch_primality, progression_primes, prime_modular
+from .jobs import JobManager
 from .outputs import (
     finalize_native_output,
     native_output_paths,
     safe_output_path,
     save_prime_output,
 )
+from .prime_manipulation import batch_primality, prime_modular, progression_primes
 from .primes import (
     PrimeEngineError,
     absolute_primes_in_range,
@@ -40,15 +42,15 @@ from .primes import (
     analyze_miller_rabin_witnesses,
     analyze_prime_reciprocal,
     classify_prime,
-    coprime_profile,
     contiguous_digit_primes,
+    coprime_profile,
     digit_constrained_primes,
     factor_count_distribution,
     full_reptend_primes_in_range,
     gaussian_primes_in_box,
     generate_even_perfect_numbers,
-    generate_primorials,
     generate_primes,
+    generate_primorials,
     generate_special_primes,
     goldbach_partitions,
     integer_arithmetic_profile,
@@ -58,16 +60,16 @@ from .primes import (
     nth_prime_near,
     palindrome_derived_primes,
     paterson_primes_in_range,
+    primality_result,
     prime_count,
-    prime_gaps,
+    prime_distribution,
     prime_gap_statistics,
+    prime_gaps,
     prime_indicator_constant,
     prime_insertion_pyramid,
     prime_multiplication_pyramid,
     prime_polynomial_analysis,
-    prime_distribution,
     prime_square_sum_solutions,
-    primality_result,
     prime_tuples_in_range,
     primes_after,
     primes_before,
@@ -76,6 +78,14 @@ from .primes import (
     random_primes_in_range,
     sigma_fourth_power_square_primes,
     special_numbers_in_range,
+)
+from .security import (
+    LOOPBACK_HOSTS,
+    REQUEST_TOKEN,
+    REQUEST_TOKEN_COOKIE,
+    host_header_is_allowed,
+    request_has_valid_token,
+    request_origin_is_safe,
 )
 from .zeta import (
     ZetaEngineError,
@@ -86,7 +96,6 @@ from .zeta import (
     sample_zeta_line,
 )
 
-
 ensure_state_dirs()
 prepend_managed_tools_to_path()
 database = Database(DATABASE_PATH)
@@ -96,7 +105,6 @@ installer = EngineInstaller()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    installer.start_if_needed()
     yield
     manager.shutdown()
 
@@ -108,6 +116,25 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url=None,
 )
+@app.middleware("http")
+async def protect_local_api(request: Request, call_next):
+    """Require same-loopback browser context and a per-process API token."""
+
+    if not host_header_is_allowed(request.headers.get("Host", "")):
+        return JSONResponse(status_code=400, content={"detail": "Invalid Host header"})
+    path = request.url.path
+    if path.startswith("/api/") and path != "/api/session":
+        if not request_origin_is_safe(request):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Cross-site requests are not permitted"},
+            )
+        if not request_has_valid_token(request):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "A valid local session token is required"},
+            )
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -132,6 +159,10 @@ class JobRequest(BaseModel):
     threads: int = Field(default=os.cpu_count() or 1, ge=1, le=256)
     pretest_level: int = Field(default=DEFAULT_PRETEST_LEVEL, ge=1, le=100)
     cado_parameter_size: int | None = Field(default=None, ge=1, le=10000)
+
+
+class EngineInstallRequest(BaseModel):
+    confirm: Literal[True]
 
 
 class PrimeCheckRequest(BaseModel):
@@ -392,6 +423,63 @@ def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/api/session", include_in_schema=False)
+def create_browser_session(request: Request) -> JSONResponse:
+    if request.url.hostname not in LOOPBACK_HOSTS:
+        raise HTTPException(status_code=400, detail="A loopback host is required")
+    response = JSONResponse({"request_token": REQUEST_TOKEN})
+    response.set_cookie(
+        REQUEST_TOKEN_COOKIE,
+        REQUEST_TOKEN,
+        httponly=True,
+        samesite="strict",
+        path="/api",
+    )
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
+def _public_setup_status() -> dict[str, object]:
+    status = installer.status()
+    allowed = {
+        "state",
+        "message",
+        "missing",
+        "requested",
+        "current",
+        "updated_at",
+    }
+    return {key: value for key, value in status.items() if key in allowed}
+
+
+def _public_job(job: dict[str, object]) -> dict[str, object]:
+    allowed = {
+        "id",
+        "created_at",
+        "updated_at",
+        "started_at",
+        "finished_at",
+        "expression",
+        "number",
+        "digits",
+        "negative",
+        "requested_backend",
+        "selected_backend",
+        "status",
+        "phase",
+        "progress",
+        "threads",
+        "pretest_level",
+        "cado_parameter_size",
+        "factors",
+        "warning",
+        "error",
+    }
+    result = {key: value for key, value in job.items() if key in allowed}
+    result["result_available"] = bool(job.get("result_path"))
+    return result
+
+
 @app.get("/api/capabilities")
 def capabilities() -> dict[str, object]:
     parameters = discover_cado_parameters()
@@ -400,7 +488,7 @@ def capabilities() -> dict[str, object]:
         "cpu_count": os.cpu_count() or 1,
         "cado_threshold": DEFAULT_CADO_THRESHOLD,
         "engines": {
-            name: {"available": bool(path), "path": path}
+            name: {"available": bool(path)}
             for name, path in {
                 "yafu": executable_path("yafu"),
                 "msieve": executable_path("msieve"),
@@ -411,29 +499,31 @@ def capabilities() -> dict[str, object]:
             }.items()
         },
         "cado_parameters": [
-            {"size": parameter.size, "path": str(parameter.path)}
+            {"size": parameter.size}
             for parameter in parameters
         ],
-        "setup": installer.status(),
+        "setup": _public_setup_status(),
     }
 
 
 @app.get("/api/setup")
 def setup_status() -> dict[str, object]:
-    return installer.status()
+    return _public_setup_status()
 
 
 @app.post("/api/setup/install", status_code=202)
-def install_missing_engines() -> dict[str, object]:
+def install_missing_engines(_: EngineInstallRequest) -> dict[str, object]:
     installer.start_if_needed()
-    return installer.status()
+    return _public_setup_status()
 
 
 @app.get("/api/setup/log")
 def setup_log() -> dict[str, str]:
     path = installer.log_path
-    text = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
-    return {"text": text}
+    return {
+        "available": "yes" if path.exists() else "no",
+        "note": "The detailed engine setup log is available only in the local state directory.",
+    }
 
 
 def _save_manipulation_report(kind: str, heading: str, result: dict) -> dict:
@@ -1630,7 +1720,7 @@ def download_output(filename: str) -> FileResponse:
 def create_job(request: JobRequest) -> dict[str, object]:
     try:
         number = evaluate_integer(request.expression)
-        return manager.create(
+        job = manager.create(
             expression=request.expression,
             number=number,
             requested_backend=request.backend,
@@ -1638,6 +1728,7 @@ def create_job(request: JobRequest) -> dict[str, object]:
             pretest_level=request.pretest_level,
             cado_parameter_size=request.cado_parameter_size,
         )
+        return _public_job(job)
     except (ExpressionError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -1646,7 +1737,7 @@ def create_job(request: JobRequest) -> dict[str, object]:
 
 @app.get("/api/jobs")
 def list_jobs(limit: int = Query(default=100, ge=1, le=500)) -> list[dict[str, object]]:
-    return database.list_jobs(limit)
+    return [_public_job(job) for job in database.list_jobs(limit)]
 
 
 @app.get("/api/jobs/{job_id}")
@@ -1654,7 +1745,7 @@ def get_job(job_id: str) -> dict[str, object]:
     job = database.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    return _public_job(job)
 
 
 @app.get("/api/jobs/{job_id}/export")
@@ -1686,13 +1777,20 @@ def get_log(
         if size > tail:
             handle.seek(size - tail)
         content = handle.read().decode("utf-8", errors="replace")
+    replacements = sorted(
+        ((str(STATE_DIR), "<state>"), (str(BASE_DIR), "<application>")),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    for local_path, label in replacements:
+        content = content.replace(local_path, label)
     return {"text": content, "size": size, "truncated": size > tail}
 
 
 @app.post("/api/jobs/{job_id}/cancel")
 def cancel_job(job_id: str) -> dict[str, object]:
     try:
-        return manager.cancel(job_id)
+        return _public_job(manager.cancel(job_id))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Job not found") from exc
 
@@ -1700,7 +1798,7 @@ def cancel_job(job_id: str) -> dict[str, object]:
 @app.post("/api/jobs/{job_id}/resume", status_code=202)
 def resume_job(job_id: str) -> dict[str, object]:
     try:
-        return manager.resume(job_id)
+        return _public_job(manager.resume(job_id))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Job not found") from exc
     except ValueError as exc:

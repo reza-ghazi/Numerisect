@@ -1,5 +1,6 @@
 const state = {
-  jobs: [], selectedId: null, poller: null, logOpen: false, primeTool: 'prime-check'
+  jobs: [], selectedId: null, poller: null, setupPoller: null,
+  logOpen: false, primeTool: 'prime-check', requestToken: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -8,8 +9,10 @@ const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({
 }[char]));
 
 async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (state.requestToken) headers['X-Numerisect-Token'] = state.requestToken;
   const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers,
     ...options,
   });
   const data = await response.json().catch(() => ({}));
@@ -61,8 +64,25 @@ function renderSetup(setup) {
     return;
   }
   const missing = (setup.missing || []).join(', ');
-  banner.innerHTML = `<strong>Engine setup: ${escapeHtml(setup.state || 'checking')}</strong> · ${escapeHtml(setup.message || '')}${missing ? `<br>Missing: ${escapeHtml(missing)}` : ''}`;
+  const canInstall = missing && setup.state !== 'installing';
+  banner.innerHTML = `<strong>Engine setup: ${escapeHtml(setup.state || 'not installed')}</strong> · ${escapeHtml(setup.message || 'Optional native engines are missing.')}${missing ? `<br>Missing: ${escapeHtml(missing)}` : ''}${canInstall ? '<br><button id="install-engines" class="secondary" type="button">Review and install missing engines</button>' : ''}`;
   banner.classList.remove('hidden');
+  if (canInstall) {
+    $('#install-engines').addEventListener('click', async () => {
+      const approved = window.confirm(
+        `Numerisect will download and compile these pinned native engines in your user data directory:\n\n${missing}\n\nThis can take substantial time and disk space. Continue?`,
+      );
+      if (!approved) return;
+      $('#install-engines').disabled = true;
+      try {
+        renderSetup(await api('/api/setup/install', {
+          method: 'POST', body: JSON.stringify({ confirm: true }),
+        }));
+      } catch (error) {
+        banner.textContent = `Engine installation could not start: ${error.message}`;
+      }
+    });
+  }
 }
 
 function renderJobs() {
@@ -111,7 +131,7 @@ function renderFactors(job) {
   equation.innerHTML = `<span>${job.negative ? '−' : ''}${escapeHtml(shortNumber(job.number, 52))}</span><span class="equals">=</span>${job.factors.map((factor, index) => `${index ? '<span class="multiply">×</span>' : ''}<span>${escapeHtml(factor.value)}</span>`).join('')}`;
   equation.classList.remove('hidden');
   const download = $('#download-result');
-  download.classList.toggle('hidden', !job.result_path);
+  download.classList.toggle('hidden', !job.result_available);
   download.href = `/api/jobs/${job.id}/export`;
 }
 
@@ -1176,11 +1196,18 @@ $('#zeta-heatmap-form').addEventListener('submit', (event) => {
   }, () => 'Complex-plane zeta heatmap', 'heatmap');
 });
 
-loadCapabilities();
-loadJobs();
-state.poller = setInterval(async () => {
-  await loadJobs();
-}, 1200);
-setInterval(async () => {
-  try { renderSetup(await api('/api/setup')); } catch (_) { /* server may be restarting */ }
-}, 4000);
+async function initializeApplication() {
+  const session = await api('/api/session');
+  state.requestToken = session.request_token;
+  await Promise.all([loadCapabilities(), loadJobs()]);
+  state.poller = setInterval(async () => {
+    await loadJobs();
+  }, 1200);
+  state.setupPoller = setInterval(async () => {
+    try { renderSetup(await api('/api/setup')); } catch (_) { /* server may be restarting */ }
+  }, 4000);
+}
+
+initializeApplication().catch((error) => {
+  $('#engine-status').textContent = `Local session initialization failed: ${error.message}`;
+});

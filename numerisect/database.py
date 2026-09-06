@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 JOB_COLUMNS = {
     "id",
     "created_at",

@@ -1,10 +1,9 @@
 import re
 from pathlib import Path
 
-
 ROOT = Path(__file__).parents[1]
-INDEX = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
-APP = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+INDEX = (ROOT / "numerisect" / "static" / "index.html").read_text(encoding="utf-8")
+APP = (ROOT / "numerisect" / "static" / "app.js").read_text(encoding="utf-8")
 RUNNER = (ROOT / "run.sh").read_text(encoding="utf-8")
 
 
@@ -46,3 +45,10 @@ def test_interface_assets_are_cache_busted():
     assert '?ui=20260905-workstation#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
+
+
+def test_browser_bootstraps_local_request_protection():
+    assert "await api('/api/session')" in APP
+    assert "X-Numerisect-Token" in APP
+    assert "window.confirm" in APP
+    assert "body: JSON.stringify({ confirm: true })" in APP

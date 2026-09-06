@@ -90,8 +90,11 @@ a primitive root, use [Calculate modulo a prime](PRIME_MANIPULATION.md) in the
 
 ## API
 
+First create the local session cookie described in
+[the security model](SECURITY_MODEL.md).
+
 ```bash
-curl -X POST http://127.0.0.1:8765/api/primes/reciprocal \
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/primes/reciprocal \
   -H 'Content-Type: application/json' \
   -d '{"expression":"13","digit_limit":3,"timeout_seconds":0}'
 ```
@@ -130,7 +133,7 @@ only `076`, while the downloaded report contains the complete `0.076923`.
 | `numerisect/prime_reciprocal.gp` | Native primality, period, primitive-root, decimal-digit calculations, and unbounded block-streamed report output. |
 | `numerisect/primes.py` | GP process boundary and strict tagged-output validation. |
 | `numerisect/main.py` | Request model, API endpoint, error handling, and text export. |
-| `static/index.html` | Reciprocal-analysis controls. |
-| `static/app.js` | Submission and exact-result rendering. |
-| `static/styles.css` | Responsive reciprocal summary and decimal presentation. |
+| `numerisect/static/index.html` | Reciprocal-analysis controls. |
+| `numerisect/static/app.js` | Submission and exact-result rendering. |
+| `numerisect/static/styles.css` | Responsive reciprocal summary and decimal presentation. |
 | `tests/test_primes.py` | Period, full-reptend, leading-zero, truncation, terminating, and rejection tests. |

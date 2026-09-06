@@ -8,12 +8,14 @@ process orchestration, persistence, and the HTTP API; plain JavaScript provides
 the browser interface. Native number-theory programs perform the expensive
 mathematics.
 
-The server listens only on `127.0.0.1` by default. Results stay on the local
-machine unless the repository or exported files are shared deliberately.
+Numerisect is an experimental, source-distributed pre-release. No official
+binary packages or binary installers are published. The FastAPI service runs
+locally and listens only on loopback by default. Computation, job state, logs,
+and results remain on the local machine unless the user deliberately moves or
+shares them. The browser interface requires that local backend; it is not a
+standalone static website.
 
-This is a private, pre-release project run from its source checkout. Release
-packages and a packaging workflow have not been published or designed yet.
-For Linux, Windows WSL, and macOS installation, see
+For installation status, supported hosts, and prerequisites, see
 [Installation and versioning](docs/INSTALLATION.md).
 Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
@@ -40,12 +42,15 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - Prime-density/residue charts, digit-constrained primes, exact polynomial exploration, and certified prime-indicator constants
 - Rigorous zeta evaluation, certified critical-line zeros, exact Turing-method zero counts, and native-sampled plots
 - Automatic plain-text reports in `output/`
-- First-start, user-local source installation for missing native engines
+- Explicit, confirmed user-local builds of missing native engines from pinned commits
 
 ## Start and stop
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
+git clone https://github.com/reza-ghazi/Numerisect.git
+cd Numerisect
+python3 -m venv .venv
+.venv/bin/pip install -e '.[test,dev]'
 ./run.sh
 ```
 
@@ -72,18 +77,21 @@ kill PID_FROM_THE_PREVIOUS_COMMAND
 
 ## User installation
 
-To install a versioned copy outside the source checkout, run:
+After cloning the source, the provided source-install helper can create a
+versioned user-local copy outside the checkout:
 
 ```bash
 ./install.sh
 ```
 
-The installer supports Linux, Windows WSL, and macOS with Homebrew. It checks
-the required toolchain and development libraries, installs missing packages
-through the host package manager, creates a release-specific Python virtual
-environment, and creates a stable user launcher under
-`~/.local/share/numerisect/bin/numerisect`. Native number engines are installed
-on the first application start under the shared user state directory. See
+The application installer has been exercised on Fedora Linux x86-64. Windows
+WSL and macOS paths are implemented and expected to work, but have not yet been
+verified by the Numerisect project. Before any system-package command, the
+helper displays the package manager, exact packages, and administrative-access
+requirement, then asks for confirmation. It creates a release-specific Python
+environment and a stable launcher under
+`~/.local/share/numerisect/bin/numerisect`. Optional number engines are never
+installed merely by starting the application. See
 [Installation and versioning](docs/INSTALLATION.md) for prefixes, upgrades,
 package-manager behavior, and troubleshooting.
 
@@ -93,9 +101,8 @@ Numerisect requires Python 3.11 or newer, FastAPI, and Uvicorn. To create an
 isolated development environment:
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
 python3 -m venv .venv
-.venv/bin/pip install -e '.[test]'
+.venv/bin/pip install -e '.[test,dev]'
 .venv/bin/uvicorn numerisect.main:app --host 127.0.0.1 --port 8765
 ```
 
@@ -116,23 +123,28 @@ The status line at the top of the interface shows which executables are
 available. Engine commands are launched as argument arrays rather than through
 shell interpolation.
 
-## First-run engine installation
+## Optional native-engine installation
 
-At startup, Numerisect checks for these commands:
+At startup, Numerisect only checks for these commands:
 
 ```text
 yafu  msieve  ecm  cado-nfs.py  gp  numerisect-zeta
 ```
 
-If any are missing, a background setup task fetches current upstream source,
-builds it, and installs it under `data/tools/`. It does not request root access
-or overwrite an existing system installation. The managed `bin` and `lib`
-directories are added to the Numerisect process environment automatically.
+If any are missing, the interface displays them and offers an installation
+button. Nothing is downloaded or compiled until the user reviews a visible
+confirmation. An approved task clones the exact Git commits recorded in
+[`numerisect/engine_manifest.toml`](numerisect/engine_manifest.toml), verifies
+the checked-out revisions, builds them, and installs them under `data/tools/`.
+It does not request root access or overwrite an existing system installation.
+The managed `bin` and `lib` directories are added to the Numerisect process
+environment automatically.
 
 Source builds require network access plus Git, Make, a C/C++ compiler, CMake,
 GMP, MPFR, and FLINT development headers, Autoconf, Automake, and Libtool. If
-FLINT is unavailable, Numerisect builds its latest source release and then its
-small OpenMP-enabled zeta helper. Progress appears in
+FLINT is unavailable, Numerisect builds the pinned FLINT revision and then its
+small OpenMP-enabled zeta helper. Engine builds can consume substantial time,
+CPU, network bandwidth, and disk space. Progress appears in
 the setup banner. Detailed output is stored in:
 
 ```text
@@ -140,11 +152,9 @@ data/engine-setup.log
 ```
 
 If installation fails, install the missing build prerequisite, restart
-Numerisect, and inspect that log. The setup API can also retry installation:
-
-```bash
-curl -X POST http://127.0.0.1:8765/api/setup/install
-```
+Numerisect, inspect that local log, and retry from the setup banner. The setup
+API is protected by the per-launch browser authorization token and rejects
+untrusted hosts and foreign origins.
 
 ## Factorization workflow
 
@@ -366,8 +376,9 @@ numerisect/prime_reciprocal.gp  Native reciprocal-period and digit engine
 numerisect/prime_structures.gp  Native structural, sequence, witness, and related-number engine
 numerisect/prime_manipulation.py  Validation and GP boundary for batches, progressions, and prime-modulus operations
 numerisect/zeta.py       FLINT helper process boundary and strict result parsing
-native/numerisect_zeta.c  Compiled FLINT/Arb and OpenMP zeta engine
-static/                 HTML, CSS, and JavaScript interface
+numerisect/native/numerisect_zeta.c  Compiled FLINT/Arb and OpenMP zeta engine
+numerisect/static/       HTML, CSS, and JavaScript interface
+numerisect/engine_manifest.toml  Reviewed immutable native-engine pins
 install.sh              Cross-platform user-space installer
 tests/                  Regression tests
 docs/                   Feature and architecture documentation
@@ -384,8 +395,8 @@ The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
 
 | Environment variable | Default | Purpose |
 |---|---:|---|
-| `NUMERISECT_STATE_DIR` | `./data` | Database, jobs, setup state, and managed engines |
-| `NUMERISECT_OUTPUT_DIR` | `./output` | Completed text exports |
+| `NUMERISECT_STATE_DIR` | `./data` in a source checkout; user data directory in an installed wheel | Database, jobs, setup state, and managed engines |
+| `NUMERISECT_OUTPUT_DIR` | `./output` in a source checkout; user data directory in an installed wheel | Completed text exports |
 | `NUMERISECT_CADO_THRESHOLD` | `95` | Decimal-digit boundary for automatic hybrid routing |
 | `NUMERISECT_PRETEST_LEVEL` | `20` | Default YAFU pretest level |
 | `NUMERISECT_MAX_PARALLEL_JOBS` | `1` | Simultaneous CPU-heavy factorization workers |
@@ -396,6 +407,9 @@ The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
 
 Interactive OpenAPI documentation is available at
 <http://127.0.0.1:8765/api/docs> while the server is running.
+All API routes except `/api/session` require a cryptographically random
+per-launch session token. The browser manages it automatically; command-line
+clients should follow [the localhost security model](docs/SECURITY_MODEL.md).
 
 Important routes include:
 
@@ -465,22 +479,28 @@ POST /api/zeta/heatmap
 Run the complete regression suite and the JavaScript syntax check with:
 
 ```bash
-cd /home/reza/dev_dir/my_apps/mathematics/Numerisect
-python3 -m pytest
-node --check static/app.js
+python -m pytest -q
+ruff check .
+mypy
+shellcheck install.sh run.sh
+node --check numerisect/static/app.js
+python -m build
 ```
 
 The native integration tests invoke `gp` and compile or run the FLINT zeta
 helper. They fail clearly when the corresponding native prerequisites are unavailable.
 
-The current suite contains 126 tests. A separate browser audit verified one
-visible form on each of the 38 Prime Tools routes, native submissions from the
-three manipulation pages, saved-report notices, and mobile layout widths.
+The suite includes API security, installer-manifest, native-engine, report,
+and interface checks. A separate browser audit verified one visible form on
+each of the 38 Prime Tools routes, native submissions from the three
+manipulation pages, saved-report notices, and mobile layout widths.
 
 ## Documentation
 
 | Guide | Scope |
 | --- | --- |
+| [Installation and versioning](docs/INSTALLATION.md) | Verified hosts, prerequisites, source installation, and pinned engine builds |
+| [Localhost security](docs/SECURITY_MODEL.md) | Host, origin, per-launch token, command-line access, and data locality |
 | [Prime classification](docs/PRIME_CLASSIFICATION.md) | 56 classes and inconclusive-result semantics |
 | [Prime reciprocals](docs/PRIME_RECIPROCALS.md) | Exact periods and complete streamed decimal reports |
 | [Prime structures](docs/PRIME_STRUCTURES.md) | Structural searches, sequences, and witness analysis |
@@ -491,7 +511,10 @@ three manipulation pages, saved-report notices, and mobile layout widths.
 
 ## Security notes
 
-- The provided launcher binds only to `127.0.0.1`.
+- The launcher and Python entry point bind only to `127.0.0.1` by default.
+- Trusted-host validation rejects non-loopback Host headers; API middleware
+  rejects foreign browser origins and requests without the per-launch token.
+- Engine installation never runs at startup and requires explicit confirmation.
 - Do not expose the service to a network without authentication, TLS, and
   stricter operational quotas.
 - Integer expressions are parsed through a restricted AST evaluator.

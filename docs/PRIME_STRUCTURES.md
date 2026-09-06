@@ -113,6 +113,6 @@ macOS deployment and native-engine setup.
 | `numerisect/prime_structures.gp` | Native algorithms, exact primality tests, sequence construction, and tagged output |
 | `numerisect/primes.py` | GP subprocess boundary and strict parser |
 | `numerisect/main.py` | Request validation, endpoints, and report persistence |
-| `static/index.html` | Forms and resource controls |
-| `static/app.js` | Rendering and canvas geometry only |
+| `numerisect/static/index.html` | Forms and resource controls |
+| `numerisect/static/app.js` | Rendering and canvas geometry only |
 | `tests/test_primes.py` | Known sequences, criteria, corrections, and parser regressions |

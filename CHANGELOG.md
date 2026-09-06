@@ -1,7 +1,20 @@
 # Changelog
 
-Numerisect is a private, pre-release project. No public release packages or
-release workflow exist yet.
+Numerisect is an experimental, source-distributed pre-release. No official
+binary packages are published.
+
+## Unreleased
+
+- Added strict loopback Host validation, foreign-origin rejection, Fetch
+  Metadata checks, and a cryptographically random per-process API session.
+- Removed automatic native-engine installation from application startup and
+  added explicit browser confirmation for pinned source builds.
+- Added an immutable native-engine manifest, deliberate pin-update command,
+  sanitized API status/job responses, and safer source-install confirmation.
+- Made static assets, GP programs, the engine manifest, and the native zeta
+  source wheel resources independent of the original checkout.
+- Added public project metadata, third-party notices, community/security files,
+  and SHA-pinned GitHub Actions quality checks.
 
 ## 0.3.0 — 2026-09-05
 
@@ -21,5 +34,5 @@ release workflow exist yet.
 
 ## 0.2.0
 
-- Initial Numerisect private development baseline with multi-engine
+- Initial Numerisect development baseline with multi-engine
   factorization, PARI/GP prime tools, and the source-based application shell.

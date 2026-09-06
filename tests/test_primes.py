@@ -10,15 +10,15 @@ from numerisect.primes import (
     analyze_miller_rabin_witnesses,
     analyze_prime_reciprocal,
     classify_prime,
-    coprime_profile,
     contiguous_digit_primes,
+    coprime_profile,
     digit_constrained_primes,
     factor_count_distribution,
     full_reptend_primes_in_range,
     gaussian_primes_in_box,
     generate_even_perfect_numbers,
-    generate_primorials,
     generate_primes,
+    generate_primorials,
     generate_special_primes,
     goldbach_partitions,
     integer_arithmetic_profile,
@@ -28,16 +28,16 @@ from numerisect.primes import (
     nth_prime_near,
     palindrome_derived_primes,
     paterson_primes_in_range,
+    primality_result,
     prime_count,
-    prime_gaps,
+    prime_distribution,
     prime_gap_statistics,
+    prime_gaps,
     prime_indicator_constant,
     prime_insertion_pyramid,
     prime_multiplication_pyramid,
     prime_polynomial_analysis,
-    prime_distribution,
     prime_square_sum_solutions,
-    primality_result,
     prime_tuples_in_range,
     primes_after,
     primes_before,
@@ -180,8 +180,9 @@ def test_relative_prime_rejects_incomplete_engine_output(monkeypatch):
 
 
 def test_relative_prime_engine_timeout(monkeypatch):
-    from numerisect import primes
     import subprocess
+
+    from numerisect import primes
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("gp", 3600)
     monkeypatch.setattr(primes.subprocess, "run", timeout)

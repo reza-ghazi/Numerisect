@@ -7,8 +7,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from .config import NATIVE_DIR, TOOLS_BIN_DIR, TOOLS_DIR
-
+from .config import NATIVE_DIR, STATE_DIR, TOOLS_BIN_DIR, TOOLS_DIR
 
 _BUILD_LOCK = threading.Lock()
 ZETA_TOOL_NAME = "numerisect-zeta"
@@ -109,7 +108,13 @@ def build_zeta_tool() -> Path:
         )
         if result.returncode:
             temporary.unlink(missing_ok=True)
-            raise RuntimeError(f"Failed to build the FLINT zeta helper: {result.stdout[-2000:]}")
+            (STATE_DIR / "zeta-build.log").write_text(
+                result.stdout, encoding="utf-8", errors="replace"
+            )
+            raise RuntimeError(
+                "Failed to build the FLINT zeta helper; inspect the local "
+                "zeta-build.log in the Numerisect state directory"
+            )
         temporary.chmod(0o755)
         temporary.replace(destination)
         return destination

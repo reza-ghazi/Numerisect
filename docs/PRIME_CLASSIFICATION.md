@@ -107,10 +107,11 @@ rigorous primality test, congruence, or exhaustive test for the supplied input.
 ## API
 
 The endpoint accepts the same restricted integer-expression syntax as the
-other Numerisect tools:
+other Numerisect tools. First create the local session cookie as documented in
+[the security model](SECURITY_MODEL.md), then run:
 
 ```bash
-curl -X POST http://127.0.0.1:8765/api/primes/classify \
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/primes/classify \
   -H 'Content-Type: application/json' \
   -d '{"expression":"2^127 - 1","per_test_seconds":2}'
 ```
@@ -162,9 +163,9 @@ with rigorous `isprime` before using them in a proof-oriented result.
 | `numerisect/prime_classifier.gp` | All classification mathematics, rigorous primality checks, time guards, and tagged native output. |
 | `numerisect/primes.py` | Catalogue metadata, GP process boundary, tagged-output validation, and response assembly. |
 | `numerisect/main.py` | Request validation, HTTP endpoint, error translation, and text-report persistence. |
-| `static/index.html` | Classifier form and time-budget controls. |
-| `static/app.js` | Request submission and result rendering. |
-| `static/styles.css` | Match, non-match summary, and inconclusive presentation. |
+| `numerisect/static/index.html` | Classifier form and time-budget controls. |
+| `numerisect/static/app.js` | Request submission and result rendering. |
+| `numerisect/static/styles.css` | Match, non-match summary, and inconclusive presentation. |
 | `tests/test_primes.py` | Native integration and response-contract regression coverage. |
 
 When a classification is extended, its identifier must stay synchronized

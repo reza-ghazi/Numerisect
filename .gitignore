@@ -1,9 +1,53 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 .venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Runtime state, downloaded engines, databases, and logs
 data/
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.log
 output/*.txt
 !output/.gitkeep
+
+# Native build products
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+numerisect-zeta
+
+# Local agent instructions
 AGENTS.md
 codex_resume_command.txt

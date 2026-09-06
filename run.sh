@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 set -euo pipefail
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,7 +14,7 @@ export PYTHONPATH="$project_dir${PYTHONPATH:+:$PYTHONPATH}"
 
 ui_url="http://127.0.0.1:8765/?ui=20260905-workstation#primes/prime-check"
 echo "Numerisect source: $project_dir"
-echo "Numerisect interface: $project_dir/static"
+echo "Numerisect interface: $project_dir/numerisect/static"
 echo "Opening: $ui_url"
 
 browser_open=""

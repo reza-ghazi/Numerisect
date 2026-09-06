@@ -1,0 +1,70 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install lightweight native test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc autoconf automake libtool shellcheck
+      - name: Install project test dependencies
+        run: python -m pip install '.[test,dev]'
+      - name: Run Python tests
+        run: pytest -q
+
+  quality:
+    name: Lint, shell, and package
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          python -m pip install '.[test,dev]'
+      - name: Lint Python
+        run: ruff check .
+      - name: Type-check localhost security boundary
+        run: mypy
+      - name: Validate shell scripts
+        run: shellcheck install.sh run.sh
+      - name: Validate browser JavaScript
+        run: node --check numerisect/static/app.js
+      - name: Build source and wheel distributions
+        run: python -m build
+      - name: Inspect and install wheel in a fresh environment
+        run: |
+          python -m zipfile --list dist/numerisect-*.whl
+          python -m venv /tmp/numerisect-wheel-smoke
+          /tmp/numerisect-wheel-smoke/bin/pip install dist/numerisect-*.whl
+          /tmp/numerisect-wheel-smoke/bin/python -c "from numerisect.config import NATIVE_DIR, STATIC_DIR; from numerisect.installer import load_engine_manifest; assert (STATIC_DIR / 'index.html').is_file(); assert (STATIC_DIR / 'app.js').is_file(); assert (NATIVE_DIR / 'numerisect_zeta.c').is_file(); assert len(load_engine_manifest()) == 6"

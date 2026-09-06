@@ -2,38 +2,73 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 import subprocess
+import tempfile
 import threading
+import tomllib
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable
 
-from .config import STATE_DIR, TOOLS_BIN_DIR, TOOLS_DIR, TOOLS_SOURCE_DIR
+from .config import PACKAGE_DIR, STATE_DIR, TOOLS_BIN_DIR, TOOLS_DIR, TOOLS_SOURCE_DIR
 from .native_tools import build_zeta_tool, flint_available
 
+MANIFEST_PATH = PACKAGE_DIR / "engine_manifest.toml"
 
-ENGINE_COMMANDS = {
-    "PARI/GP": "gp",
-    "GMP-ECM": "ecm",
-    "Msieve": "msieve",
-    "YAFU": "yafu",
-    "CADO-NFS": "cado-nfs.py",
-    "FLINT/Zeta": "numerisect-zeta",
-}
 
-REPOSITORIES = {
-    "PARI/GP": "https://pari.math.u-bordeaux.fr/git/pari.git",
-    "GMP-ECM": "https://gitlab.inria.fr/zimmerma/ecm.git",
-    "Msieve": "https://github.com/radii/msieve.git",
-    "YAFU": "https://github.com/bbuhrow/yafu.git",
-    "CADO-NFS": "https://gitlab.inria.fr/cado-nfs/cado-nfs.git",
-    "FLINT": "https://github.com/flintlib/flint.git",
-}
+@dataclass(frozen=True)
+class EngineSource:
+    """Reviewed source identity for one optional native engine."""
+
+    name: str
+    command: str
+    repository: str
+    upstream_ref: str
+    revision: str
+    source_kind: str
+    archive_sha256: str
+    license: str
+    interaction: str
+    platforms: str
+
+
+def load_engine_manifest(path: Path = MANIFEST_PATH) -> dict[str, EngineSource]:
+    """Load and strictly validate the pinned native-engine manifest."""
+
+    with path.open("rb") as handle:
+        document = tomllib.load(handle)
+    entries = document.get("engine")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("The engine manifest must contain at least one [[engine]] entry")
+    result: dict[str, EngineSource] = {}
+    required = set(EngineSource.__dataclass_fields__)
+    for raw in entries:
+        if not isinstance(raw, dict) or set(raw) != required:
+            raise ValueError("Every engine manifest entry must contain exactly the supported fields")
+        source = EngineSource(**raw)
+        if source.name in result:
+            raise ValueError(f"Duplicate engine manifest entry: {source.name}")
+        if len(source.revision) != 40 or any(c not in "0123456789abcdef" for c in source.revision):
+            raise ValueError(f"Engine revision is not an immutable Git commit: {source.name}")
+        if not source.repository.startswith("https://"):
+            raise ValueError(f"Engine repository must use HTTPS: {source.name}")
+        if source.source_kind != "git" or source.archive_sha256 != "not-applicable":
+            raise ValueError(
+                f"Unsupported source verification method for engine: {source.name}"
+            )
+        result[source.name] = source
+    return result
+
+
+ENGINE_SOURCES = load_engine_manifest()
+ENGINE_COMMANDS = {name: source.command for name, source in ENGINE_SOURCES.items()}
 
 
 class EngineInstaller:
-    """Best-effort, user-local source installer for missing factor engines."""
+    """Explicit, user-local source installer for pinned native engines."""
 
     def __init__(self) -> None:
         self.status_path = STATE_DIR / "engine-setup.json"
@@ -54,8 +89,6 @@ class EngineInstaller:
         else:
             data = {}
         data["missing"] = self.missing()
-        data["log_path"] = str(self.log_path)
-        data["managed_bin"] = str(TOOLS_BIN_DIR)
         return data
 
     def _write_status(self, **values: object) -> None:
@@ -77,26 +110,58 @@ class EngineInstaller:
                 check=False,
             )
         if result.returncode:
-            raise RuntimeError(f"Command exited with status {result.returncode}: {' '.join(command)}")
+            raise RuntimeError(
+                f"{Path(command[0]).name} exited with status {result.returncode}; "
+                "inspect the local engine setup log for details"
+            )
 
     def _clone(self, name: str) -> Path:
+        source = ENGINE_SOURCES[name]
         slug = name.lower().replace("-", "_").replace("/", "_")
-        destination = TOOLS_SOURCE_DIR / slug
+        destination = TOOLS_SOURCE_DIR / f"{slug}-{source.revision[:12]}"
         if destination.exists():
-            self._run(["git", "fetch", "--tags", "--prune", "origin"], destination)
-            self._run(["git", "reset", "--hard", "origin/HEAD"], destination)
+            completed = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=destination,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                check=False,
+            )
+            if completed.returncode or completed.stdout.strip() != source.revision:
+                raise RuntimeError(
+                    f"The managed {name} source directory does not match its pinned revision"
+                )
         else:
-            self._run(["git", "clone", "--depth", "1", REPOSITORIES[name], str(destination)])
-        if name == "YAFU":
-            # YAFU publishes versioned releases; select the newest tag dynamically.
-            self._run(["git", "fetch", "--tags", "--depth", "1", "origin"], destination)
-            tags = subprocess.check_output(
-                ["git", "tag", "--sort=-v:refname"], cwd=destination, text=True
-            ).splitlines()
-            release = next((tag for tag in tags if tag.startswith("v")), None)
-            if release:
-                self._run(["git", "checkout", "--force", release], destination)
+            temporary = Path(
+                tempfile.mkdtemp(prefix=f".{slug}-", dir=TOOLS_SOURCE_DIR)
+            )
+            try:
+                self._run(["git", "init"], temporary)
+                self._run(
+                    ["git", "remote", "add", "origin", source.repository], temporary
+                )
+                self._run(
+                    ["git", "fetch", "--depth", "1", "origin", source.revision],
+                    temporary,
+                )
+                self._run(
+                    ["git", "checkout", "--detach", source.revision], temporary
+                )
+                temporary.replace(destination)
+            except Exception:
+                shutil.rmtree(temporary, ignore_errors=True)
+                raise
         return destination
+
+    @staticmethod
+    def _require_x86_64(name: str) -> None:
+        architecture = platform.machine().lower()
+        if architecture not in {"x86_64", "amd64"}:
+            raise RuntimeError(
+                f"The automated {name} recipe currently supports x86-64 only; "
+                f"detected {architecture or 'unknown architecture'}"
+            )
 
     @staticmethod
     def _copy_executable(source: Path, destination_name: str) -> None:
@@ -130,11 +195,13 @@ class EngineInstaller:
         launcher.symlink_to(built)
 
     def _install_msieve(self) -> None:
+        self._require_x86_64("Msieve")
         source = self._clone("Msieve")
         self._run(["make", "-j", str(os.cpu_count() or 1), "x86_64"], source)
         self._copy_executable(source / "msieve", "msieve")
 
     def _install_yafu(self) -> None:
+        self._require_x86_64("YAFU")
         source = self._clone("YAFU")
         self._run(["make", "-j", str(os.cpu_count() or 1)], source)
         self._copy_executable(source / "yafu", "yafu")
@@ -150,7 +217,7 @@ class EngineInstaller:
         launcher.symlink_to(source / "cado-nfs.py")
 
     def _install_flint(self) -> None:
-        source = self._clone("FLINT")
+        source = self._clone("FLINT/Zeta")
         prefix = TOOLS_DIR / "prefix"
         build = source / "build-numerisect"
         self._run(
@@ -185,7 +252,7 @@ class EngineInstaller:
         if not missing:
             self._write_status(state="ready", message="All engines are available")
             return
-        self.log_path.write_text("Numerisect first-run engine setup\n", encoding="utf-8")
+        self.log_path.write_text("Numerisect explicit engine setup\n", encoding="utf-8")
         self._write_status(
             state="installing",
             message="Installing missing engines into a user-owned directory",

@@ -132,7 +132,8 @@ The interface explicitly confirms the saved path and provides a download link.
 
 Installation and versioned user-local deployment are documented in
 [Installation and versioning](INSTALLATION.md). The arithmetic tools remain
-available on Linux, WSL, and macOS wherever PARI/GP can be built and run.
+implemented for Linux, WSL, and macOS wherever PARI/GP can be built and run;
+only Fedora Linux x86-64 has been verified by the project so far.
 
 ## Audit exclusions
 

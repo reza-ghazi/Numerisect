@@ -1,112 +1,146 @@
 # Installation and versioning
 
-Numerisect is currently a private, pre-release source project. It has no public
-release package or packaging workflow. `install.sh` installs a checked-out
-version into a user-owned directory and does not change repository visibility.
+Numerisect 0.3.0 is an experimental, source-distributed pre-release. No
+official RPM, DEB, AppImage, macOS package, Windows executable, or other binary
+installer is published. The repository includes `install.sh` as a convenience
+for installing a checked-out source revision into a user-owned directory.
 
-## Supported hosts
+## Verified and expected hosts
 
-The installer and application support:
+The current application, source installer, and complete native test suite have
+been exercised on Fedora Linux x86-64. The installer contains paths for
+Debian/Ubuntu (including WSL), Arch Linux, and macOS with Homebrew, but the
+Numerisect project has not yet completed clean-host verification on those
+systems. Treat them as expected compatibility, not a tested guarantee.
 
-| Host | Native toolchain | Package manager |
-| --- | --- | --- |
-| Linux | GCC/Clang, Make, CMake | `dnf`, `apt-get`, or `pacman` |
-| Windows WSL | Linux toolchain inside the WSL distribution | `apt-get` (Ubuntu/Debian) or the distribution manager |
-| macOS | Apple Clang, Make, CMake | Homebrew |
+The application installer accepts Linux/WSL and macOS on x86-64 or ARM64.
+However, the automated YAFU and Msieve source recipes currently reject ARM64;
+those two recipes are verified only for x86-64 Linux/WSL. Native Windows
+outside WSL is unsupported.
 
-Windows WSL is the supported Windows path. Run the installer inside WSL and
-keep the checkout on the WSL filesystem, such as `~/src/Numerisect`, for better
-build and filesystem performance. The engines are native programs for the WSL
-Linux environment; they are not Windows `.exe` builds.
+## Dependency groups
 
-macOS support requires Homebrew and a supported Python 3.11 or newer. Homebrew
-provides `glibtoolize` in its `libtool` formula; the installer recognizes that
-name. The browser is opened with macOS `open`; Linux and WSL use `xdg-open` when
-available. Set `NUMERISECT_NO_BROWSER=1` to suppress automatic browser launch.
+Required Python runtime dependencies:
 
-## Install from the source checkout
+- Python 3.11 or newer;
+- FastAPI;
+- Uvicorn.
 
-From the repository directory:
+Development and validation dependencies are available through the `test` and
+`dev` extras: pytest, HTTPX, Ruff, and Build.
+
+System build prerequisites used by the full native setup are Git, Make, a C/C++
+compiler, CMake, `pkg-config`, Autoconf, Automake, Libtool, GMP, MPFR, and FLINT
+development files. On macOS, Homebrew's `glibtoolize` supplies the Libtool
+command expected by the source builds.
+
+Optional native engines are YAFU, Msieve, GMP-ECM, CADO-NFS, PARI/GP, and the
+FLINT-backed Numerisect zeta helper. Prime Tools require PARI/GP. Zeta Tools
+require FLINT/Arb and the compiled helper. Factorization backends require their
+corresponding executable. Missing optional engines do not prevent the browser
+shell from starting.
+
+## Run from a source checkout
+
+```bash
+git clone https://github.com/reza-ghazi/Numerisect.git
+cd Numerisect
+python3 -m venv .venv
+.venv/bin/pip install -e '.[test,dev]'
+./run.sh
+```
+
+The browser opens `http://127.0.0.1:8765/`. The service binds to loopback only.
+The browser UI depends on this local FastAPI process and is not a standalone
+static site. Calculations, SQLite job state, engine logs, and `output/` reports
+remain local unless the user deliberately shares them.
+
+## Install a versioned user-local copy
+
+From the cloned repository:
 
 ```bash
 ./install.sh
 ```
 
-The installer reads the authoritative application version from
-`pyproject.toml`, checks that Python 3.11+, Git, Make, a C/C++ compiler, CMake,
-pkg-config, Autoconf, Automake, Libtool, GMP, MPFR, and FLINT are available,
-and attempts to install missing system packages through the detected package
-manager (using `sudo` on Linux/WSL when needed). It then:
+The script resolves its own directory, so absolute and relative invocations
+also work when the current directory is elsewhere. It validates the version,
+operating system, architecture, Python, build commands, and native development
+libraries. If system packages are missing, it displays the package manager,
+the exact package list, and whether administrative access is needed, then asks
+for confirmation.
 
-1. creates `~/.local/share/numerisect/releases/<version>`;
-2. copies the application, native sources, static interface, and documentation;
-3. creates a release-specific `.venv` and installs FastAPI and Uvicorn from the
-   copied `pyproject.toml`;
-4. writes `VERSION` and `INSTALLATION.txt` metadata;
-5. points `~/.local/share/numerisect/current` at that release; and
-6. creates `~/.local/share/numerisect/bin/numerisect` as the stable launcher.
+On Linux and WSL, confirmed dependency installation may execute `sudo dnf
+install`, `sudo apt-get update` followed by `sudo apt-get install`, or `sudo
+pacman -Sy --needed`. On macOS it may execute `brew install` without `sudo`.
+The script never runs a general system upgrade command and does not silently
+upgrade pip.
 
-The shared state and output directories are outside release directories:
-
-```text
-~/.local/share/numerisect/state
-~/.local/share/numerisect/output
-```
-
-This preserves jobs, engine sources, logs, and reports across application
-updates. Add the launcher directory to the shell path if desired:
+Useful options:
 
 ```bash
-export PATH="$HOME/.local/share/numerisect/bin:$PATH"
-numerisect
-```
-
-The first application start still checks for YAFU, Msieve, GMP-ECM, CADO-NFS,
-PARI/GP, and the FLINT/Arb zeta helper. Missing engines are fetched, compiled,
-and installed under the shared `state/tools` directory without root access.
-
-## Options
-
-```bash
-./install.sh --prefix "$HOME/.local/share/numerisect"
 ./install.sh --check
 ./install.sh --no-system-deps
+./install.sh --yes
+./install.sh --prefix "$HOME/.local/share/numerisect"
 ./install.sh --force
 ```
 
-`--prefix` chooses another user-writable installation root. `--check` performs
-version and prerequisite checks without copying files. `--no-system-deps`
-disables package-manager commands and fails if required commands or libraries
-remain absent. `--force` moves an existing same-version release to a timestamped
-backup before installing the new copy; it never removes that backup.
+`--check` is read-only. `--no-system-deps` refuses package-manager changes.
+`--yes` noninteractively approves only the exact package transaction displayed
+by the script and is intended for deliberate automation. `--force` preserves
+the existing version directory under a timestamped backup before replacement.
+A failed application install retains an `.install-incomplete` marker and never
+updates the stable `current` link or reports success.
 
-The installer requires a package manager only when prerequisites are missing.
-On Debian/Ubuntu WSL it may invoke `sudo apt-get`; on Fedora it may invoke
-`sudo dnf`; on Arch it may invoke `sudo pacman`; on macOS it invokes Homebrew.
-Review the package-manager prompt and use `--no-system-deps` if dependencies
-are managed by an organization or container image.
+The default layout is:
 
-## Upgrading
-
-Increment `version` in `pyproject.toml` and keep `numerisect/__init__.py` in
-sync before making a release commit. Run `./install.sh` again. A new version
-gets its own release directory and `current` switches to it atomically; the
-shared state and output remain in place. Reinstalling the same version requires
-`--force`.
-
-Before publishing any future package, verify the version with:
-
-```bash
-./install.sh --check --no-system-deps
-python3 -c 'import numerisect; print(numerisect.__version__)'
+```text
+~/.local/share/numerisect/
+├── bin/numerisect
+├── current -> releases/0.3.0
+├── releases/0.3.0/
+├── state/
+└── output/
 ```
 
-## Troubleshooting
+Add `~/.local/share/numerisect/bin` to `PATH` if desired, then run
+`numerisect`. The state and output directories remain shared across versioned
+application upgrades.
 
-If system packages cannot be installed, run `./install.sh --check --no-system-deps`
-to see the missing command or library. Install the corresponding development
-packages for the host, then rerun the installer. If an engine fails during
-first start, inspect `state/engine-setup.log` and use the setup banner or
-`POST /api/setup/install` to retry. Installation does not overwrite existing
-system engine commands; Numerisect prefers its managed `state/tools/bin`
-directory for its own processes.
+## Optional native-engine builds
+
+Starting Numerisect never downloads, compiles, or installs an engine. It only
+reports availability. When engines are missing, the browser displays a review
+button and names the affected components. Installation begins only after the
+user accepts a confirmation warning that the operation can require substantial
+time, CPU, network bandwidth, and disk space.
+
+Approved engine installation clones exact commits into `state/tools/src`,
+verifies those commits, compiles locally, and installs under `state/tools`.
+Pins, upstream URLs, licenses, interaction types, and platform notes are stored
+in `numerisect/engine_manifest.toml`; no mutable latest-release selection is
+used. The current implementation uses Git rather than source archives, so no
+archive checksum applies. Third-party sources are not committed to this
+repository.
+
+To review a proposed upstream pin without modifying the manifest:
+
+```bash
+python scripts/update_engine_pins.py --engine YAFU --ref refs/tags/v3.1.9
+```
+
+After reviewing the upstream ref and license, rerun with `--write`, inspect the
+manifest diff, update `THIRD_PARTY_LICENSES.md`, and validate a clean build.
+
+## Failures and diagnostics
+
+The setup banner reports the component that failed and keeps detailed commands
+in the local state log. Full installation logs and executable paths are not
+returned by ordinary API status responses. Resolve the named prerequisite or
+engine build failure, restart Numerisect, and retry explicitly from the banner.
+
+See [the localhost security model](SECURITY_MODEL.md) for API authentication
+and safe command-line access. See
+[third-party licenses](../THIRD_PARTY_LICENSES.md) before redistributing any
+built native component.

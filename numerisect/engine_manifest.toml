@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Reviewed 2026-09-05. Revisions are immutable 40-character Git commits.
+
+[[engine]]
+name = "PARI/GP"
+command = "gp"
+repository = "https://pari.math.u-bordeaux.fr/git/pari.git"
+upstream_ref = "pari-2.17.2"
+revision = "5775dcfd42d76a80a8527e42e955aa0184c573f7"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "GPL-2.0-or-later"
+interaction = "built locally and invoked as a separate executable"
+platforms = "Linux and WSL; macOS source build expected but not yet verified by the project"
+
+[[engine]]
+name = "GMP-ECM"
+command = "ecm"
+repository = "https://gitlab.inria.fr/zimmerma/ecm.git"
+upstream_ref = "git-7.0.6"
+revision = "e2d63f6628592af8383f1447143a49b072bcf90e"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "GPL-3.0-or-later"
+interaction = "built locally and invoked as a separate executable"
+platforms = "Linux and WSL; macOS source build expected but not yet verified by the project"
+
+[[engine]]
+name = "Msieve"
+command = "msieve"
+repository = "https://github.com/upiter/msieve.git"
+upstream_ref = "master reviewed 2026-09-05"
+revision = "4ffde2cbc0c2e699806d26def47e2ed043b71026"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "Public-domain dedication stated by upstream"
+interaction = "built locally and invoked as a separate executable"
+platforms = "Automated recipe currently supports x86-64 Linux and WSL only"
+
+[[engine]]
+name = "YAFU"
+command = "yafu"
+repository = "https://github.com/bbuhrow/yafu.git"
+upstream_ref = "v3.1.9"
+revision = "54c5e8d4c21c8c994421d0c95c16aa6f3bd0280a"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "Public-domain dedication stated by upstream; bundled components require review"
+interaction = "built locally and invoked as a separate executable"
+platforms = "Automated recipe currently supports x86-64 Linux and WSL only"
+
+[[engine]]
+name = "CADO-NFS"
+command = "cado-nfs.py"
+repository = "https://gitlab.inria.fr/cado-nfs/cado-nfs.git"
+upstream_ref = "master reviewed 2026-09-05"
+revision = "f85098631fd047777fbdca94c765d77cb7f12299"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "LGPL-2.1-only"
+interaction = "built locally and invoked as a separate executable"
+platforms = "Linux and WSL; macOS source build expected but not yet verified by the project"
+
+[[engine]]
+name = "FLINT/Zeta"
+command = "numerisect-zeta"
+repository = "https://github.com/flintlib/flint.git"
+upstream_ref = "v3.6.0"
+revision = "8d5454b96761fafe4d5a9da76a369a602f500f49"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "LGPL-3.0-or-later"
+interaction = "FLINT is built as a shared library; Numerisect compiles and dynamically links its native zeta helper"
+platforms = "Linux and WSL; macOS source build expected but not yet verified by the project"

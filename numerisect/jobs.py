@@ -26,7 +26,6 @@ from .engines import (
 )
 from .outputs import save_factorization
 
-
 PHASES = (
     ("trial", "Trial division", 8),
     ("fmt:", "Fermat search", 12),
