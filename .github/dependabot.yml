@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "America/Toronto"
+    open-pull-requests-limit: 5
+    reviewers:
+      - reza-ghazi
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: "America/Toronto"
+    open-pull-requests-limit: 5
+    reviewers:
+      - reza-ghazi
+    commit-message:
+      prefix: "ci"

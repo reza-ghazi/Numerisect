@@ -8,19 +8,27 @@ commits and locally modified engine pins are not supported.
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately to
-`contact@brightarcadia.com`. Do not open a public issue until the report has
-been assessed and a safe disclosure plan has been agreed.
+Do not open a public issue for a suspected vulnerability.
+
+Use either of these private channels:
+
+1. If GitHub displays the private-reporting form, [open a private vulnerability report](https://github.com/reza-ghazi/Numerisect/security/advisories/new).
+2. Otherwise, email [contact@brightarcadia.com](mailto:contact@brightarcadia.com) with the subject `Numerisect security report`.
+
+GitHub private vulnerability reporting must be enabled in the repository
+security settings before outside reporters can use the first option. Email is
+the fallback whenever that form is unavailable.
 
 Include the Numerisect revision, operating system, Python version, affected
-route or component, and minimal reproduction steps. Do not attach secrets,
-session tokens, full environment dumps, engine or job logs, database files, or
-absolute filesystem paths. Redact sensitive integer inputs when they are not
-essential to the report.
+route or component, and minimal reproduction steps. Do not attach credentials,
+session tokens, full environment dumps, complete engine or job logs, database
+files, or absolute filesystem paths. Redact sensitive integer inputs when they
+are not essential to the report.
 
 Numerisect launches external native tools and may compile optional engines from
 pinned upstream Git commits after explicit confirmation. Reports involving an
 upstream engine may need coordinated disclosure with that project.
 
 No response-time or remediation guarantee is made for this pre-release
-project. Please allow reasonable time for assessment before public disclosure.
+project. Please allow reasonable time for assessment and coordinated remediation
+before public disclosure.

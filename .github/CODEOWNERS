@@ -1,0 +1,10 @@
+# All changes require review by the project owner.
+* @reza-ghazi
+
+# Give security- and automation-sensitive files explicit ownership.
+.github/ @reza-ghazi
+SECURITY.md @reza-ghazi
+numerisect/security.py @reza-ghazi
+numerisect/installer.py @reza-ghazi
+numerisect/engine_manifest.toml @reza-ghazi
+install.sh @reza-ghazi

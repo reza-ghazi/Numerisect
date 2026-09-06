@@ -3,3 +3,6 @@ contact_links:
   - name: Private security report
     url: https://github.com/reza-ghazi/Numerisect/security/policy
     about: Report vulnerabilities privately; never put sensitive details in a public issue.
+  - name: Support guide
+    url: https://github.com/reza-ghazi/Numerisect/blob/main/SUPPORT.md
+    about: Review support scope, diagnostic information, and privacy guidance before filing.

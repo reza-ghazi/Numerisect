@@ -72,3 +72,12 @@ inspect the manifest diff before merge.
 Contributions are accepted under `GPL-3.0-or-later`, the project license. Only
 submit work you have the right to contribute. Identify copied or adapted code
 and its license; do not add incompatible or unclear third-party material.
+
+## Commit identity and privacy
+
+Git commit author names and email addresses are permanent repository metadata
+and become visible when a repository is public. Contributors who prefer not to
+publish a personal address should enable GitHub's email-privacy option and
+configure Git with their GitHub-provided `users.noreply.github.com` address
+before creating commits. Never rewrite shared history or force-push solely to
+change commit identity without coordinating with the maintainer.

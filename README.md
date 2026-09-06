@@ -521,3 +521,25 @@ manipulation pages, saved-report notices, and mobile layout widths.
 - Result downloads are constrained to Numerisect's output directory.
 - Native commands receive validated values through explicit argument arrays or
   controlled standard input.
+
+## Support, security, and contributing
+
+- For installation or usage questions, read [SUPPORT.md](SUPPORT.md) and use
+  the **Question or support request** issue form.
+- For reproducible defects, use the structured bug-report form.
+- Do not report suspected vulnerabilities in public issues. Follow
+  [SECURITY.md](SECURITY.md) for private GitHub reporting or the email fallback.
+- Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md) and pass the
+  repository quality and secret-scanning workflows.
+
+## Citation
+
+Academic and educational users can cite the software using
+[CITATION.cff](CITATION.cff). GitHub renders this metadata through its
+**Cite this repository** interface after the repository becomes public.
+
+## License
+
+Numerisect is licensed under [GPL-3.0-or-later](LICENSE). Native engines and
+libraries retain their own licenses; see
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

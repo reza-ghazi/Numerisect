@@ -1,0 +1,59 @@
+name: Question or support request
+description: Ask about installation, configuration, or using Numerisect
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read README.md, docs/INSTALLATION.md, and SUPPORT.md first.
+        Do not include secrets, session tokens, complete logs, databases, confidential integer inputs, or personal filesystem paths.
+        Suspected vulnerabilities must be reported privately through SECURITY.md.
+  - type: input
+    id: revision
+    attributes:
+      label: Numerisect revision
+      description: Run `git rev-parse --short HEAD` in the source checkout.
+      placeholder: 3802e3a
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Operating system
+      options:
+        - Fedora Linux
+        - Other Linux
+        - Windows WSL
+        - macOS
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: Python 3.13.7
+    validations:
+      required: true
+  - type: textarea
+    id: engines
+    attributes:
+      label: Relevant native engines
+      description: List names and versions only; do not include absolute executable paths.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Explain the goal, command or interface page used, expected result, and what happened.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy and security
+      options:
+        - label: I removed secrets, tokens, personal paths, confidential inputs, databases, and sensitive logs.
+          required: true
+        - label: This is not a vulnerability report.
+          required: true
