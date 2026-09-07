@@ -46,7 +46,11 @@ jobs:
   deploy:
     name: Publish to docs.numerisect.com
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Publish on a push to main, and on a manual run so the site can be
+    # redeployed without an empty commit.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     permissions:
       pages: write
