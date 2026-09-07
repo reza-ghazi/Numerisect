@@ -1,5 +1,5 @@
-from conftest import requires
 import pytest
+from conftest import requires
 
 from numerisect.number_theory import (
     aliquot_sequence,

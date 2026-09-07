@@ -4,7 +4,6 @@ import pathlib
 import subprocess
 
 import pytest
-
 from conftest import requires
 from fastapi.testclient import TestClient
 

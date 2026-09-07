@@ -1,5 +1,5 @@
-from conftest import requires
 import pytest
+from conftest import requires
 from fastapi.testclient import TestClient
 
 from numerisect import distribution_lab, outputs
