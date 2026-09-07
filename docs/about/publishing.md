@@ -4,19 +4,38 @@ The documentation builds on every push and deploys to
 <https://docs.numerisect.com>. The build itself needs nothing beyond the repository;
 publishing needs a one-time repository setting.
 
-## One-time setup
+## Current state
 
-The deploy step fails with a 404 until GitHub Pages is enabled, because the API has
-nothing to deploy to. The error message says so explicitly.
+Pages is enabled with GitHub Actions as the source, and the site is live at
+<https://reza-ghazi.github.io/Numerisect/>.
 
-1. Open **Settings → Pages** in the repository.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Under **Custom domain**, enter `docs.numerisect.com` and save.
-4. Tick **Enforce HTTPS** once the certificate has been issued, which usually takes a
-   few minutes.
+The custom domain is **not** set yet, deliberately. Setting it before the DNS record
+exists would make GitHub redirect the working URL to a name that does not resolve,
+taking the site offline rather than moving it.
 
-`docs/CNAME` already contains the domain, so it ships with every build and the setting
-survives redeploys.
+## Remaining step: DNS
+
+Add one record at whichever provider serves `numerisect.com`:
+
+```text
+docs.numerisect.com.   CNAME   reza-ghazi.github.io.
+```
+
+Once `dig +short docs.numerisect.com` returns a GitHub address, set the custom domain:
+
+```bash
+gh api -X PUT repos/reza-ghazi/Numerisect/pages -f cname=docs.numerisect.com
+```
+
+or use **Settings → Pages → Custom domain**. Then tick **Enforce HTTPS** once the
+certificate has been issued, usually within a few minutes.
+
+`docs/CNAME` already contains the domain and ships with every build, so the setting
+survives redeploys once it is applied.
+
+!!! warning "Order matters"
+
+    DNS first, custom domain second. The reverse breaks the working URL.
 
 ## DNS
 
