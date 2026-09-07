@@ -84,6 +84,12 @@ markdown_extensions:
   - pymdownx.betterem
   - pymdownx.caret
   - pymdownx.details
+  # Material's icon shortcodes (:octicons-…:, :material-…:, :fontawesome-…:)
+  # are emoji shortcodes under the hood. Without this extension they render as
+  # literal text, which is what the published site did before this was added.
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span

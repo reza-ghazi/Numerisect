@@ -5,6 +5,15 @@ binary packages are published.
 
 ## Unreleased
 
+- Fixed every Material icon on the documentation site, which rendered as literal text
+  such as `:octicons-arrow-right-24: Installation` on all 35 occurrences across 15 pages.
+  Material's icon shortcodes are emoji shortcodes underneath, and `pymdownx.emoji` was
+  never configured, so the theme silently passed them through. The strict build did not
+  catch it because unrecognised shortcodes are valid Markdown text.
+- Added a source-code section to the documentation home page linking the repository,
+  releases, issue tracker, contributing guide and citation file, so a reader arriving at
+  the site can find the source and report a wrong result without hunting for it.
+
 - Published a documentation site at [docs.numerisect.com](https://docs.numerisect.com),
   built with MkDocs Material from the existing `docs/` tree so there is one source of
   truth rather than a parallel copy. It adds a mathematical background section covering

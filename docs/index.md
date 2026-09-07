@@ -121,6 +121,53 @@ Some things it deliberately does not do:
 
 ---
 
+## Source code
+
+Numerisect is free software. The complete source, including every PARI/GP program and
+C helper described in this documentation, is public.
+
+<div class="grid cards" markdown>
+
+-   :fontawesome-brands-github: **Repository**
+
+    ---
+
+    Read the source, the commit history and the test suite.
+
+    [:octicons-arrow-right-24: reza-ghazi/Numerisect](https://github.com/reza-ghazi/Numerisect)
+
+-   :octicons-tag-24: **Releases**
+
+    ---
+
+    Tagged versions, each with a changelog entry.
+
+    [:octicons-arrow-right-24: Releases](https://github.com/reza-ghazi/Numerisect/releases)
+
+-   :octicons-bug-24: **Report a problem**
+
+    ---
+
+    A wrong answer, a build failure or a gap in these pages.
+
+    [:octicons-arrow-right-24: Issue tracker](https://github.com/reza-ghazi/Numerisect/issues)
+
+-   :octicons-git-pull-request-24: **Contribute**
+
+    ---
+
+    The native-computation policy every change has to satisfy.
+
+    [:octicons-arrow-right-24: Contributing](about/contributing.md)
+
+</div>
+
+If you report a wrong mathematical result, include the exact input, the engine that
+produced it and the saved report from your `output/` directory. Those three things make
+the result reproducible, which is the only way a disagreement gets settled.
+
+---
+
 ## Licence and provenance
 
 Numerisect is licensed GPL-3.0-or-later. The native engines it builds are pinned to
@@ -129,3 +176,5 @@ factorization carries a reproducibility manifest listing the commands, engine re
 and executable checksums used.
 
 [:octicons-arrow-right-24: Third-party licences](https://github.com/reza-ghazi/Numerisect/blob/main/THIRD_PARTY_LICENSES.md)
+
+[:octicons-arrow-right-24: Citing Numerisect](https://github.com/reza-ghazi/Numerisect/blob/main/CITATION.cff)
