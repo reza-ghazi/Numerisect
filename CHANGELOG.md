@@ -23,6 +23,9 @@ binary packages are published.
   distributed workers as deferred. All of those ship.
 - Documented that PARI's `primecertexport` cannot render an N−1 certificate, and added a
   test asserting no export path passes it one.
+- Granted the secret-scan workflow `pull-requests: read`. Gitleaks enumerates a pull
+  request's commits, so without it the scan failed with "Resource not accessible by
+  integration" on every pull request, including Dependabot's.
 
 - Recorded the work that goes beyond the 150-item proposal in
   `docs/ROADMAP_STATUS.md`, and refreshed the page, group and test counts across the

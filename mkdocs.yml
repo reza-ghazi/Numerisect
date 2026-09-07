@@ -116,8 +116,6 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/reza-ghazi/Numerisect
       name: Numerisect on GitHub
-  version:
-    provider: mike
 
 not_in_nav: |
   ROADMAP_STATUS.md
@@ -178,3 +176,4 @@ nav:
       - about/roadmap.md
       - about/contributing.md
       - about/changelog.md
+      - about/publishing.md
