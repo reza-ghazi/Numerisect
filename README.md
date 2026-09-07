@@ -72,9 +72,9 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#diagnostics>.
+<http://127.0.0.1:8765/?ui=20260907-named-tools#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260907-named-tools#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20260907-named-tools#diagnostics>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server

@@ -5,6 +5,21 @@ binary packages are published.
 
 ## Unreleased
 
+- Renamed 33 tool headings so the navigation shows what each tool is called, not only
+  what it does. The sidebar button and the tool picker both display a tool's heading, and
+  headings such as "Solve x² − dy² = 1", "Analyze witness bases" and "Apply Korselt's
+  criterion" never mentioned Pell, Miller–Rabin or Carmichael, so scanning the list for a
+  known name found nothing. The names were present only in the small eyebrow text inside
+  each card, visible after the tool was already open. Affected, among others: Pell,
+  continued fractions, Miller–Rabin, Goldbach, Carmichael, Hardy–Littlewood, Bateman–Horn,
+  Maier, Pocklington, Proth, Sierpiński and Riesel, Chebotarev, Eisenstein, Dirichlet,
+  Dedekind, the Chinese remainder theorem and SQUFOF.
+- Gave the two prime-race tools distinct names. The animated and the analytic tool both
+  read "Race the reduced residue classes", so they were indistinguishable in the sidebar
+  and in the picker.
+- Added contract tests asserting that every navigation label is unique and that the
+  recognised name of each subject appears in some label.
+
 - Stopped labelling a rational's continued-fraction expansion "inconclusive" in the
   exported report. A rational expansion terminates, so it has no period; calling that
   inconclusive confuses "not applicable" with "not settled". The export now says which

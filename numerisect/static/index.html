@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20260907-arbitrary-digits" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260907-arbitrary-digits" />
+    <link rel="icon" href="/assets/favicon.svg?v=20260907-named-tools" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260907-named-tools" />
   </head>
   <body>
     <header class="topbar">
@@ -134,7 +134,7 @@
 
         <form id="factor-lab-squfof-form">
           <p class="eyebrow">SHANKS SQUARE FORMS</p>
-          <h2>SQUFOF</h2>
+          <h2>SQUFOF, Shanks' square forms factorization</h2>
           <p>Shanks' square forms factorization, for odd inputs below 2<sup>62</sup>. No installed library provides SQUFOF, so Numerisect supplies it as a compiled C program using GMP. An exhausted search is inconclusive and never a claim that the input is prime.</p>
           <label>Integer expression<input id="squfof-expression" type="text" spellcheck="false" placeholder="11111111111" required /></label>
           <details>
@@ -565,7 +565,7 @@
 
           <form id="prime-tuples-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIME TUPLES</p>
-            <h2>Find twins and constellations</h2>
+            <h2>Prime tuples: twins and constellations</h2>
             <p>Search by offsets from a prime base. Custom offsets must begin with 0.</p>
             <div class="tuple-controls">
               <label>Pattern
@@ -601,7 +601,7 @@
 
           <form id="paterson-prime-form" class="panel utility-card">
             <p class="eyebrow">PATERSON PRIMES</p>
-            <h2>Search by base-4 form</h2>
+            <h2>Paterson primes by base-4 form</h2>
             <p>Find prime p when its base-4 digits, read as a decimal integer, are also prime.</p>
             <div class="controls-grid">
               <label>From<input id="paterson-start" value="2" required /></label>
@@ -648,7 +648,7 @@
 
           <form id="modular-wheel-form" class="panel utility-card">
             <p class="eyebrow">MODULAR WHEEL</p>
-            <h2>Visualize residue structure</h2>
+            <h2>Modular wheel of residue structure</h2>
             <p>Plot native primality and coprimality results around modular rings.</p>
             <div class="controls-grid">
               <label>Modulus<input id="wheel-modulus" type="number" min="2" max="360" value="30" required /></label>
@@ -659,7 +659,7 @@
 
           <form id="reptend-prime-form" class="panel utility-card">
             <p class="eyebrow">FULL-REPTEND PRIMES</p>
-            <h2>Find maximal decimal periods</h2>
+            <h2>Full-reptend primes and maximal decimal periods</h2>
             <p>Find primes p for which 1/p has the maximum possible period p−1.</p>
             <div class="controls-grid">
               <label>From<input id="reptend-start" value="3" required /></label>
@@ -671,7 +671,7 @@
 
           <form id="witness-form" class="panel utility-card">
             <p class="eyebrow">MILLER–RABIN WITNESSES</p>
-            <h2>Analyze witness bases</h2>
+            <h2>Miller–Rabin witness bases</h2>
             <p>Use the complete strong test—not the incomplete aᵈ = 1 shortcut—to distinguish witnesses and passing bases.</p>
             <div class="controls-grid">
               <label>Odd integer n<input id="witness-number" value="91" required /></label>
@@ -729,7 +729,7 @@
 
           <form id="primorial-form" class="panel utility-card">
             <p class="eyebrow">PRIMORIALS</p>
-            <h2>Generate p# products</h2>
+            <h2>Primorials p#</h2>
             <p>Multiply the first n rigorously generated primes cumulatively with arbitrary precision.</p>
             <label>How many<input id="primorial-count" type="number" min="1" max="500" value="10" required /></label>
             <button class="primary" type="submit"><span>Generate primorials</span><span>→</span></button>
@@ -757,7 +757,7 @@
 
           <form id="goldbach-form" class="panel utility-card">
             <p class="eyebrow">GOLDBACH PARTITIONS</p>
-            <h2>Split one even integer</h2>
+            <h2>Goldbach partitions of an even integer</h2>
             <p>Find unique proven-prime pairs whose sum is the supplied even integer.</p>
             <div class="controls-grid">
               <label>Even integer<input id="goldbach-number" value="100" required /></label>
@@ -849,7 +849,7 @@
 
           <form id="prime-polynomial-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIME POLYNOMIAL</p>
-            <h2>Explore n² − n + k</h2>
+            <h2>Euler's prime polynomial n² − n + k</h2>
             <p>Find rigorous prime values, the longest consecutive run, and residue classes forced divisible by small primes.</p>
             <div class="five-controls">
               <label>Constant k<input id="polynomial-k" value="41" required /></label>
@@ -954,7 +954,7 @@
 
           <form id="visual-gap-timeline-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIME-GAP TIMELINE</p>
-            <h2>Follow gaps and record gaps</h2>
+            <h2>Prime gaps and maximal record gaps</h2>
             <p>Plot every consecutive prime gap across a range and mark each record gap with its merit g / ln p. PARI/GP measures each gap and detects each record; the record list is never truncated.</p>
             <div class="four-controls">
               <label>From<input id="visual-gap-start" value="1" required /></label>
@@ -971,7 +971,7 @@
 
           <form id="visual-prime-race-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIME RACE ANIMATION</p>
-            <h2>Race the reduced residue classes</h2>
+            <h2>Prime race animation of the residue classes</h2>
             <p>Animate the running prime counts of every class coprime to m at native checkpoints and replay each exact lead change. Modulus 4 reproduces the Chebyshev bias towards 3 mod 4.</p>
             <div class="five-controls">
               <label>From<input id="visual-race-start" value="1" required /></label>
@@ -1082,7 +1082,7 @@
 
           <form id="sociable-cycle-form" class="panel utility-card utility-wide">
             <p class="eyebrow">ALIQUOT CYCLES</p>
-            <h2>Find amicable pairs and sociable chains</h2>
+            <h2>Aliquot cycles: amicable pairs and sociable chains</h2>
             <p>Iterate s(n) = σ(n) − n over an interval and report every closed cycle. Trajectories that exceed the term bound or the length cap stay inconclusive.</p>
             <div class="four-controls">
               <label>From<input id="sociable-start" value="200" required /></label>
@@ -1177,7 +1177,7 @@
 
           <form id="prime-race-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIME RACES AND CHEBYSHEV BIAS</p>
-            <h2>Race the reduced residue classes</h2>
+            <h2>Prime races and Chebyshev bias</h2>
             <p>Count primes in every reduced residue class modulo q at a series of checkpoints, report the leader at each checkpoint, and normalise the bias by log x/√x.</p>
             <div class="triple-controls">
               <label>Modulus q ≤ 5,040<input id="prime-race-modulus" value="4" required /></label>
@@ -1200,7 +1200,7 @@
 
           <form id="singular-series-form" class="panel utility-card">
             <p class="eyebrow">HARDY–LITTLEWOOD SINGULAR SERIES</p>
-            <h2>Evaluate 𝔖 for a k-tuple pattern</h2>
+            <h2>Hardy–Littlewood singular series 𝔖</h2>
             <p>Check admissibility and evaluate the singular series as a truncated Euler product with a rigorous relative tail bound and an explicit enclosing interval.</p>
             <div class="controls-grid">
               <label>Pattern offsets (start at 0)<input id="singular-series-offsets" value="0, 2" required /></label>
@@ -1224,7 +1224,7 @@
 
           <form id="bateman-horn-form" class="panel utility-card utility-wide">
             <p class="eyebrow">BATEMAN–HORN</p>
-            <h2>Predict prime values of polynomials</h2>
+            <h2>Bateman–Horn prediction for polynomials</h2>
             <p>Prove each polynomial irreducible, count ω(p) with polrootsmod, build the Bateman–Horn constant, and compare the prediction with an exact count over a bounded range. One polynomial per line, coefficients ascending.</p>
             <label>Polynomials (ascending coefficients, one per line)<textarea id="bateman-horn-polynomials" rows="3" spellcheck="false" required>1, 0, 1</textarea></label>
             <div class="triple-controls">
@@ -1250,7 +1250,7 @@
 
           <form id="short-interval-form" class="panel utility-card utility-wide">
             <p class="eyebrow">MAIER MATRIX</p>
-            <h2>Run a short-interval experiment</h2>
+            <h2>Maier matrix short-interval experiment</h2>
             <p>Count the primes in each row interval [qk + 1, qk + y] and compare with the naive expectation y/log(qk). A primorial modulus reproduces Maier's construction, in which short intervals are systematically richer or poorer than the average.</p>
             <div class="four-controls">
               <label>Matrix modulus q<input id="short-interval-modulus" value="9699690" required /></label>
@@ -1403,7 +1403,7 @@
 
           <form id="deterministic-witness-form" class="panel utility-card">
             <p class="eyebrow">DETERMINISTIC MILLER–RABIN</p>
-            <h2>Apply a sufficient witness set</h2>
+            <h2>Deterministic Miller–Rabin witness sets</h2>
             <p>Use the published sufficient base sets for bounded ranges, showing every squaring chain and the exact bound that makes the result a proof.</p>
             <div class="controls-grid">
               <label>Integer n<input id="deterministic-witness-number" value="3215031751" required /></label>
@@ -1414,7 +1414,7 @@
 
           <form id="pocklington-proof-form" class="panel utility-card">
             <p class="eyebrow">POCKLINGTON N−1 PROOF</p>
-            <h2>Prove primality from N − 1</h2>
+            <h2>Pocklington N − 1 primality proof</h2>
             <p>Factor N − 1 far enough for the Pocklington bound, find a witness for every prime divisor of the factored part, and emit a machine-readable certificate.</p>
             <div class="triple-controls">
               <label>Integer n<input id="pocklington-number" value="104729" required /></label>
@@ -1447,7 +1447,7 @@
 
           <form id="proth-test-form" class="panel utility-card">
             <p class="eyebrow">PROTH AND GENERALIZED PROTH</p>
-            <h2>Test k·bⁿ + 1</h2>
+            <h2>Proth primes k·bⁿ + 1</h2>
             <p>Apply Proth's necessary-and-sufficient criterion for base 2, or the generalized N − 1 criterion for any other base, and cross-check against PARI isprime.</p>
             <div class="four-controls">
               <label>Multiplier k<input id="proth-k" value="5" required /></label>
@@ -1507,7 +1507,7 @@
 
           <form id="carmichael-analysis-form" class="panel utility-card">
             <p class="eyebrow">CARMICHAEL ANALYZER</p>
-            <h2>Apply Korselt's criterion</h2>
+            <h2>Carmichael numbers and Korselt's criterion</h2>
             <p>Factor n, test squarefreeness and (p − 1) | (n − 1) for every prime factor, and derive λ(n) and the exact Fermat-liar count.</p>
             <div class="triple-controls">
               <label>Integer n<input id="carmichael-number" value="561" required /></label>
@@ -1531,7 +1531,7 @@
 
           <form id="repunit-search-form" class="panel utility-card">
             <p class="eyebrow">GENERALIZED REPUNITS</p>
-            <h2>Search (bⁿ − 1)/(b − 1)</h2>
+            <h2>Generalized repunits (bⁿ − 1)/(b − 1)</h2>
             <p>Skip composite exponents natively, filter with BPSW, and prove every reported repunit prime with PARI isprime.</p>
             <div class="four-controls">
               <label>Base b<input id="repunit-base" type="number" min="2" max="1000000" value="10" required /></label>
@@ -1544,7 +1544,7 @@
 
           <form id="sierpinski-riesel-form" class="panel utility-card">
             <p class="eyebrow">SIERPIŃSKI AND RIESEL</p>
-            <h2>Search for a prime k·2ⁿ ± 1</h2>
+            <h2>Sierpiński and Riesel numbers k·2ⁿ ± 1</h2>
             <p>Find the first proven prime that removes k from the Sierpiński or Riesel candidates; an exhausted bound stays inconclusive.</p>
             <div class="four-controls">
               <label>Multiplier k<input id="sierpinski-k" value="78557" required /></label>
@@ -1583,7 +1583,7 @@
 
           <form id="prime-ladder-form" class="panel utility-card">
             <p class="eyebrow">PRIME LADDERS</p>
-            <h2>Change one digit at a time</h2>
+            <h2>Prime ladders, one digit at a time</h2>
             <p>Find a shortest path between two equal-width primes in which every intermediate value is a proven prime.</p>
             <div class="triple-controls">
               <label>From prime<input id="ladder-start" value="1373" required /></label>
@@ -1747,7 +1747,7 @@
 
           <form id="reciprocity-trace-form" class="panel utility-card utility-wide">
             <p class="eyebrow">QUADRATIC RECIPROCITY</p>
-            <h2>Trace the Jacobi symbol (a/n)</h2>
+            <h2>Quadratic reciprocity and the Jacobi symbol (a/n)</h2>
             <p>Reduce (a/n) step by step with reciprocity, the supplementary law for 2, and modular reduction, then cross-check the sign against the native Kronecker symbol.</p>
             <div class="triple-controls">
               <label>Numerator a<input id="reciprocity-a" value="30" required /></label>
@@ -1822,7 +1822,7 @@
 
           <form id="crt-form" class="panel utility-card utility-wide">
             <p class="eyebrow">GENERALIZED CRT</p>
-            <h2>Solve a congruence system</h2>
+            <h2>Chinese remainder theorem for a congruence system</h2>
             <p>Solve compatible systems even when moduli are not pairwise coprime. Enter one residue and modulus per line.</p>
             <div class="controls-grid">
               <label>Residues<textarea id="crt-residues" rows="6" spellcheck="false" required>2
@@ -1930,7 +1930,7 @@
 
           <form id="eisenstein-prime-form" class="panel utility-card">
             <p class="eyebrow">EISENSTEIN INTEGERS</p>
-            <h2>Check a + bω</h2>
+            <h2>Eisenstein primes a + bω</h2>
             <p>Apply exact norm and rational-axis criteria in the triangular integer lattice ℤ[ω].</p>
             <div class="controls-grid">
               <label>Coefficient a<input id="eisenstein-a" value="1" required /></label>
@@ -1991,7 +1991,7 @@
 
           <form id="chebotarev-form" class="panel utility-card utility-wide">
             <p class="eyebrow">CHEBOTAREV DENSITY</p>
-            <h2>Measure Frobenius factorization patterns</h2>
+            <h2>Chebotarev density and Frobenius patterns</h2>
             <p>Factor a monic irreducible polynomial modulo every unramified prime below a bound and compare the observed cycle-type frequencies with the conjugacy-class densities of its Galois group.</p>
             <div class="triple-controls">
               <label>Polynomial coefficients a₀, a₁, …<textarea id="chebotarev-coefficients" rows="3" required>-1, -1, 0, 1</textarea></label>
@@ -2089,7 +2089,7 @@
 
           <form id="continued-fraction-form" class="panel utility-card utility-wide">
             <p class="eyebrow">CONTINUED FRACTIONS</p>
-            <h2>Expand a rational or a quadratic irrational</h2>
+            <h2>Continued fractions of a rational or a quadratic irrational</h2>
             <p>Partial quotients, convergents, the preperiod and period of (p&#8202;+&#8202;√d)/q, the palindromic structure of the period of √d, and the best rational approximation below a denominator bound. Convergent denominators grow exponentially, so values wider than the preview are abbreviated on screen and written to the saved report in full, at arbitrary length.</p>
             <div class="triple-controls">
               <label>Kind<select id="continued-fraction-mode"><option value="quadratic">Quadratic irrational (p + √d)/q</option><option value="rational">Rational p/q</option></select></label>
@@ -2112,7 +2112,7 @@
 
           <form id="pell-equation-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PELL EQUATION</p>
-            <h2>Solve x² − dy² = 1</h2>
+            <h2>Pell's equation x² − dy² = 1</h2>
             <p>The fundamental solution from the fundamental unit of ℤ[√d], whether the negative Pell equation is solvable, the regulator, and further solutions as powers of the fundamental one. Solutions grow without bound &mdash; for d&#8202;=&#8202;1000099 the fundamental solution already has 1,128 digits &mdash; so none is ever dropped: long values are abbreviated on screen and saved in full at arbitrary length.</p>
             <div class="triple-controls">
               <label>Radicand d<input id="pell-d" value="13" required /></label>
@@ -2261,7 +2261,7 @@
           </form>
 
           <form id="zeta-explicit-pi-form" class="panel utility-card utility-wide">
-            <p class="eyebrow">EXPLICIT FORMULA</p><h2>Reconstruct π(x) from zeros</h2>
+            <p class="eyebrow">EXPLICIT FORMULA</p><h2>Riemann's explicit formula: π(x) from the zeros</h2>
             <p>Riemann's explicit formula with N certified zeros, compared against the exact π(x) from primecount.</p>
             <div class="zeta-controls">
               <label>Evaluation point x<input id="zeta-explicit-bound" value="100" required /></label>
@@ -2372,7 +2372,7 @@
           </form>
 
           <form id="zeta-lfunction-form" class="panel utility-card utility-wide">
-            <p class="eyebrow">DIRICHLET L-FUNCTION</p><h2>Evaluate L(s, χ)</h2>
+            <p class="eyebrow">DIRICHLET L-FUNCTION</p><h2>Dirichlet L-functions L(s, χ)</h2>
             <p>Enclose L(s, χ) rigorously and cross-check it against an independent Hurwitz evaluation.</p>
             <div class="zeta-controls">
               <label>Modulus q<input id="zeta-lfunction-modulus" value="4" required /></label>
@@ -2385,7 +2385,7 @@
           </form>
 
           <form id="zeta-lzeros-form" class="panel utility-card utility-wide">
-            <p class="eyebrow">GRH EXPERIMENTS</p><h2>Search critical-line zeros of L(s, χ)</h2>
+            <p class="eyebrow">GRH EXPERIMENTS</p><h2>GRH experiments on critical-line zeros of L(s, χ)</h2>
             <p>Certify sign changes of Hardy's Z(t, χ) for real characters, or locate exploratory |L| minima for complex ones.</p>
             <div class="zeta-controls">
               <label>Modulus q<input id="zeta-lzeros-modulus" value="4" required /></label>
@@ -2400,7 +2400,7 @@
           </form>
 
           <form id="zeta-dedekind-form" class="panel utility-card utility-wide">
-            <p class="eyebrow">DEDEKIND ZETA · PARI/GP</p><h2>Analyse ζₖ(s) for a number field</h2>
+            <p class="eyebrow">DEDEKIND ZETA · PARI/GP</p><h2>Dedekind zeta ζₖ(s) of a number field</h2>
             <p>PARI/GP builds the field and its L-function; results use PARI floating-point precision, not Arb ball enclosures.</p>
             <div class="zeta-controls">
               <label>Field family
@@ -2516,6 +2516,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260907-arbitrary-digits" defer></script>
+    <script src="/assets/app.js?v=20260907-named-tools" defer></script>
   </body>
 </html>

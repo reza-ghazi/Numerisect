@@ -152,7 +152,7 @@ in-process. See the [command-line reference](cli.md).
 |---|---|---|
 | `POST` | `/api/forms/class-group` | Class number, group structure, generators and regulator for a discriminant. |
 | `POST` | `/api/forms/compose` | Gaussian composition and powers, with and without reduction; principality and order. |
-| `POST` | `/api/forms/continued-fraction` | Expand a rational or a quadratic irrational; partial quotients, convergents, preperiod and period. Values wider than `preview_digits` are abbreviated in the response and written in full to `export_file`. |
+| `POST` | `/api/forms/continued-fraction` | Continued fraction of a rational or a quadratic irrational; partial quotients, convergents, preperiod and period. Values wider than `preview_digits` are abbreviated in the response and written in full to `export_file`. |
 | `POST` | `/api/forms/pell` | Solve `x² − dy² = 1` from the fundamental unit and list further solutions. Values wider than `digit_limit` are abbreviated in the response and written in full to `export_file`. |
 | `POST` | `/api/forms/prime-form` | `qfbprimeform` for each requested prime. |
 | `POST` | `/api/forms/reduce` | Reduce a binary quadratic form, trace the steps, give the SL(2, ℤ) matrix. |

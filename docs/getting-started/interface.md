@@ -19,8 +19,19 @@ factors, modular and polynomial algebra, algebraic primes, advanced explorations
 visualization and education.
 
 Only one operation is visible at a time, and each has a direct hash route such as
-`#primes/prime-check` or `#primes/prime-reciprocal`. A search box filters the navigation;
-on narrow screens a compact selector replaces the sidebar.
+`#primes/prime-check` or `#primes/prime-reciprocal`. On narrow screens a compact selector
+replaces the sidebar.
+
+**Finding a tool by name.** Every sidebar button is labelled with the tool's own name, so
+Pell's equation reads "Pell's equation x² − dy² = 1" and not merely what it does. The
+search box above the sidebar filters on the name, the subtitle and the category at once,
+so typing `pell`, `carmichael` or `continued` narrows the list immediately. Two routes
+worth knowing directly:
+
+```text
+#primes/pell-equation        Pell's equation x² − dy² = 1
+#primes/continued-fraction   continued fractions of a rational or a quadratic irrational
+```
 
 ## Reading a result panel
 

@@ -7,6 +7,45 @@ APP = (ROOT / "numerisect" / "static" / "app.js").read_text(encoding="utf-8")
 RUNNER = (ROOT / "run.sh").read_text(encoding="utf-8")
 
 
+def _form_headings() -> dict[str, str]:
+    """Each tool's <h2>, which is exactly what the navigation button displays."""
+
+    pairs = re.findall(
+        r'<form id="([a-z0-9-]+-form)"[^>]*>.*?<h2>(.*?)</h2>', INDEX, re.S
+    )
+    return {form: re.sub(r"\s+", " ", heading).strip() for form, heading in pairs}
+
+
+def test_navigation_labels_are_unique():
+    """Two tools sharing a label are indistinguishable in the sidebar and the picker.
+
+    The two prime-race tools, one animated and one analytic, both read "Race the
+    reduced residue classes" until they were given distinct names.
+    """
+
+    headings = _form_headings()
+    duplicates = {h for h in headings.values() if list(headings.values()).count(h) > 1}
+    assert not duplicates, f"navigation labels shared by more than one tool: {duplicates}"
+
+
+def test_navigation_labels_carry_the_recognised_name():
+    """A tool must be findable by the name it is known by, not only by what it does.
+
+    The navigation button shows the <h2>, so a heading that describes the operation
+    without naming the subject hides the tool from anyone scanning for it. "Solve
+    x^2 - dy^2 = 1" gave no hint that it was Pell's equation.
+    """
+
+    labels = " | ".join(_form_headings().values())
+    for name in (
+        "Pell", "Continued fractions", "Miller\u2013Rabin", "Goldbach", "Carmichael",
+        "Bateman\u2013Horn", "Hardy\u2013Littlewood", "Chebotarev", "Dirichlet",
+        "Dedekind", "Sierpi\u0144ski", "Pocklington", "Proth", "Eisenstein",
+        "Chinese remainder", "SQUFOF", "Primorials", "Maier", "Chebyshev",
+    ):
+        assert name in labels, f"no navigation label mentions {name}"
+
+
 def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     grid = INDEX.split('id="prime-page-grid"', 1)[1].split(
         'id="prime-result-panel"', 1
@@ -49,11 +88,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260907-arbitrary-digits' in INDEX
-    assert '/assets/app.js?v=20260907-arbitrary-digits' in INDEX
-    assert '/assets/favicon.svg?v=20260907-arbitrary-digits' in INDEX
+    assert '/assets/styles.css?v=20260907-named-tools' in INDEX
+    assert '/assets/app.js?v=20260907-named-tools' in INDEX
+    assert '/assets/favicon.svg?v=20260907-named-tools' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260907-arbitrary-digits#primes/prime-check' in RUNNER
+    assert '?ui=20260907-named-tools#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
