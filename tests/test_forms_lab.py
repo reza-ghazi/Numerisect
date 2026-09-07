@@ -356,6 +356,30 @@ def test_continued_fraction_without_an_export_writes_nothing(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_exported_rational_expansion_is_not_labelled_inconclusive(tmp_path):
+    """A terminating expansion has no period; that is not an inconclusive result.
+
+    The export first said "inconclusive" for a rational's period, which confuses "not
+    applicable" with "not settled" — the one distinction this project refuses to blur.
+    """
+
+    rational = tmp_path / "rational.txt"
+    continued_fraction("rational", "2422", "10000", export_path=rational)
+    text = rational.read_text(encoding="utf-8")
+    assert "Period length: not applicable (the expansion terminates)" in text
+    assert "Preperiod length: not applicable (the expansion terminates)" in text
+    assert "inconclusive" not in text
+
+    # A quadratic irrational whose period is not closed within the cap really is
+    # inconclusive, and must still say so.
+    capped = tmp_path / "capped.txt"
+    continued_fraction(
+        "quadratic", "0", "1", "13", quotient_limit=3, convergent_limit=3,
+        export_path=capped,
+    )
+    assert "Period length: inconclusive" in capped.read_text(encoding="utf-8")
+
+
 def test_continued_fraction_rejects_invalid_input():
     with pytest.raises(PrimeEngineError):
         continued_fraction("quadratic", "0", "1", "16")  # a perfect square is rational

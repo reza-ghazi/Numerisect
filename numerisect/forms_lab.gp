@@ -402,8 +402,12 @@ fl_write_contfrac(path, mode, p, q, d, quotients, matrix, shown, preperiod, peri
                        Str("Value: (", p, " + sqrt(", d, "))/", q)));
   filewrite(handle, Str("Kind: ", if(mode == 0, "rational", "quadratic irrational")));
   filewrite(handle, Str("Partial quotients: ", n));
-  filewrite(handle, Str("Preperiod length: ", if(preperiod < 0, "inconclusive", preperiod)));
-  filewrite(handle, Str("Period length: ", if(period < 0, "inconclusive", period)));
+  \\ A rational expansion terminates, so it has no period at all.  Reporting that as
+  \\ "inconclusive" would confuse "not applicable" with "not settled", which is exactly
+  \\ the distinction this project refuses to blur.  Only a quadratic irrational whose
+  \\ period was not closed within the cap is inconclusive.
+  filewrite(handle, Str("Preperiod length: ", if(mode == 0, "not applicable (the expansion terminates)", if(preperiod < 0, "inconclusive (the quotient cap was reached first)", preperiod))));
+  filewrite(handle, Str("Period length: ", if(mode == 0, "not applicable (the expansion terminates)", if(period < 0, "inconclusive (the quotient cap was reached first)", period))));
   filewrite(handle, Str("Convergents: ", shown));
   filewrite(handle, Str("Best approximation with denominator <= ", appr_bound, ": ",
                         numerator(approx), "/", denominator(approx)));

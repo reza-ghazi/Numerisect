@@ -5,6 +5,12 @@ binary packages are published.
 
 ## Unreleased
 
+- Stopped labelling a rational's continued-fraction expansion "inconclusive" in the
+  exported report. A rational expansion terminates, so it has no period; calling that
+  inconclusive confuses "not applicable" with "not settled". The export now says which
+  it is, and reserves "inconclusive" for a quadratic irrational whose period was not
+  closed within the quotient cap.
+
 - Removed the length ceiling from the Pell solver and the continued-fraction expander.
   Both quantities grow without bound — the fundamental Pell solution for `d = 1000099`
   has 1,128 decimal digits and its fourth solution has 4,513, and convergent denominators
