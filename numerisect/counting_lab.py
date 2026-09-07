@@ -171,13 +171,15 @@ def _vector(values: Sequence[int]) -> str:
 def _primecount(arguments: Sequence[str], timeout: int) -> tuple[int, str]:
     """Run one primecount process and return its integer result and elapsed seconds."""
 
+    # Arguments are validated before the engine is looked for, so an invalid request
+    # is reported as invalid whether or not primecount happens to be installed.
+    if not 1 <= timeout <= 3600:
+        raise ValueError("Engine time limit must be between 1 and 3,600 seconds")
     executable = shutil.which("primecount")
     if not executable:
         raise PrimeEngineError(
             "The primecount engine is required for the prime-counting laboratory"
         )
-    if not 1 <= timeout <= 3600:
-        raise ValueError("Engine time limit must be between 1 and 3,600 seconds")
     try:
         result = subprocess.run(
             [executable, *arguments, "--time"],
