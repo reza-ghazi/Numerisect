@@ -146,6 +146,36 @@ is visible and can be revisited.
   served by the strategy adviser, which decides from digit count, algebraic form,
   small factors and completed ECM depth.
 
+## Beyond the proposal
+
+An audit compared what the installed engines expose against what the application calls,
+and the following were added because they belong to the subject, not because the
+proposal listed them.
+
+**Exposing more of the installed libraries.** A prime-counting algorithm comparison
+across Legendre, Meissel, Lehmer, Lagarias–Miller–Odlyzko, Deléglise–Rivat and Gourdon;
+Legendre's phi(x, a) and the nth-prime inverse approximations; the integer-structure
+predicates `isprimepower`, `ispowerful`, `istotient`, `isfundamental` and `ispolygonal`;
+Lenstra's divisors in a residue class, with the hypotheses PARI does not itself check
+enforced before the call; `factorint`'s strategy flags as a factoring-method comparison;
+and a binary quadratic forms and continued fractions workbench covering reduction,
+composition, class groups, reduced-form enumeration, representation, exact expansions of
+quadratic irrationals, and Pell equations.
+
+**Things no single engine can do.** Cross-engine verification computes the same quantity
+by every independent method available and reports whether they agree: pi(x) from
+primecount's six algorithms, primesieve's sieve and PARI's `primepi`; primality from
+PARI's proof, PARI's Baillie–PSW and GMP's independent test. On disagreement it reports
+every value and refuses to choose, because a majority of implementations sharing a bug is
+what a vote would conceal. An engine self-test asks each installed engine questions whose
+answers are published constants, each carrying a citation, so a miscompiled build is
+caught before its output is trusted.
+
+**A gap no library fills.** `numerisect_bigsieve.c` enumerates primes in an interval of
+any magnitude. primesieve refuses inputs at or above 2^64 outright, and PARI's `forprime`
+is single-threaded and roughly 130 times slower per window at 10^30. Results at or above
+2^64 are labelled probable primes from Baillie–PSW, never proofs.
+
 ## Notes on scope and honesty
 
 A search that reaches a documented bound, a test that times out, or a catalogue that has

@@ -19,7 +19,7 @@ operation or arbitrary input has been exhaustively tested.
 
 These pages belong to **Primality & navigation**, **Prime generation**, and
 **Arithmetic & factors**, respectively. The complete Prime Tools catalogue has
-116 pages in 11 groups. On mobile, the operation selector replaces the desktop sidebar.
+133 pages in 11 groups. On mobile, the operation selector replaces the desktop sidebar.
 
 ## Indexed navigation before or after an integer
 
@@ -121,8 +121,8 @@ nonpositive integers, duplicate rows, composite moduli, all modular operations,
 progression bounds and continuation, non-coprime classes, output completeness,
 timeouts, API failures, and downloadable reports.
 
-The application-wide suite currently contains 169 passing tests. A separate
-static navigation audit covers all 76 Prime Tools pages and
+The application-wide suite currently contains 800 passing tests. A separate
+static navigation audit covers all 133 Prime Tools pages and
 submitted the three new forms against real GP endpoints, checked local result
 placement and saved-path notices, and checked mobile width handling.
 

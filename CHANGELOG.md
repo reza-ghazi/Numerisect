@@ -5,6 +5,9 @@ binary packages are published.
 
 ## Unreleased
 
+- Recorded the work that goes beyond the 150-item proposal in
+  `docs/ROADMAP_STATUS.md`, and refreshed the page, group and test counts across the
+  README and the documentation pages so they match the application.
 - Added a prime-counting algorithm comparison. `POST /api/counting/algorithm-comparison`
   runs primecount's six algorithms, its alternative-tuning double-check, and PARI's
   `primepi` as independent sources and reports whether they agree. Added Legendre's

@@ -9,7 +9,7 @@ layer evaluates the zeta function.
 
 Start the source checkout with `./run.sh` and select **Riemann zeta**, or open
 <http://127.0.0.1:8765/#zeta>. Zeta uses its own workspace, separate from the
-116 individually routed Prime Tools pages. Zeta itself has 22 individually
+133 individually routed Prime Tools pages. Zeta itself has 22 individually
 routed operations. Choose an operation, enter its
 precision and any available thread settings, then submit it. The zeta result
 panel contains the native result, exact report path, and download control.
