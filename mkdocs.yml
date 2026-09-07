@@ -1,0 +1,180 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Documentation site for https://docs.numerisect.com
+#
+# Build locally without installing anything permanently:
+#   uvx --with mkdocs-material --with mkdocs-minify-plugin mkdocs serve
+#
+# The site deliberately carries no analytics, no tracking, and no third-party
+# fonts or scripts beyond the maths renderer, which is served from the same CDN
+# policy the application itself uses. Numerisect is an offline-first tool and its
+# documentation behaves the same way.
+
+site_name: Numerisect
+site_url: https://docs.numerisect.com/
+site_description: >-
+  Mathematical background and usage for Numerisect, a local workbench for integer
+  factorization, primality, prime exploration and analytic number theory built on
+  PARI/GP, FLINT/Arb, YAFU, Msieve, CADO-NFS, GMP-ECM, primesieve and primecount.
+site_author: Reza Ghazi
+copyright: >-
+  Copyright © Reza Ghazi. Licensed GPL-3.0-or-later. Numerisect is an experimental
+  pre-release; see the honesty notes on each page.
+
+repo_url: https://github.com/reza-ghazi/Numerisect
+repo_name: reza-ghazi/Numerisect
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Follow the system theme
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      lang: en
+
+extra_javascript:
+  - assets/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - assets/numerisect.css
+
+extra:
+  # No analytics key, deliberately. See the privacy note in about/faq.md.
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/reza-ghazi/Numerisect
+      name: Numerisect on GitHub
+  version:
+    provider: mike
+
+not_in_nav: |
+  ROADMAP_STATUS.md
+
+nav:
+  - Home:
+      - index.md
+      - getting-started/installation.md
+      - getting-started/first-steps.md
+      - getting-started/interface.md
+  - Concepts:
+      - concepts/index.md
+      - concepts/proven-and-probable.md
+      - concepts/inconclusive.md
+      - concepts/engines.md
+      - concepts/architecture.md
+      - concepts/security.md
+      - SECURITY_MODEL.md
+  - Mathematics:
+      - mathematics/index.md
+      - mathematics/primality.md
+      - mathematics/factorization.md
+      - mathematics/distribution.md
+      - mathematics/modular.md
+      - mathematics/quadratic-forms.md
+      - mathematics/zeta.md
+  - Guides:
+      - FACTORIZATION.md
+      - FACTOR_LAB.md
+      - PRIMALITY_LAB.md
+      - PRIME_CLASSIFICATION.md
+      - PRIME_MANIPULATION.md
+      - PRIME_STRUCTURES.md
+      - PRIME_EXPLORATION.md
+      - PRIME_RECIPROCALS.md
+      - ARITHMETIC_AND_DISTRIBUTION.md
+      - ADVANCED_NUMBER_THEORY.md
+      - ALGEBRA_LAB.md
+      - FORMS_LAB.md
+      - COUNTING_LAB.md
+      - DISTRIBUTION_LAB.md
+      - RIEMANN_ZETA.md
+      - ZETA_LAB.md
+      - VISUAL_LAB.md
+      - VERIFICATION.md
+      - DISTRIBUTED.md
+      - APPLICATION.md
+  - Reference:
+      - reference/api.md
+      - reference/cli.md
+      - reference/configuration.md
+      - reference/output.md
+      - INSTALLATION.md
+  - About:
+      - about/glossary.md
+      - about/bibliography.md
+      - about/faq.md
+      - about/roadmap.md
+      - about/contributing.md
+      - about/changelog.md

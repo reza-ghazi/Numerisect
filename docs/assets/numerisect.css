@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+/* Result-strength labels. Numerisect distinguishes proofs from probable results
+   everywhere, and the documentation uses the same vocabulary. */
+.strength {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.strength.proven { background: #1b5e20; color: #fff; }
+.strength.probable { background: #e65100; color: #fff; }
+.strength.inconclusive { background: #37474f; color: #fff; }
+.strength.exploratory { background: #4527a0; color: #fff; }
+
+/* Tables of engine attribution read better with a fixed first column. */
+.md-typeset table:not([class]) th:first-child { min-width: 12rem; }
+
+/* Long decimal output should wrap rather than overflow. */
+.md-typeset code { overflow-wrap: anywhere; }
+
+/* Keep display maths from overflowing narrow screens. */
+mjx-container[jax="CHTML"][display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}

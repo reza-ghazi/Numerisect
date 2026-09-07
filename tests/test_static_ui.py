@@ -70,3 +70,36 @@ def test_system_diagnostics_are_a_first_class_local_workspace():
     assert 'id="run-diagnostics"' in INDEX
     assert "#diagnostics" in APP
     assert "Report saved automatically to output/${escapeHtml(data.output_file)}" in APP
+
+
+# --- Documentation site ------------------------------------------------------------
+
+
+def test_every_documentation_page_is_reachable_from_the_site_navigation():
+    """A page in docs/ that is not in mkdocs.yml would be published but unlinked."""
+
+    import re
+
+    config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    nav = config.split("nav:", 1)[1]
+    listed = set(re.findall(r"([A-Za-z0-9_./-]+\.md)", nav))
+    # ROADMAP_STATUS.md is deliberately excluded from the nav and linked inline.
+    listed.update(re.findall(r"([A-Za-z0-9_./-]+\.md)", config.split("not_in_nav:", 1)[1].split("nav:", 1)[0]))
+    on_disk = {
+        str(path.relative_to(ROOT / "docs"))
+        for path in (ROOT / "docs").rglob("*.md")
+    }
+    missing = sorted(on_disk - listed)
+    assert not missing, f"These documentation pages are not in the site navigation: {missing}"
+
+
+def test_the_site_declares_the_custom_domain():
+    assert (ROOT / "docs" / "CNAME").read_text(encoding="utf-8").strip() == "docs.numerisect.com"
+
+
+def test_the_documentation_site_carries_no_analytics():
+    """Numerisect is offline-first; its documentation does not track readers."""
+
+    config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    for tracker in ("google_analytics", "gtag", "analytics:", "googletagmanager"):
+        assert tracker not in config, f"the documentation site must not carry {tracker}"

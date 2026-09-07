@@ -55,3 +55,6 @@ CLAUDE.md
 new_prompt.md
 codex_resume_command.txt
 claude_resume_command.txt
+
+# Documentation site build output
+site/

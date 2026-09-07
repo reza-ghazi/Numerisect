@@ -156,5 +156,5 @@ share it.
 
 See [the localhost security model](SECURITY_MODEL.md) for API authentication
 and safe command-line access. See
-[third-party licenses](../THIRD_PARTY_LICENSES.md) before redistributing any
+[third-party licenses](https://github.com/reza-ghazi/Numerisect/blob/main/THIRD_PARTY_LICENSES.md) before redistributing any
 built native component.

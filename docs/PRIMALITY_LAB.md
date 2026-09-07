@@ -11,6 +11,17 @@ Every operation has one Prime Tools route under `/api/primality-lab/*`, and its
 result appears directly below the submitted form together with the exact
 `output/<filename>` path of the saved report.
 
+!!! note "A limitation in PARI's certificate export"
+
+    `primecertexport` renders ECPP certificates but not N−1 certificates: PARI 2.18
+    answers *"sorry, N-1 certificate is not yet implemented"*. Numerisect therefore
+    passes N−1 certificates only to `primecertisvalid` for verification, and exports
+    only ECPP certificates. A test enforces this.
+
+    For inputs below 2^64, `primecert` returns the number itself and the export reads
+    *"Indeed, ispseudoprime(N) = 1 and N < 2^64"*. That is the exhaustive verification
+    of the BPSW range being used as a theorem rather than a computed certificate chain.
+
 ## Native engines and library routines
 
 | Feature | Roadmap | Library routine performing the computation |

@@ -704,3 +704,28 @@ def test_primality_lab_routes_require_the_session_token():
     client = TestClient(app, base_url="http://127.0.0.1")
     response = client.post("/api/primality-lab/compare", json={"number": "13"})
     assert response.status_code == 403
+
+
+def test_no_certificate_export_path_uses_an_n_minus_one_certificate():
+    """PARI 2.18's primecertexport cannot render an N-1 certificate.
+
+        ? primecertexport(primecert(p, 1))
+        *** sorry, N-1 certificate is not yet implemented.
+
+    Flag 1 certificates are therefore only ever passed to primecertisvalid, never to
+    primecertexport. This guards that, because the failure would appear at runtime on
+    a user's certificate request rather than here.
+    """
+
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    for path in sorted((root / "numerisect").glob("*.gp")):
+        source = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"primecertexport\(([^)]*)\)", source):
+            argument = match.group(1)
+            assert "primecert(" not in argument or ", 1" not in argument, (
+                f"{path.name} exports an N-1 certificate, which PARI cannot render: "
+                f"{match.group(0)}"
+            )

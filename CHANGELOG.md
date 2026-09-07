@@ -5,6 +5,25 @@ binary packages are published.
 
 ## Unreleased
 
+- Published a documentation site at [docs.numerisect.com](https://docs.numerisect.com),
+  built with MkDocs Material from the existing `docs/` tree so there is one source of
+  truth rather than a parallel copy. It adds a mathematical background section covering
+  primality, factorization, prime distribution, modular arithmetic, quadratic forms and
+  the zeta function, each naming the library routine that performs every computation and
+  citing sources for every stated bound. Also adds concept pages on result strength and
+  the engines, a getting-started path, an API reference generated from the running
+  application, a glossary, a bibliography and an FAQ. The site carries no analytics, and
+  a test asserts that it stays that way.
+- Corrected the prime-counting comparison, which counted `primecount --double-check` as
+  an independent source. It reruns the default algorithm with different alpha tuning, so
+  it is a self-consistency check rather than a seventh implementation, and it is now
+  reported separately so the independence claim is not inflated.
+- Corrected `docs/FACTORIZATION.md`, which still said SQUFOF was "not offered" and listed
+  resumable ECM campaigns, expert scheduling, symbolic SNFS and Aurifeuillean analysis and
+  distributed workers as deferred. All of those ship.
+- Documented that PARI's `primecertexport` cannot render an N−1 certificate, and added a
+  test asserting no export path passes it one.
+
 - Recorded the work that goes beyond the 150-item proposal in
   `docs/ROADMAP_STATUS.md`, and refreshed the page, group and test counts across the
   README and the documentation pages so they match the application.

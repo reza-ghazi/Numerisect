@@ -12,9 +12,9 @@ YAFU, Msieve, CADO, and hybrid modes remain available.
 
 The manual laboratory exposes bounded PARI/GP trial division and YAFU Pollard
 rho/Brent, Pollard p−1, Williams p+1, ECM, SIQS, and NFS entry points. The
-trial bound is recorded with the job. SQUFOF is not offered because the tested
-YAFU command set does not expose it; a native C/C++ implementation needs its
-own arbitrary-precision and bounded-machine-word contract before inclusion.
+trial bound is recorded with the job. SQUFOF is available as its own backend, served by the project's compiled
+`numerisect-squfof` helper because no installed library exposes a standalone
+SQUFOF entry point. See [the expert factorization laboratory](FACTOR_LAB.md).
 
 Engine availability does not guarantee that every algorithm is appropriate
 for every input or that a particular third-party build is defect-free. A
@@ -54,11 +54,19 @@ the executables actually resolved on the host. A configured revision describes
 Numerisect's reviewed source pin; the executable hash distinguishes a different
 pre-existing system build.
 
-## Deferred campaign features
+## Campaign features
 
-Resumable multi-worker GMP-ECM campaigns, expert B1/B2/sigma scheduling,
-SQUFOF, symbolic SNFS/Aurifeuillean analysis, separate CADO stage control, and
-distributed trusted workers are deliberately not represented by superficial
-controls. They require new persistent schemas, native resume validation,
-network security design, and clean cancellation tests. See
+These were once deferred and have since shipped. Each is documented on its own page:
+
+- **SQUFOF**, expert B1/B2/sigma scheduling, symbolic SNFS and Aurifeuillean analysis,
+  the strategy adviser and algorithm traces are in
+  [the expert factorization laboratory](FACTOR_LAB.md).
+- **Resumable GMP-ECM campaigns** use the engine's own save and resume residue files;
+  see the same page.
+- **Distributed CADO-NFS** across trusted workers is in
+  [Distributed CADO-NFS](DISTRIBUTED.md). Read its trust model before enabling it: CADO
+  authenticates clients by IP address only.
+
+Separate CADO stage control remains partial: parameters are exposed and stage progress is
+parsed from the log, but running an individual stage in isolation is not implemented. See
 [Roadmap status](ROADMAP_STATUS.md).

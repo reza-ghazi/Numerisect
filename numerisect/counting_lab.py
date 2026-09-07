@@ -295,9 +295,16 @@ def counting_algorithm_comparison(
          "yes" if delta[3] == "1" else "NO", seconds[index]]
         for index, delta in enumerate(deltas)
     ]
+    # primecount --double-check reruns the DEFAULT algorithm with different alpha
+    # tuning. It is a self-consistency check on one implementation, not a seventh
+    # independent one, so it is counted separately rather than inflating the
+    # independence claim.
+    independent = len(counts) - (1 if double_check else 0)
     metrics = {
         "x": str(value),
-        "Independent sources compared": str(len(counts)),
+        "Independent implementations compared": str(independent),
+        "Self-consistency reruns (alternative tuning)": "1" if double_check else "0",
+        "Total sources compared": str(len(counts)),
         "Distinct values returned": str(_one(analysis, "DISTINCT")),
         "All sources agree": "yes" if agree else "NO — SOURCES DISAGREE",
         "Consensus π(x)": consensus,

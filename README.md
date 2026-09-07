@@ -21,6 +21,9 @@ and results remain on the local machine unless the user deliberately moves or
 shares them. The browser interface requires that local backend; it is not a
 standalone static website.
 
+**Full documentation, including the mathematical background for every tool, is at
+[docs.numerisect.com](https://docs.numerisect.com).**
+
 For installation status, supported hosts, and prerequisites, see
 [Installation and versioning](docs/INSTALLATION.md).
 Version history is tracked in [CHANGELOG.md](CHANGELOG.md).

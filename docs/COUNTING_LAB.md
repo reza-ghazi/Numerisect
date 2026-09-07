@@ -19,6 +19,13 @@ Each operation has one Prime Tools route: the three counting pages in the
 submitted form together with the exact `output/<filename>` path of the saved
 report.
 
+!!! note "double-check is not a seventh algorithm"
+
+    `primecount --double-check` reruns the **default** algorithm with different alpha
+    tuning. It is a self-consistency check on one implementation, not an independent
+    one, and the response counts it separately so the independence claim is not
+    inflated.
+
 ## Which routine computes what
 
 | Page | Route | Computation performed by |
