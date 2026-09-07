@@ -1,3 +1,7 @@
+---
+description: A local workbench for integer factorization, primality and analytic number theory.
+---
+
 # Numerisect
 
 Numerisect is a local workbench for integer factorization, primality, prime exploration
