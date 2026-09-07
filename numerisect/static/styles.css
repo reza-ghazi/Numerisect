@@ -394,3 +394,18 @@ body[data-active-view="zeta-view"] .mode-tabs { margin-top: 22px; }
   border-radius: 8px;
   background: var(--panel, #fff);
 }
+
+/* Distributed CADO-NFS exposure notices */
+.warning-note {
+  border-left: 3px solid #d6a34a;
+  background: rgba(214, 163, 74, 0.08);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 0.9rem;
+}
+
+.warning-note ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}

@@ -188,6 +188,29 @@
           <label>Timeout (seconds)<input id="certificate-timeout" type="number" min="1" max="3600" value="300" /></label>
           <div class="actions"><button class="primary" type="submit"><span>Certify factors</span><span>→</span></button></div>
         </form>
+        <form id="distributed-form">
+          <p class="eyebrow">DISTRIBUTED SIEVING</p>
+          <h2>Distributed CADO-NFS</h2>
+          <p class="warning-note"><strong>Read this before enabling.</strong> CADO-NFS clients do not authenticate to its work-unit server. Its only access control is an IP whitelist, so any host matching that list can request work and submit relations. Run this only across machines you control on a network you trust. A poisoned run fails rather than yielding a wrong answer, because Numerisect verifies that the returned factors multiply back to the input.</p>
+          <label>Integer expression<input id="dist-expression" type="text" spellcheck="false" placeholder="2^233-1" required /></label>
+          <div class="controls-grid">
+            <label>Server bind address<input id="dist-address" type="text" value="127.0.0.1" spellcheck="false" /></label>
+            <label>Server port<input id="dist-port" type="number" min="1024" max="65535" value="8790" /></label>
+            <label>Client processes<input id="dist-clients" type="number" min="1" max="1024" value="2" /></label>
+            <label>Threads per client<input id="dist-client-threads" type="number" min="1" max="256" placeholder="engine default" /></label>
+          </div>
+          <label>Whitelist, one address or CIDR block per line<textarea id="dist-whitelist" rows="3" spellcheck="false">127.0.0.1</textarea></label>
+          <details>
+            <summary>Remote workers</summary>
+            <label>Worker hostnames, one per line<textarea id="dist-hostnames" rows="3" spellcheck="false" placeholder="leave empty to run clients on this machine only"></textarea></label>
+            <label>Path to cado-nfs-client.py on the workers<input id="dist-scriptpath" type="text" spellcheck="false" placeholder="/usr/local/bin" /></label>
+          </details>
+          <label class="checkbox-row"><input id="dist-ssl" type="checkbox" checked /> Serve over TLS so clients can pin the certificate</label>
+          <div class="actions">
+            <button id="dist-preview" class="secondary" type="button">Preview exposure</button>
+            <button class="primary" type="submit"><span>Start distributed run</span><span>→</span></button>
+          </div>
+        </form>
         <section id="factor-lab-result" class="prime-results hidden" aria-live="polite"></section>
       </section>
 

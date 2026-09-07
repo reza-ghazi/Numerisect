@@ -67,7 +67,10 @@ numerisect = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -m 'not slow'"
+markers = [
+  "slow: end-to-end runs that invoke a heavy engine; deselected by default",
+]
 
 [tool.ruff]
 target-version = "py311"

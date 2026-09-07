@@ -389,6 +389,9 @@ See [Visualization and education](docs/VISUAL_LAB.md) for the prime spirals, Eis
 lattice, modular wheels, residue heatmaps, gap timelines, the prime race, the four sieve
 animations, and the complexity dashboard.
 
+See [Distributed CADO-NFS](docs/DISTRIBUTED.md) for distributed sieving, the trust
+model it inherits from CADO, and the configurations Numerisect refuses.
+
 See [Application infrastructure](docs/APPLICATION.md) for complete command-line parity,
 the six export formats, batch import, workspaces, searchable history, result caching,
 job priorities and resource limits, engine adapters, and the permissioned catalogue
@@ -477,6 +480,7 @@ GET  /api/adapters
 GET  /api/cache
 GET  /api/capabilities
 GET  /api/catalogues
+GET  /api/distributed/trust-model
 GET  /api/docs
 GET  /api/exports/jobs
 GET  /api/exports/jobs/{job_id}
@@ -511,6 +515,8 @@ POST /api/batch/import
 POST /api/catalogues/factors
 POST /api/catalogues/oeis
 POST /api/diagnostics
+POST /api/distributed/factor
+POST /api/distributed/preview
 POST /api/distribution/approximation-error
 POST /api/distribution/bateman-horn
 POST /api/distribution/density-surface
@@ -527,6 +533,7 @@ POST /api/factor-lab/special-form
 POST /api/factor-lab/squfof
 POST /api/factor-lab/strategy
 POST /api/factor-lab/trace
+POST /api/factor-lab/tune
 POST /api/jobs
 POST /api/jobs/batch
 POST /api/jobs/batch-export

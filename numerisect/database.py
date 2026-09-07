@@ -46,7 +46,8 @@ JOB_COLUMNS = {
     "paused_at",
 }
 
-ECM_COLUMNS = {"ecm_b1", "ecm_b2", "ecm_curves", "ecm_sigma", "ecm_param", "ecm_curves_done"}
+ECM_COLUMNS = {"ecm_b1", "ecm_b2", "ecm_curves", "ecm_sigma", "ecm_param", "ecm_curves_done",
+               "distributed_json"}
 WORKSPACE_COLUMNS = {"name", "notes", "job_ids_json", "report_files_json", "ui_state_json"}
 JOB_SORT_COLUMNS = {
     "created_at",
@@ -158,6 +159,7 @@ class Database:
             "ecm_sigma": "TEXT",
             "ecm_param": "INTEGER",
             "ecm_curves_done": "INTEGER NOT NULL DEFAULT 0",
+            "distributed_json": "TEXT",
         }
         for column, definition in additions.items():
             if column not in columns:

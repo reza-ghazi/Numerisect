@@ -5,7 +5,20 @@ binary packages are published.
 
 ## Unreleased
 
-No changes yet.
+- Added distributed CADO-NFS sieving (roadmap item 18). Numerisect validates CADO's own
+  server and client parameters and adds no networking of its own. Configurations CADO
+  would accept but that are unsafe are refused: an absent whitelist, `0.0.0.0/0`, broad
+  public ranges, binding a public interface, and remote workers without a script path.
+  A two-step approval reports the exposure before anything starts, and a run that leaves
+  the machine additionally requires `NUMERISECT_ALLOW_NETWORK=1`. `docs/DISTRIBUTED.md`
+  states the trust model verified from CADO's own source: clients do not authenticate to
+  its work-unit server, and an IP whitelist is the only access control.
+- Fixed a bug that made every CADO-NFS job hang. CADO defaults `slaves.hostnames` to
+  `localhost` only when using its own default parameter file; Numerisect always passes
+  `-p`, so CADO started a bare work-unit server, queued work units and polled for them
+  forever with no client running. Both the plain and distributed paths now set it, and
+  the integer is kept contiguous with its `key=value` assignments as CADO requires.
+  Found by running a distributed factorization by hand.
 
 ## 0.5.0 — 2026-09-07
 

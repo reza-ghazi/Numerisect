@@ -103,6 +103,7 @@ class JobManager:
         ecm_curves: int | None = None,
         ecm_sigma: str | None = None,
         ecm_param: int | None = None,
+        distributed: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not 2 <= trial_bound <= 100_000_000:
             raise ValueError("Trial-division bound must be between 2 and 100,000,000")
@@ -195,6 +196,7 @@ class JobManager:
                 "ecm_curves": ecm_curves,
                 "ecm_sigma": ecm_sigma,
                 "ecm_param": ecm_param,
+                "distributed_json": json.dumps(distributed) if distributed else None,
             }
         )
         self._submit(job_id, resume=False)
@@ -678,16 +680,37 @@ class JobManager:
                     cado_parameter_size=parameter.size,
                     cado_parameter_file=parameter_path,
                 )
+            # CADO parses key=value options only when they are CONTIGUOUS with the
+            # integer, so every flag goes first and the integer is followed
+            # immediately by the parameter assignments. Interleaving them makes
+            # cado-nfs.py reject the whole invocation.
             command = [
                 "cado-nfs.py",
                 "-p",
                 parameter_path,
-                str(number),
                 "-t",
                 str(job["threads"]),
                 "--workdir",
                 str(cado_dir),
             ]
+            # Distributed sieving: CADO's own server and client parameters, already
+            # validated. Numerisect adds no networking of its own.
+            assignments: list[str] = []
+            plan = job.get("distributed_json")
+            if plan:
+                try:
+                    settings = json.loads(plan)
+                except (TypeError, json.JSONDecodeError):
+                    settings = None
+                if settings:
+                    client_threads = settings.get("client_threads")
+                    if client_threads:
+                        command += ["--client-threads", str(int(client_threads))]
+                    assignments = list(settings.get("parameters") or [])
+            if not any(item.startswith("slaves.hostnames=") for item in assignments):
+                # Required whenever -p is passed; see the note in distributed.py.
+                assignments.append("slaves.hostnames=localhost")
+            command += [str(number), *assignments]
         return_code, output = self._run_process(
             job, command, cwd=Path(job["workdir"])
         )

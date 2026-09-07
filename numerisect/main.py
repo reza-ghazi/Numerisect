@@ -29,6 +29,7 @@ from .algebra_lab import (
     weird_number_analysis,
 )
 from .catalogues import (
+    ALLOW_NETWORK,
     CatalogueError,
     NetworkNotPermitted,
     list_local_catalogues,
@@ -54,6 +55,13 @@ from .config import (
 )
 from .database import Database
 from .diagnostics import system_diagnostics
+from .distributed import (
+    DistributedConfigurationError,
+    client_command,
+    describe_trust_model,
+    find_client_script,
+    validate_configuration,
+)
 from .distribution_lab import (
     approximation_error,
     bateman_horn,
@@ -4656,6 +4664,128 @@ def factor_lab_certificates(request: CertificateBatchRequest) -> dict:
 
 class TuneRequest(BaseModel):
     threads: int = Field(default=os.cpu_count() or 1, ge=1, le=256)
+
+
+class DistributedFactorRequest(BaseModel):
+    """A distributed CADO-NFS run. Every field maps to a CADO parameter."""
+
+    expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
+    address: str = Field("127.0.0.1", max_length=255)
+    port: int = Field(8790, ge=1024, le=65535)
+    whitelist: list[str] = Field(default_factory=lambda: ["127.0.0.1"], max_length=64)
+    ssl: bool = True
+    clients: int = Field(2, ge=1, le=1024)
+    hostnames: list[str] = Field(default_factory=list, max_length=128)
+    script_path: str | None = Field(None, max_length=500)
+    client_threads: int | None = Field(None, ge=1, le=256)
+    threads: int = Field(default_factory=lambda: os.cpu_count() or 1, ge=1, le=256)
+    confirm_network: bool = False
+
+
+@app.get("/api/distributed/trust-model")
+def distributed_trust_model() -> dict:
+    """Describe how distributed CADO authenticates clients, and what it does not."""
+
+    return {
+        **describe_trust_model(),
+        "enabled_by_environment": ALLOW_NETWORK,
+        "environment_variable": "NUMERISECT_ALLOW_NETWORK",
+        "cado_available": bool(executable_path("cado-nfs.py")),
+        "client_script": str(find_client_script() or ""),
+    }
+
+
+@app.post("/api/distributed/preview")
+def preview_distributed_configuration(request: DistributedFactorRequest) -> dict:
+    """Validate a distributed configuration and report its exposure without running.
+
+    This performs no networking and starts nothing. It exists so the exposure can
+    be read before a run is approved.
+    """
+
+    try:
+        plan = validate_configuration(
+            address=request.address, port=request.port, whitelist=request.whitelist,
+            ssl=request.ssl, clients=request.clients, hostnames=request.hostnames,
+            script_path=request.script_path, client_threads=request.client_threads,
+        )
+    except DistributedConfigurationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "cado_parameters": plan["parameters"],
+        "exposure": plan["exposure"],
+        "warnings": plan["warnings"],
+        "trust_model": describe_trust_model(),
+        "worker_command_template": client_command(
+            f"{'https' if request.ssl else 'http'}://{request.address}:{request.port}",
+            certsha1="<printed by CADO when the server starts>" if request.ssl else None,
+            threads=request.client_threads,
+        ),
+        "note": (
+            "Nothing was started and no connection was made. Review the exposure and "
+            "warnings, then submit the same configuration to /api/distributed/factor "
+            "with confirm_network set."
+        ),
+    }
+
+
+@app.post("/api/distributed/factor", status_code=202)
+def start_distributed_factorization(request: DistributedFactorRequest) -> dict:
+    """Queue a factorization whose sieving is distributed by CADO-NFS.
+
+    Refused unless the process was started with NUMERISECT_ALLOW_NETWORK=1 and the
+    request carries confirm_network, matching every other outbound feature.
+    """
+
+    if not request.confirm_network:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "This request did not set confirm_network, so nothing was started. "
+                "Read GET /api/distributed/trust-model first: CADO authenticates "
+                "clients by IP address only."
+            ),
+        )
+    local_only = request.address in {"127.0.0.1", "localhost", "::1"} and not request.hostnames
+    if not local_only and not ALLOW_NETWORK:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Distributed runs that leave this machine require "
+                "NUMERISECT_ALLOW_NETWORK=1. A loopback-only run with no remote "
+                "workers is allowed without it."
+            ),
+        )
+    try:
+        number = evaluate_integer(request.expression)
+    except ExpressionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        plan = validate_configuration(
+            address=request.address, port=request.port, whitelist=request.whitelist,
+            ssl=request.ssl, clients=request.clients, hostnames=request.hostnames,
+            script_path=request.script_path, client_threads=request.client_threads,
+        )
+    except DistributedConfigurationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        job = manager.create(
+            expression=request.expression, number=number, requested_backend="cado",
+            threads=request.threads, pretest_level=DEFAULT_PRETEST_LEVEL,
+            trial_bound=100_000, cado_parameter_size=None, distributed=plan,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {
+        **_public_job(job),
+        "exposure": plan["exposure"],
+        "warnings": plan["warnings"],
+        "note": (
+            "CADO-NFS runs its own work-unit server with these parameters. Watch the "
+            "job log for the server URL and certificate hash, then start workers with "
+            "cado-nfs-client.py on the machines you listed."
+        ),
+    }
 
 
 @app.post("/api/factor-lab/tune", status_code=202)

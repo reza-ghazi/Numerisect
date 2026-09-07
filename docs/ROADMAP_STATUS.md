@@ -58,7 +58,9 @@ blocks and Gram's-law exceptions, the Backlund S(T) remainder, Dirichlet charact
 L-functions with independent Hurwitz cross-checks, L-function zeros for GRH experiments,
 and Dedekind zeta functions through PARI.
 
-**Application and reproducibility.** 131–142, 144–150. Complete CLI/API parity, six
+**Application and reproducibility.** 131–142, 144–150. Item 18 adds distributed
+CADO-NFS sieving; read `docs/DISTRIBUTED.md` before enabling it, because CADO
+authenticates clients by IP address only. Complete CLI/API parity, six
 export formats, batch import, workspaces, searchable history, revision-keyed result
 caching, job priorities and reordering, per-job resource limits, pause and resume,
 desktop notifications, declarative engine adapters, performance history, client examples
@@ -106,14 +108,8 @@ in five languages, and notebook integration.
 
 ## Deferred, with no placeholder implementation
 
-- **18** — distributed CADO-NFS across networked workers. The capability is real and is
-  the one place where more hardware lets you factor numbers a single machine cannot.
-  It is blocked on two things, neither of which is Numerisect code. CADO's distributed
-  mode has its own trust model, in which a server hands work to clients and accepts
-  relations back; wiring its parameters through without understanding that model would
-  suggest Numerisect had secured something it had not. And it is untestable with one
-  machine. The right first step is running CADO's distributed mode by hand, outside
-  Numerisect, to learn its failure modes, and only then wiring it.
+None. Every proposal item is now implemented, partial with its gap named, or declined
+with the reasoning recorded below.
 
 ## Declined, by decision rather than omission
 

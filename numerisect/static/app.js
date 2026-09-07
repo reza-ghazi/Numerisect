@@ -3393,6 +3393,94 @@ bindFactorLab('#factor-lab-certificates-form', '/api/factor-lab/certificates', (
   `prime: ${row.prime ? 'yes' : 'no'} · certified: ${row.certified ? 'yes' : 'no'} · independently verified: ${row.verified ? 'yes' : 'no'}`,
 ]), 'Batch primality certificates');
 
+
+// --- Distributed CADO-NFS -------------------------------------------------------------
+// CADO runs its own work-unit server and clients. This code only collects parameters,
+// shows the exposure the engine's trust model implies, and starts the job.
+
+function distributedRequest() {
+  const lines = (id) => $(id).value.split(/\n+/).map((v) => v.trim()).filter(Boolean);
+  const clientThreads = Number($('#dist-client-threads').value);
+  return {
+    expression: $('#dist-expression').value.trim(),
+    address: $('#dist-address').value.trim(),
+    port: Number($('#dist-port').value),
+    whitelist: lines('#dist-whitelist'),
+    ssl: $('#dist-ssl').checked,
+    clients: Number($('#dist-clients').value),
+    hostnames: lines('#dist-hostnames'),
+    script_path: $('#dist-scriptpath').value.trim() || null,
+    client_threads: clientThreads > 0 ? clientThreads : null,
+  };
+}
+
+function renderExposure(payload, heading) {
+  const exposure = payload.exposure || {};
+  const rows = [
+    ['Reaches other machines', exposure.local_only ? 'no, loopback only' : 'yes'],
+    ['Bind address', `${exposure.bind_address}:${exposure.port}`],
+    ['Transport', exposure.tls ? 'TLS, clients can pin the certificate' : 'clear text'],
+    ['Client authentication', exposure.client_authentication],
+    ['Whitelist', (exposure.whitelist || []).join(', ')],
+    ['Worker hosts', (exposure.worker_hosts || []).join(', ') || 'this machine only'],
+  ];
+  const warnings = (payload.warnings || [])
+    .map((w) => `<li>${escapeHtml(w)}</li>`).join('');
+  const command = (payload.worker_command_template || []).join(' ');
+  renderFactorLab(heading, rows, payload.note, payload.output_file);
+  const panel = $('#factor-lab-result');
+  if (warnings) {
+    panel.insertAdjacentHTML('beforeend',
+      `<div class="warning-note"><strong>Exposure warnings</strong><ul>${warnings}</ul></div>`);
+  }
+  if (command) {
+    panel.insertAdjacentHTML('beforeend',
+      `<p class="hint">Start a worker with:</p><pre><code>${escapeHtml(command)}</code></pre>`);
+  }
+}
+
+if ($('#distributed-form')) {
+  $('#dist-preview').addEventListener('click', async () => {
+    try {
+      const data = await api('/api/distributed/preview',
+        { method: 'POST', body: JSON.stringify(distributedRequest()) });
+      renderExposure(data, 'Distributed configuration preview');
+    } catch (error) {
+      factorLabError(error.message);
+    }
+  });
+
+  $('#distributed-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    let preview;
+    try {
+      preview = await api('/api/distributed/preview',
+        { method: 'POST', body: JSON.stringify(distributedRequest()) });
+    } catch (error) {
+      factorLabError(error.message);
+      return;
+    }
+    const exposure = preview.exposure || {};
+    const summary = exposure.local_only
+      ? 'This run stays on this machine.'
+      : `This run opens ${exposure.bind_address}:${exposure.port} to ${(exposure.whitelist || []).join(', ')}.`;
+    const confirmed = window.confirm(
+      `${summary}\n\nCADO clients do not authenticate to its server; the whitelist is `
+      + `the only access control. Start the run?`);
+    if (!confirmed) return;
+    try {
+      const data = await api('/api/distributed/factor', {
+        method: 'POST',
+        body: JSON.stringify({ ...distributedRequest(), confirm_network: true }),
+      });
+      renderExposure(data, 'Distributed run queued');
+      await loadJobs();
+    } catch (error) {
+      factorLabError(error.message);
+    }
+  });
+}
+
 async function initializeApplication() {
   const session = await api('/api/session');
   state.requestToken = session.request_token;
