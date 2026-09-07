@@ -2,11 +2,17 @@
 
 **Multi-Engine Integer Factorization and Prime Analysis**
 
-Numerisect 0.3.0 is a local web workbench for integer factorization, primality
-proofs, prime generation, prime exploration, and rigorous Riemann-zeta analysis. Python handles validation,
-process orchestration, persistence, and the HTTP API; plain JavaScript provides
-the browser interface. Native number-theory programs perform the expensive
-mathematics.
+Numerisect 0.5.0 is a local web workbench for integer factorization, primality
+proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
+Riemann-zeta and L-function analysis.
+
+**Numerisect is a user interface over existing number-theory libraries.** PARI/GP,
+FLINT/Arb, YAFU, Msieve, GMP-ECM, CADO-NFS, primesieve and primecount perform the
+mathematics. Where no library provides a routine, an optimized C program using GMP or
+FLINT fills the gap. Python handles validation, process orchestration, persistence and
+the HTTP API; plain JavaScript draws the interface. Neither computes a mathematical
+result. See [CONTRIBUTING.md](CONTRIBUTING.md) for the policy and
+`tests/test_native_computation_policy.py` for its enforcement.
 
 Numerisect is an experimental, source-distributed pre-release. No official
 binary packages or binary installers are published. The FastAPI service runs
@@ -22,7 +28,8 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 ## Highlights
 
 - Automatic YAFU-to-CADO factorization strategy based on decimal length
-- Manual YAFU, Msieve, hybrid, and CADO-NFS strategies
+- Manual bounded PARI trial division plus YAFU rho, p−1, p+1, ECM, SIQS, and NFS strategies
+- Factor trees, independently continuable composite cofactors, batch queues, and cross-engine verification
 - Automatic CADO parameter discovery and next-larger parameter selection
 - CPU-thread selector that defaults to every available logical CPU
 - Persistent jobs, live engine logs, cancellation, and CADO snapshot resume
@@ -31,17 +38,20 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - Native PARI/GP classification across 56 structural and sequence-based prime classes
 - Exact reciprocal periods, full-reptend tests, and decimal repetend exports
 - Fixed-length, safe, Sophie Germain, Blum, and modular prime generation
-- Prime ranges, nearby primes, tuples, gaps, indexed primes, and exact counts
+- Multithreaded `primesieve` intervals and `primecount` exact counts/indexed primes
 - The nth proven prime strictly before or after an arbitrary-size integer
 - Batch primality checks, interval residue-class searches, and exact prime-modulus arithmetic
-- 38 individually routed Prime Tools pages with searchable navigation and local results
+- 116 individually routed Prime Tools pages in 11 searchable groups with local results
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches
 - Exact arithmetic-function profiles, semiprime detection, and coprime navigation
 - Prime-density/residue charts, digit-constrained primes, exact polynomial exploration, and certified prime-indicator constants
-- Rigorous zeta evaluation, certified critical-line zeros, exact Turing-method zero counts, and native-sampled plots
+- Rigorous zeta, Hardy Z, xi, eta, functional-equation, Stieltjes, Gram-point, certified-zero, and native-sampled plot tools
+- Special-family, Cunningham-chain, NTT-prime, modular-root, p-adic, cyclotomic, aliquot, and algebraic workbenches
+- A sanitized system-diagnostics workspace that never uploads data
 - Automatic plain-text reports in `output/`
+- Reproducible factorization manifests with commands, engine revisions, executable hashes, parameters, and provenance
 - Explicit, confirmed user-local builds of missing native engines from pinned commits
 
 ## Start and stop
@@ -59,8 +69,9 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20260905-workstation#primes/prime-check> and Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20260905-workstation#zeta>.
+<http://127.0.0.1:8765/?ui=20260907-libraries-first#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260907-libraries-first#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20260907-libraries-first#diagnostics>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -118,6 +129,8 @@ Python is not used to replace the native factoring or prime engines.
 | CADO-NFS | Number field sieve for large residual composites |
 | PARI/GP | Primality, classification, reciprocal periods, arithmetic functions, coprimes, prime generation/distribution, polynomial and sequence searches, certificates, `prime(n)`, and `primepi(x)` |
 | FLINT/Arb | Rigorous complex zeta evaluation, certified Hardy Z zeros, Turing-method zero counting, and multithreaded plot sampling |
+| primesieve | Multithreaded, cache-aware prime enumeration over 64-bit intervals |
+| primecount | Parallel exact `π(x)` through `10^31`, indexed primes, and Li/Riemann-R comparisons |
 
 The status line at the top of the interface shows which executables are
 available. Engine commands are launched as argument arrays rather than through
@@ -128,7 +141,7 @@ shell interpolation.
 At startup, Numerisect only checks for these commands:
 
 ```text
-yafu  msieve  ecm  cado-nfs.py  gp  numerisect-zeta
+yafu  msieve  ecm  cado-nfs.py  gp  numerisect-zeta  primesieve  primecount
 ```
 
 If any are missing, the interface displays them and offers an installation
@@ -180,15 +193,19 @@ runs at a time unless `NUMERISECT_MAX_PARALLEL_JOBS` is changed. Very large
 factorizations may still take hours, days, or substantially longer; thread count
 and digit count alone cannot predict completion time.
 
-Each completed factorization receives an equation view, per-factor status, and
-a text report. A job is considered successful only when the returned factors
-multiply exactly to the input.
+Each completed factorization receives an equation view, factor tree,
+per-factor engine status, text report, and JSON reproducibility manifest.
+Unresolved composite factors can be submitted as linked child jobs. A result
+is accepted only when every returned factor divides the input and their product
+equals it; cross-check mode additionally requires identical YAFU and Msieve
+factor multisets.
 
 ## Prime Tools
 
-All prime operations use PARI/GP subprocesses.
+Prime operations use PARI/GP by default, with `primesieve` for eligible 64-bit
+intervals and `primecount` for large exact counts and indexed-prime requests.
 
-Prime Tools has 38 pages with searchable navigation in six groups. Every
+Prime Tools has 116 pages with searchable navigation in 11 groups. Every
 operation has its own page and direct hash URL, such as
 `#primes/prime-check`, `#primes/prime-reciprocal`, or
 `#primes/integer-profile`; only the selected operation is displayed. On narrow
@@ -301,8 +318,8 @@ limits, and implementation details.
 | Range search | Lists proven primes in an interval with a result limit and continuation point |
 | Prime tuples | Finds twin, cousin, sexy, triplet, quadruplet, or custom offset patterns |
 | Special generator | Produces safe, Sophie Germain, Blum, or `p mod m = r` primes |
-| N-th prime | Calculates `p(n)` for positive indices through `10^11` |
-| Prime counting | Calculates exact `π(x)` for `x` through `10^12` |
+| N-th prime | Calculates `p(n)` through index `10^29` with parallel primecount; PARI fallback through `10^11` |
+| Prime counting | Calculates exact `π(x)` through `10^31` with primecount; PARI fallback through `10^12` |
 | Gap analyzer | Measures gaps between consecutive proven primes in an interval |
 | Absolute-prime search | Groups circular primes by their complete decimal-rotation orbit |
 | Gaussian tools | Applies the exact Gaussian-prime criterion and searches bounded complex lattices |
@@ -326,12 +343,13 @@ limits, and implementation details.
 | Prime polynomial | Evaluates `n²−n+k`, finds prime values and consecutive runs, and identifies exact small-prime modular obstructions |
 | Palindrome-derived sequence | Finds prime values of `|n−reverse(n)|+1` over a finite range |
 | Prime-indicator constant | Computes certified decimal digits of `Σ [n is prime]·2⁻ⁿ` from rigorously tested binary coefficients |
+| Advanced native workbench | Adds special-prime families, NTT primes, Cunningham chains, modular roots/traces, Hensel lifting, group distributions, p-adic valuations, cyclotomic polynomials, divisor classifications, and aliquot sequences |
 
-The `10^12` exact-counting limit protects the workstation because PARI/GP's
-`primepi` implementation uses a memory-intensive sieve. The `10^11` indexed
-prime limit matches PARI's largest documented checkpoint. These limits do not
-restrict primality testing, navigation, generation, tuple searches, or range
-endpoints, although work on very large inputs can take a long time.
+The lower fallback limits protect systems where the optional high-performance
+engines are unavailable. `primecount` extends exact counting through `10^31`
+and indexed requests through `10^29`; practical runtime and memory remain
+hardware-dependent. These limits do not restrict primality testing,
+arbitrary-precision navigation, generation, or PARI-backed algebraic tools.
 
 Arbitrary precision does not mean unlimited input or runtime. Most expression
 requests accept at most 100,000 characters, with configured expression-size
@@ -351,6 +369,30 @@ tools, and the four bounded problem searches.
 See [Arithmetic and distribution tools](docs/ARITHMETIC_AND_DISTRIBUTION.md)
 for the final source-tree audit, mathematical definitions, native-engine
 architecture, resource limits, and the eight additional API routes.
+
+See [Advanced number theory](docs/ADVANCED_NUMBER_THEORY.md) for the new native
+workbenches, strict result contracts, and documented finite-search bounds.
+
+See [Expert factorization laboratory](docs/FACTOR_LAB.md) for SQUFOF, the resumable
+GMP-ECM campaign manager, special-form and Aurifeuillean detection, the strategy
+adviser, algorithm traces, and batch certificates.
+
+See [Primality laboratory](docs/PRIMALITY_LAB.md) for the primality-test comparison
+laboratory, deterministic witness sets, Pocklington and Pratt certificates, the
+probable-prime taxonomy, and the constrained-prime generators.
+
+See [Algebra laboratory](docs/ALGEBRA_LAB.md) for reciprocity traces, congruences over
+composite moduli, discrete-logarithm algorithm comparison, finite fields, record-number
+families, quadratic rings, general number fields, and Chebotarev experiments.
+
+See [Visualization and education](docs/VISUAL_LAB.md) for the prime spirals, Eisenstein
+lattice, modular wheels, residue heatmaps, gap timelines, the prime race, the four sieve
+animations, and the complexity dashboard.
+
+See [Application infrastructure](docs/APPLICATION.md) for complete command-line parity,
+the six export formats, batch import, workspaces, searchable history, result caching,
+job priorities and resource limits, engine adapters, and the permissioned catalogue
+lookups.
 
 ## Riemann Zeta
 
@@ -374,21 +416,24 @@ numerisect/             Python backend and engine orchestration
 numerisect/prime_classifier.gp  Native PARI/GP classification engine
 numerisect/prime_reciprocal.gp  Native reciprocal-period and digit engine
 numerisect/prime_structures.gp  Native structural, sequence, witness, and related-number engine
+numerisect/number_theory.gp  Native modular, algebraic, analytic, and integer-structure workbench
+numerisect/number_theory.py  Validation and tagged-protocol boundary for that workbench
 numerisect/prime_manipulation.py  Validation and GP boundary for batches, progressions, and prime-modulus operations
 numerisect/zeta.py       FLINT helper process boundary and strict result parsing
 numerisect/native/numerisect_zeta.c  Compiled FLINT/Arb and OpenMP zeta engine
 numerisect/static/       HTML, CSS, and JavaScript interface
 numerisect/engine_manifest.toml  Reviewed immutable native-engine pins
+numerisect/cli.py      Native-backed command-line entry point
 install.sh              Cross-platform user-space installer
 tests/                  Regression tests
 docs/                   Feature and architecture documentation
 data/numerisect.sqlite3 Persistent factorization job history
 data/jobs/              Per-job work directories and native-engine logs
 data/tools/             User-local native engine sources and installation
-output/                 Completed text reports and prime exports
+output/                 Completed text reports and factorization JSON manifests
 ```
 
-`data/` and generated `output/*.txt` files are intentionally ignored by Git.
+`data/` and generated `output/*.txt` and `output/*.json` files are intentionally ignored by Git.
 The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
 
 ## Configuration
@@ -402,6 +447,7 @@ The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
 | `NUMERISECT_MAX_PARALLEL_JOBS` | `1` | Simultaneous CPU-heavy factorization workers |
 | `NUMERISECT_MAX_EXPRESSION_CHARACTERS` | `100000` | Expression input length limit |
 | `NUMERISECT_MAX_RESULT_DIGITS` | `100000` | Evaluated integer size limit |
+| `NUMERISECT_GGNFS_DIR` | unset | Directory holding the GGNFS lattice sievers, needed for NFS and for engine tuning |
 
 ## HTTP API
 
@@ -411,67 +457,206 @@ All API routes except `/api/session` require a cryptographically random
 per-launch session token. The browser manages it automatically; command-line
 clients should follow [the localhost security model](docs/SECURITY_MODEL.md).
 
+The installed `numerisect` command starts the web application by default
+(equivalently `numerisect serve`). Its native-backed headless commands include `factor`, `prime`, `nth-prime`,
+`near-prime`, `symbols`, `crt`, and `perfect-power`; add `--json` before the
+subcommand for machine-readable output. For example:
+
+```bash
+numerisect --json factor 8051 --engine pari_trial --trial-bound 100
+numerisect prime 32416190071 --certificate
+numerisect near-prime 1289 100 --direction after
+```
+
 Important routes include:
 
 ```text
+DELETE/api/cache
+DELETE/api/workspaces/{workspace_id}
+GET  /api/adapters
+GET  /api/cache
 GET  /api/capabilities
-GET  /api/setup
-POST /api/setup/install
-
-POST /api/jobs
+GET  /api/catalogues
+GET  /api/docs
+GET  /api/exports/jobs
+GET  /api/exports/jobs/{job_id}
+GET  /api/exports/reports/{filename}
+GET  /api/history/performance
 GET  /api/jobs
-GET  /api/jobs/{id}
-GET  /api/jobs/{id}/log
-POST /api/jobs/{id}/cancel
-POST /api/jobs/{id}/resume
-GET  /api/jobs/{id}/export
-
-POST /api/primes/check
-POST /api/primes/batch-check
-POST /api/primes/progression
-POST /api/primes/modular
-POST /api/primes/classify
-POST /api/primes/reciprocal
-POST /api/primes/generate
-POST /api/primes/generate-special
-POST /api/primes/after
-POST /api/primes/before
-POST /api/primes/range
-POST /api/primes/tuples
-POST /api/primes/nth
-POST /api/primes/nth-near
-POST /api/primes/count
-POST /api/primes/gaps
+GET  /api/jobs/{job_id}
+GET  /api/jobs/{job_id}/export
+GET  /api/jobs/{job_id}/log
+GET  /api/outputs/{filename}
+GET  /api/queue
+GET  /api/reports
+GET  /api/session
+GET  /api/setup
+GET  /api/setup/log
+GET  /api/workspaces
+GET  /api/workspaces/{workspace_id}
+POST /api/algebra/chebotarev
+POST /api/algebra/congruence
+POST /api/algebra/cornacchia
+POST /api/algebra/discrete-log
+POST /api/algebra/divisor-lattice
+POST /api/algebra/finite-field
+POST /api/algebra/number-field
+POST /api/algebra/quadratic-ring
+POST /api/algebra/reciprocity
+POST /api/algebra/record-numbers
+POST /api/algebra/smoothness
+POST /api/algebra/sociable
+POST /api/algebra/weird-numbers
+POST /api/batch/import
+POST /api/catalogues/factors
+POST /api/catalogues/oeis
+POST /api/diagnostics
+POST /api/distribution/approximation-error
+POST /api/distribution/bateman-horn
+POST /api/distribution/density-surface
+POST /api/distribution/maximal-gaps
+POST /api/distribution/nth-prime-bounds
+POST /api/distribution/pnt-convergence
+POST /api/distribution/prime-race
+POST /api/distribution/progressions
+POST /api/distribution/short-interval
+POST /api/distribution/singular-series
+POST /api/distribution/tuple-prediction
+POST /api/factor-lab/certificates
+POST /api/factor-lab/special-form
+POST /api/factor-lab/squfof
+POST /api/factor-lab/strategy
+POST /api/factor-lab/trace
+POST /api/jobs
+POST /api/jobs/batch
+POST /api/jobs/batch-export
+POST /api/jobs/reorder
+POST /api/jobs/{job_id}/cancel
+POST /api/jobs/{job_id}/certificates
+POST /api/jobs/{job_id}/continue-cofactor
+POST /api/jobs/{job_id}/pause
+POST /api/jobs/{job_id}/priority
+POST /api/jobs/{job_id}/resume
+POST /api/jobs/{job_id}/resume-paused
+POST /api/number-theory/aliquot
+POST /api/number-theory/arithmetic-functions
+POST /api/number-theory/crt
+POST /api/number-theory/cunningham-chain
+POST /api/number-theory/cyclotomic
+POST /api/number-theory/discrete-log
+POST /api/number-theory/divisor-classification
+POST /api/number-theory/eisenstein
+POST /api/number-theory/factor-strategy
+POST /api/number-theory/hensel-roots
+POST /api/number-theory/modular-roots
+POST /api/number-theory/ntt-primes
+POST /api/number-theory/order-distribution
+POST /api/number-theory/perfect-power
+POST /api/number-theory/polynomial
+POST /api/number-theory/power-residues
+POST /api/number-theory/primality-lab
+POST /api/number-theory/prime-approximations
+POST /api/number-theory/quadratic-decomposition
+POST /api/number-theory/special-form-test
+POST /api/number-theory/special-prime-family
+POST /api/number-theory/summatory-functions
+POST /api/number-theory/symbols
+POST /api/number-theory/tonelli-shanks
+POST /api/number-theory/unit-group
+POST /api/number-theory/valuation
+POST /api/primality-lab/bitwin-chains
+POST /api/primality-lab/carmichael
+POST /api/primality-lab/chernick
+POST /api/primality-lab/compare
+POST /api/primality-lab/constrained-prime
+POST /api/primality-lab/covering-set
+POST /api/primality-lab/deterministic-witnesses
+POST /api/primality-lab/ecpp-steps
+POST /api/primality-lab/lucas-lehmer-steps
+POST /api/primality-lab/lucas-sequence
+POST /api/primality-lab/pocklington
+POST /api/primality-lab/pratt
+POST /api/primality-lab/prime-ladder
+POST /api/primality-lab/proth
+POST /api/primality-lab/proth-search
+POST /api/primality-lab/repunit
+POST /api/primality-lab/sierpinski
+POST /api/primality-lab/taxonomy
+POST /api/primality-lab/verify-certificate
 POST /api/primes/absolute
-POST /api/primes/gaussian/check
-POST /api/primes/gaussian/range
-POST /api/primes/modular-wheel
-POST /api/primes/paterson
-POST /api/primes/perfect
-POST /api/primes/reptend
-POST /api/primes/pyramid
-POST /api/primes/special-numbers
-POST /api/primes/miller-rabin-witnesses
-POST /api/primes/gap-statistics
-POST /api/primes/primorials
-POST /api/primes/random-range
+POST /api/primes/after
+POST /api/primes/batch-check
+POST /api/primes/before
+POST /api/primes/check
+POST /api/primes/classify
 POST /api/primes/contiguous-digits
-POST /api/primes/goldbach
-POST /api/primes/problems
-POST /api/primes/integer-profile
 POST /api/primes/coprimes
+POST /api/primes/count
+POST /api/primes/digit-constrained
 POST /api/primes/distribution
 POST /api/primes/factor-count-distribution
-POST /api/primes/digit-constrained
-POST /api/primes/polynomial
-POST /api/primes/palindrome-derived
+POST /api/primes/gap-statistics
+POST /api/primes/gaps
+POST /api/primes/gaussian/check
+POST /api/primes/gaussian/range
+POST /api/primes/generate
+POST /api/primes/generate-special
+POST /api/primes/goldbach
 POST /api/primes/indicator-constant
-
-POST /api/zeta/evaluate
-POST /api/zeta/zeros
+POST /api/primes/integer-profile
+POST /api/primes/miller-rabin-witnesses
+POST /api/primes/modular
+POST /api/primes/modular-wheel
+POST /api/primes/nth
+POST /api/primes/nth-near
+POST /api/primes/palindrome-derived
+POST /api/primes/paterson
+POST /api/primes/perfect
+POST /api/primes/polynomial
+POST /api/primes/primorials
+POST /api/primes/problems
+POST /api/primes/progression
+POST /api/primes/pyramid
+POST /api/primes/random-range
+POST /api/primes/range
+POST /api/primes/reciprocal
+POST /api/primes/reptend
+POST /api/primes/special-numbers
+POST /api/primes/tuples
+POST /api/primes/verify-certificate
+POST /api/setup/install
+POST /api/visual/complexity
+POST /api/visual/eisenstein-lattice
+POST /api/visual/gap-timeline
+POST /api/visual/modular-wheel
+POST /api/visual/prime-race
+POST /api/visual/residue-heatmap
+POST /api/visual/sieve-trace
+POST /api/visual/spiral
+POST /api/workspaces
+POST /api/workspaces/{workspace_id}
+POST /api/zeta/backlund-s
+POST /api/zeta/characters
+POST /api/zeta/chebyshev-psi
 POST /api/zeta/count
-POST /api/zeta/line
+POST /api/zeta/dedekind
+POST /api/zeta/euler-product
+POST /api/zeta/evaluate
+POST /api/zeta/explicit-prime-count
+POST /api/zeta/functional-equation
+POST /api/zeta/gram
+POST /api/zeta/gram-blocks
+POST /api/zeta/hardy
 POST /api/zeta/heatmap
+POST /api/zeta/l-function
+POST /api/zeta/l-zeros
+POST /api/zeta/line
+POST /api/zeta/pair-correlation
+POST /api/zeta/riemann-siegel
+POST /api/zeta/stieltjes
+POST /api/zeta/xi-eta
+POST /api/zeta/zero-spacing
+POST /api/zeta/zeros
 ```
 
 ## Tests
@@ -491,15 +676,16 @@ The native integration tests invoke `gp` and compile or run the FLINT zeta
 helper. They fail clearly when the corresponding native prerequisites are unavailable.
 
 The suite includes API security, installer-manifest, native-engine, report,
-and interface checks. A separate browser audit verified one visible form on
-each of the 38 Prime Tools routes, native submissions from the three
-manipulation pages, saved-report notices, and mobile layout widths.
+and interface checks. Static navigation coverage verifies one registered form
+for each of the 65 Prime Tools pages and all 10 Zeta pages, local result
+placement, saved-report notices, diagnostics, and cache-busted assets.
 
 ## Documentation
 
 | Guide | Scope |
 | --- | --- |
 | [Installation and versioning](docs/INSTALLATION.md) | Verified hosts, prerequisites, source installation, and pinned engine builds |
+| [Factorization workspace](docs/FACTORIZATION.md) | Routing, manual algorithms, trees, partial jobs, batches, verification, and manifests |
 | [Localhost security](docs/SECURITY_MODEL.md) | Host, origin, per-launch token, command-line access, and data locality |
 | [Prime classification](docs/PRIME_CLASSIFICATION.md) | 56 classes and inconclusive-result semantics |
 | [Prime reciprocals](docs/PRIME_RECIPROCALS.md) | Exact periods and complete streamed decimal reports |
@@ -508,6 +694,8 @@ manipulation pages, saved-report notices, and mobile layout widths.
 | [Arithmetic and distribution](docs/ARITHMETIC_AND_DISTRIBUTION.md) | Arithmetic profiles, distributions, and source audit |
 | [Prime manipulation](docs/PRIME_MANIPULATION.md) | Batches, relative-index navigation, residue classes, and modular arithmetic |
 | [Riemann zeta](docs/RIEMANN_ZETA.md) | FLINT/Arb computations, threads, and certification boundaries |
+| [Advanced number theory](docs/ADVANCED_NUMBER_THEORY.md) | Modular, polynomial, special-prime, analytic, divisor, and algebraic workbenches |
+| [Roadmap status](docs/ROADMAP_STATUS.md) | Implemented, partial, and deliberately deferred items from the 150-item proposal |
 
 ## Security notes
 

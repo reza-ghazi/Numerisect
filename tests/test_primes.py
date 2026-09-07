@@ -65,6 +65,7 @@ def test_fast_primality_and_certificate():
     proven = primality_result(32416190071, certificate=True)
     assert proven["classification"] == "prime"
     assert "is prime" in str(proven["certificate"])
+    assert proven["certificate_data"]
 
 
 def test_prime_classifier_uses_native_pari_program():

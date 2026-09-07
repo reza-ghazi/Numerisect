@@ -1,5 +1,24 @@
 # Arithmetic and distribution tools
 
+Numerisect 0.5.0 also adds the **Extended arithmetic**, **Divisor-sum
+classification**, **Aliquot sequence**, **Prime-counting approximations**, and
+**Summatory functions** pages. Their arithmetic, factorization, primality, and
+sequence iteration live in `numerisect/number_theory.gp`; Python only validates
+and parses the complete tagged result.
+
+Extended arithmetic includes `σ_k`, `J_k`, Dedekind psi, Liouville and von
+Mangoldt values, radical and squarefree kernel, least/largest prime factors,
+smoothness/powersmoothness, divisor previews, and exact representation data.
+Divisor classification distinguishes deficient, perfect, and abundant values,
+checks almost-perfect/multiperfect conditions and an amicable partner. Aliquot
+iteration reports termination, a detected cycle, or an explicitly incomplete
+step-limited run.
+
+The analytic pages combine exact parallel primecount results with PARI/GP
+error arithmetic and bounded native sums for Mertens, Liouville, and Chebyshev
+functions. See [Advanced number theory](ADVANCED_NUMBER_THEORY.md) for limits
+and API scope.
+
 The source-tree audit covered the unfamiliar source code, notebooks, and Markdown
 material in the supplied `prime_numbers` tree. Generated plots, cached bytecode,
 virtual environments, copied data sets, PDFs, and URL shortcuts were treated as

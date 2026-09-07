@@ -53,3 +53,23 @@ def prepend_managed_tools_to_path() -> None:
     os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(
         [path for path in managed_libs if path not in lib_entries] + lib_entries
     )
+
+
+# --- Application-infrastructure knobs (workspace tranche) -------------------------------
+ADAPTERS_DIR = STATE_DIR / "adapters"
+CATALOGUES_DIR = STATE_DIR / "catalogues"
+ALLOW_NETWORK = os.environ.get("NUMERISECT_ALLOW_NETWORK", "0") == "1"
+NETWORK_TIMEOUT_SECONDS = int(os.environ.get("NUMERISECT_NETWORK_TIMEOUT", "15"))
+OEIS_SEARCH_URL = os.environ.get("NUMERISECT_OEIS_URL", "https://oeis.org/search")
+CATALOGUE_LOOKUP_URL = os.environ.get("NUMERISECT_CATALOGUE_URL", "")
+RESULT_CACHE_ENABLED = os.environ.get("NUMERISECT_RESULT_CACHE", "1") == "1"
+RESULT_CACHE_MAX_ROWS = int(os.environ.get("NUMERISECT_RESULT_CACHE_MAX_ROWS", "2000"))
+RESULT_CACHE_MAX_BYTES = int(os.environ.get("NUMERISECT_RESULT_CACHE_MAX_BYTES", "2000000"))
+MAX_BATCH_IMPORT_ITEMS = int(os.environ.get("NUMERISECT_MAX_BATCH_IMPORT_ITEMS", "500"))
+MAX_BATCH_RANGE_SPAN = int(os.environ.get("NUMERISECT_MAX_BATCH_RANGE_SPAN", "10000"))
+
+
+# Directory holding the GGNFS lattice sievers (gnfs-lasieve4I*e). YAFU needs it for
+# NFS work and for `tune`. Empty means "not configured"; nothing is auto-discovered
+# outside the managed tools directory.
+GGNFS_DIR = os.environ.get("NUMERISECT_GGNFS_DIR", "")

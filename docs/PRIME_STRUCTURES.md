@@ -1,5 +1,11 @@
 # Prime structures and related numbers
 
+Numerisect 0.5.0 adds companion algebraic pages for Eisenstein primes and
+rational-prime decomposition in quadratic number fields. PARI/GP applies the
+exact Eisenstein norm/axis criterion and constructs the maximal quadratic
+order for `idealprimedec`, returning splitting, ramification, inertia degree,
+and ideal norm. See [Advanced number theory](ADVANCED_NUMBER_THEORY.md).
+
 This workspace collects the capabilities imported from the absolute-prime,
 Gaussian-prime, modular-wheel, Paterson-prime, perfect-number, prime-pyramid,
 safe-prime, full-reptend, special-prime, and witness-number prototypes.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -124,7 +125,8 @@ def primality_result(
     if certificate:
         lines = _run_gp(
             f'c=primecert({number});print("RESULT:",c!=0);'
-            'if(c!=0,print("CERTBEGIN");print(primecertexport(c));print("CERTEND"))'
+            'if(c!=0,print("CERTBEGIN");print(primecertexport(c));print("CERTEND");'
+            'print("CERTDATABEGIN");print(c);print("CERTDATAEND"))'
         )
     else:
         function = "ispseudoprime" if mode == "fast" else "isprime"
@@ -137,10 +139,14 @@ def primality_result(
         "probable prime" if mode == "fast" and passed else "prime" if passed else "composite"
     )
     proof = ""
+    proof_data = ""
     if certificate and passed:
         start = lines.index("CERTBEGIN") + 1
         end = lines.index("CERTEND")
         proof = "\n".join(lines[start:end]).strip()
+        data_start = lines.index("CERTDATABEGIN") + 1
+        data_end = lines.index("CERTDATAEND")
+        proof_data = "".join(lines[data_start:data_end]).strip()
     note = (
         "Fast PARI/GP BPSW probable-prime test; a positive result is not a proof."
         if mode == "fast"
@@ -158,6 +164,37 @@ def primality_result(
         "note": note,
         "engine": "PARI/GP",
         "certificate": proof,
+        "certificate_data": proof_data,
+    }
+
+
+def verify_primality_certificate(certificate_data: str) -> dict[str, object]:
+    """Verify a machine-readable PARI ECPP certificate without trusting its N."""
+
+    text = certificate_data.strip()
+    if not text or len(text) > 2_000_000:
+        raise ValueError("Supply a PARI certificate vector of at most 2,000,000 characters")
+    if not re.fullmatch(r"[0-9+\-\[\],;\s]+", text):
+        raise ValueError("The certificate contains characters outside PARI's integer-vector format")
+    lines = _run_gp(
+        f'c={text};print("VALID:",primecertisvalid(c));'
+        'if(type(c)=="t_VEC"&&#c,print("NUMBER:",c[1][1]),'
+        'if(type(c)=="t_INT",print("NUMBER:",c)))',
+        timeout=3600,
+    )
+    valid = _tagged_values(lines, "VALID")
+    number = _tagged_values(lines, "NUMBER")
+    if len(valid) != 1 or len(number) > 1:
+        raise PrimeEngineError("PARI/GP returned an incomplete certificate verdict")
+    return {
+        "valid": valid[0] == 1,
+        "number": str(number[0]) if number else "unavailable",
+        "engine": "PARI/GP",
+        "note": (
+            "PARI/GP independently verified every step of the ECPP certificate."
+            if valid[0] == 1
+            else "PARI/GP rejected the certificate; it must not be treated as a primality proof."
+        ),
     }
 
 
@@ -1153,9 +1190,45 @@ def generate_special_primes(
     return values
 
 
-def primes_in_range(start: int, end: int, limit: int) -> tuple[list[int], bool, int | None]:
+def primes_in_range(
+    start: int, end: int, limit: int, threads: int | None = None
+) -> tuple[list[int], bool, int | None]:
     if start > end:
         raise ValueError("Range start must not exceed range end")
+    primesieve = shutil.which("primesieve")
+    if primesieve and end >= 2 and max(2, start) <= 2**64 - 1 and end <= 2**64 - 1:
+        thread_count = threads or os.cpu_count() or 1
+        process = subprocess.Popen(
+            [
+                primesieve, str(max(2, start)), str(end), "--print", "--no-status",
+                f"--threads={thread_count}",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        values: list[int] = []
+        next_start: int | None = None
+        assert process.stdout is not None
+        try:
+            for raw in process.stdout:
+                value = raw.strip()
+                if not re.fullmatch(r"\d+", value):
+                    raise PrimeEngineError("primesieve returned an unexpected interval result")
+                candidate = int(value)
+                if len(values) >= limit:
+                    next_start = candidate
+                    process.terminate()
+                    break
+                values.append(candidate)
+        finally:
+            process.stdout.close()
+            return_code = process.wait(timeout=10)
+        if next_start is None and return_code:
+            raise PrimeEngineError(f"primesieve exited with status {return_code}")
+        return values, next_start is not None, next_start
     program = (
         f"c=0;nx=0;forprime(p={start},{end},if(isprime(p),"
         f'if(c>={limit},nx=p;break);print("P:",p);c++));print("NEXT:",nx)'
@@ -1219,24 +1292,64 @@ def nth_prime_near(start: int, index: int, direction: Literal["after", "before"]
     return value
 
 
-def nth_prime(index: int) -> int:
+def nth_prime(index: int, threads: int | None = None) -> int:
     if index < 1:
         raise ValueError("Prime index must be positive")
+    primecount = shutil.which("primecount")
+    if primecount:
+        if index > 10**29:
+            raise ValueError("The n-th-prime tool supports indices through 10^29")
+        thread_count = threads or os.cpu_count() or 1
+        try:
+            result = subprocess.run(
+                [primecount, str(index), "--nth-prime", f"--threads={thread_count}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=3600,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise PrimeEngineError("primecount exceeded the one-hour operation limit") from exc
+        output = result.stdout.strip()
+        if result.returncode or not re.fullmatch(r"\d+", output):
+            detail = result.stderr.strip() or output
+            raise PrimeEngineError(f"primecount failed: {detail[-1000:]}")
+        return int(output)
     if index > 100_000_000_000:
-        raise ValueError("The n-th-prime tool supports indices up to 100,000,000,000")
+        raise ValueError("Indices above 100,000,000,000 require the optional primecount engine")
     values = _tagged_values(_run_gp(f'print("RESULT:",prime({index}))'), "RESULT")
     if len(values) != 1:
         raise PrimeEngineError("PARI/GP did not return the requested indexed prime")
     return values[0]
 
 
-def prime_count(number: int) -> int:
+def prime_count(number: int, threads: int | None = None) -> int:
     if number < 0:
         return 0
+    primecount = shutil.which("primecount")
+    if primecount:
+        if number > 10**31:
+            raise ValueError("primecount supports exact π(x) through 10^31")
+        thread_count = threads or os.cpu_count() or 1
+        try:
+            result = subprocess.run(
+                [primecount, str(number), f"--threads={thread_count}"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                encoding="utf-8", errors="replace", timeout=3600, check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise PrimeEngineError("primecount exceeded the one-hour operation limit") from exc
+        output = result.stdout.strip()
+        if result.returncode or not re.fullmatch(r"\d+", output):
+            detail = result.stderr.strip() or output
+            raise PrimeEngineError(f"primecount failed: {detail[-1000:]}")
+        return int(output)
     if number > 1_000_000_000_000:
         raise ValueError(
-            "Exact pi(x) is intentionally limited to 10^12 because PARI/GP primepi uses "
-            "a memory-intensive sieve"
+            "Exact π(x) above 10^12 requires the optional primecount engine"
         )
     values = _tagged_values(_run_gp(f'print("RESULT:",primepi({number}))'), "RESULT")
     if len(values) != 1:
@@ -1269,6 +1382,81 @@ def prime_gaps(
     return gaps, next_start is not None, next_start
 
 
+#: Prime constellations that primesieve enumerates natively with ``--print=<k>``.
+#: Only the sizes whose admissible pattern is unique are listed, so every line
+#: primesieve prints is already exactly the requested constellation and no offset
+#: arithmetic happens outside the engines. Sizes 3 and 5 have two admissible
+#: shapes each, which primesieve emits together; separating them would mean
+#: computing offset differences in Python, so those sizes and every custom
+#: pattern stay on PARI/GP. primesieve is exhaustive and exact below 2^64, so
+#: results found this way remain proven.
+PRIMESIEVE_TUPLE_PATTERNS: dict[tuple[int, ...], int] = {
+    (0, 2): 2,
+    (0, 2, 6, 8): 4,
+    (0, 4, 6, 10, 12, 16): 6,
+}
+_PRIMESIEVE_TUPLE_LINE = re.compile(r"\((\d+(?:, \d+)*)\)")
+
+
+def _primesieve_tuples(
+    executable: str,
+    start: int,
+    end: int,
+    normalized: list[int],
+    limit: int,
+) -> tuple[list[list[int]], bool, int | None]:
+    """Stream one primesieve k-tuplet run for an unambiguous constellation size.
+
+    Args:
+        executable: Resolved path to the ``primesieve`` binary.
+        start: Inclusive lower bound of the search interval.
+        end: Inclusive upper bound; every tuple member must not exceed it.
+        normalized: The sorted offset pattern, beginning with 0.
+        limit: Maximum number of tuples returned.
+
+    Returns:
+        The tuples found, whether the limit truncated the search, and the first
+        member of the next matching tuple when it did.
+
+    Raises:
+        PrimeEngineError: If primesieve emits an unexpected line or fails.
+    """
+    size = PRIMESIEVE_TUPLE_PATTERNS[tuple(normalized)]
+    process = subprocess.Popen(
+        [executable, str(max(2, start)), str(end), f"--print={size}", "--no-status"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    tuples: list[list[int]] = []
+    next_start: int | None = None
+    assert process.stdout is not None
+    try:
+        for raw in process.stdout:
+            line = raw.strip()
+            if not line:
+                continue
+            match = _PRIMESIEVE_TUPLE_LINE.fullmatch(line)
+            if not match:
+                raise PrimeEngineError("primesieve returned an unexpected prime-tuple result")
+            members = [int(value) for value in match.group(1).split(", ")]
+            if len(members) != len(normalized):
+                raise PrimeEngineError("primesieve returned an unexpected prime-tuple size")
+            if len(tuples) >= limit:
+                next_start = members[0]
+                process.terminate()
+                break
+            tuples.append(members)
+    finally:
+        process.stdout.close()
+        return_code = process.wait(timeout=10)
+    if next_start is None and return_code:
+        raise PrimeEngineError(f"primesieve exited with status {return_code}")
+    return tuples, next_start is not None, next_start
+
+
 def prime_tuples_in_range(
     start: int,
     end: int,
@@ -1284,6 +1472,15 @@ def prime_tuples_in_range(
         raise ValueError("A prime tuple needs at least two offsets")
     if normalized[-1] > 1_000_000:
         raise ValueError("The largest tuple offset may not exceed 1,000,000")
+    primesieve = shutil.which("primesieve")
+    if (
+        primesieve
+        and tuple(normalized) in PRIMESIEVE_TUPLE_PATTERNS
+        and end >= 2
+        and max(2, start) <= 2**64 - 1
+        and end <= 2**64 - 1
+    ):
+        return _primesieve_tuples(primesieve, start, end, normalized, limit)
     checks = "&&".join(f"isprime(p+{offset})" for offset in normalized)
     printed = '",",'.join(f"p+{offset}" for offset in normalized)
     program = (

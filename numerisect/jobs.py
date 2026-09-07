@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import resource
 import signal
 import subprocess
 import threading
+import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from .config import DEFAULT_CADO_THRESHOLD, JOBS_DIR, MAX_PARALLEL_JOBS
+from .adapters import REGISTRY as ADAPTER_REGISTRY
+from .config import DEFAULT_CADO_THRESHOLD, GGNFS_DIR, JOBS_DIR, MAX_PARALLEL_JOBS
 from .database import Database, utc_now
 from .engines import (
     CadoParameter,
@@ -18,12 +22,14 @@ from .engines import (
     discover_cado_parameters,
     executable_path,
     parse_cado_factors,
+    parse_ecm_output,
     parse_msieve_factors,
     parse_yafu_factors,
     prime_factor_product,
     product_is_complete,
     select_cado_parameter,
 )
+from .factor_lab import parse_tune_info, reconcile_factors, squfof, tune_recommendation
 from .outputs import save_factorization
 
 PHASES = (
@@ -47,6 +53,15 @@ class Cancelled(RuntimeError):
     pass
 
 
+class LimitExceeded(RuntimeError):
+    """A per-job CPU, memory, or wall-clock limit stopped the engine."""
+
+
+MAX_PRIORITY = 10
+MIN_PRIORITY = -10
+ACTIVE_STATUSES = frozenset({"queued", "running", "cancelling", "paused"})
+
+
 class JobManager:
     def __init__(self, database: Database):
         self.database = database
@@ -58,6 +73,15 @@ class JobManager:
         self._cancel_events: dict[str, threading.Event] = {}
         self._futures: dict[str, Future[None]] = {}
         self.parameters = discover_cado_parameters()
+        # Explicit priority queue (workspace tranche): entries are
+        # (job_id, priority, sequence, resume); dispatch picks the highest priority,
+        # then the lowest sequence, while never exceeding MAX_PARALLEL_JOBS.
+        self._pending: list[tuple[str, int, int, bool]] = []
+        self._running: set[str] = set()
+        self._sequence = 0
+        self._paused_since: dict[str, float] = {}
+        self._paused_total: dict[str, float] = {}
+        self._limit_hits: dict[str, str] = {}
 
     def create(
         self,
@@ -67,8 +91,36 @@ class JobManager:
         requested_backend: str,
         threads: int,
         pretest_level: int,
+        trial_bound: int,
         cado_parameter_size: int | None,
+        parent_job_id: str | None = None,
+        priority: int = 0,
+        cpu_seconds: int | None = None,
+        memory_mb: int | None = None,
+        wall_seconds: int | None = None,
+        ecm_b1: int | None = None,
+        ecm_b2: str | None = None,
+        ecm_curves: int | None = None,
+        ecm_sigma: str | None = None,
+        ecm_param: int | None = None,
     ) -> dict[str, Any]:
+        if not 2 <= trial_bound <= 100_000_000:
+            raise ValueError("Trial-division bound must be between 2 and 100,000,000")
+        if not MIN_PRIORITY <= priority <= MAX_PRIORITY:
+            raise ValueError(f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}")
+        for label, value, upper in (
+            ("CPU-second limit", cpu_seconds, 30 * 86400),
+            ("memory limit (MB)", memory_mb, 4 * 1024 * 1024),
+            ("wall-clock limit", wall_seconds, 30 * 86400),
+        ):
+            if value is not None and not 1 <= value <= upper:
+                raise ValueError(f"The {label} must be between 1 and {upper:,}")
+        if requested_backend.startswith("adapter:"):
+            adapter = ADAPTER_REGISTRY.get(requested_backend.removeprefix("adapter:"))
+            if adapter is None or adapter.builtin:
+                raise ValueError("Unknown engine adapter")
+            if not adapter.executable():
+                raise RuntimeError(f"The '{adapter.command}' executable is not available")
         job_id = uuid.uuid4().hex
         absolute = abs(number)
         digits = len(str(absolute))
@@ -77,10 +129,23 @@ class JobManager:
             selected = "yafu" if digits < DEFAULT_CADO_THRESHOLD else "hybrid"
         if selected in {"cado", "hybrid"} and not executable_path("cado-nfs.py"):
             raise RuntimeError("cado-nfs.py is not available")
-        if selected in {"yafu", "hybrid"} and not executable_path("yafu"):
+        yafu_modes = {
+            "yafu", "hybrid", "cross_verify", "yafu_rho",
+            "yafu_pm1", "yafu_pp1", "yafu_ecm", "yafu_siqs",
+            "yafu_nfs", "yafu_snfs", "yafu_fermat",
+        }
+        if selected == "ecm_campaign" and not executable_path("ecm"):
+            raise RuntimeError("GMP-ECM is required for an ECM campaign")
+        if selected == "squfof" and number >= 2**62:
+            raise RuntimeError(
+                "SQUFOF here is limited to inputs below 2^62; choose SIQS or NFS instead"
+            )
+        if selected in yafu_modes and not executable_path("yafu"):
             raise RuntimeError("YAFU is not available")
-        if selected == "msieve" and not executable_path("msieve"):
+        if selected in {"msieve", "cross_verify"} and not executable_path("msieve"):
             raise RuntimeError("Msieve is not available")
+        if selected == "pari_trial" and not executable_path("gp"):
+            raise RuntimeError("PARI/GP is not available")
 
         warning: str | None = None
         parameter: CadoParameter | None = None
@@ -114,21 +179,104 @@ class JobManager:
                 "progress": 0,
                 "threads": threads,
                 "pretest_level": pretest_level,
+                "trial_bound": trial_bound,
                 "cado_parameter_size": parameter.size if parameter else None,
                 "cado_parameter_file": str(parameter.path) if parameter else None,
                 "workdir": str(workdir),
                 "log_path": str(log_path),
                 "warning": warning,
+                "parent_job_id": parent_job_id,
+                "priority": priority,
+                "cpu_seconds": cpu_seconds,
+                "memory_mb": memory_mb,
+                "wall_seconds": wall_seconds,
+                "ecm_b1": ecm_b1,
+                "ecm_b2": ecm_b2,
+                "ecm_curves": ecm_curves,
+                "ecm_sigma": ecm_sigma,
+                "ecm_param": ecm_param,
             }
         )
         self._submit(job_id, resume=False)
         return job
 
     def _submit(self, job_id: str, *, resume: bool) -> None:
+        job = self.database.get_job(job_id)
+        priority = int(job.get("priority") or 0) if job else 0
         event = threading.Event()
         with self._lock:
             self._cancel_events[job_id] = event
-            self._futures[job_id] = self.executor.submit(self._run, job_id, resume)
+            self._futures[job_id] = Future()
+            self._sequence += 1
+            self._pending.append((job_id, priority, self._sequence, resume))
+        self._dispatch()
+
+    def _dispatch(self) -> None:
+        """Start pending jobs in priority order up to MAX_PARALLEL_JOBS."""
+
+        while True:
+            with self._lock:
+                if not self._pending or len(self._running) >= MAX_PARALLEL_JOBS:
+                    return
+                self._pending.sort(key=lambda item: (-item[1], item[2]))
+                job_id, _, _, resume = self._pending.pop(0)
+                future = self._futures.get(job_id)
+                if future is None or not future.set_running_or_notify_cancel():
+                    continue
+                self._running.add(job_id)
+            self.executor.submit(self._execute, job_id, resume, future)
+
+    def _execute(self, job_id: str, resume: bool, future: Future[None]) -> None:
+        try:
+            self._run(job_id, resume)
+        except BaseException as exc:  # pragma: no cover - defensive
+            future.set_exception(exc)
+        else:
+            future.set_result(None)
+        finally:
+            with self._lock:
+                self._running.discard(job_id)
+            self._dispatch()
+
+    def _limits_preexec(self, job: dict[str, Any]):
+        """Return a ``preexec_fn`` applying RLIMIT_CPU/RLIMIT_AS, or ``None``."""
+
+        cpu = job.get("cpu_seconds")
+        memory = job.get("memory_mb")
+        if not cpu and not memory:
+            return None
+
+        def apply() -> None:
+            if cpu:
+                resource.setrlimit(resource.RLIMIT_CPU, (int(cpu), int(cpu) + 5))
+            if memory:
+                limit = int(memory) * 1024 * 1024
+                resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+
+        return apply
+
+    def _watch_wall_clock(self, job_id: str, process: subprocess.Popen[str], wall: int) -> None:
+        """Terminate the process group once active (unpaused) time exceeds ``wall``."""
+
+        started = time.monotonic()
+        while process.poll() is None:
+            time.sleep(0.25)
+            with self._lock:
+                paused_since = self._paused_since.get(job_id)
+                paused_total = self._paused_total.get(job_id, 0.0)
+            if paused_since is not None:
+                continue
+            if time.monotonic() - started - paused_total > wall:
+                with self._lock:
+                    self._limit_hits[job_id] = "wall"
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                return
 
     def _append_log(self, job: dict[str, Any], text: str) -> None:
         with Path(job["log_path"]).open("a", encoding="utf-8", errors="replace") as handle:
@@ -151,12 +299,16 @@ class JobManager:
     ) -> tuple[int, str]:
         job_id = job["id"]
         event = self._cancel_events[job_id]
+        current_job = self.database.get_job(job_id) or job
+        command_history = [*current_job.get("command_history", []), command]
         self.database.update_job(
             job_id,
             command_json=json.dumps(command),
+            command_history_json=json.dumps(command_history),
             phase="Starting process",
         )
         self._append_log(job, f"\n$ {' '.join(command)}\n")
+        limits = self.database.get_job(job_id) or job
         process = subprocess.Popen(
             command,
             cwd=cwd,
@@ -168,10 +320,19 @@ class JobManager:
             errors="replace",
             bufsize=1,
             start_new_session=True,
+            preexec_fn=self._limits_preexec(limits),
         )
         with self._lock:
             self._processes[job_id] = process
+            self._limit_hits.pop(job_id, None)
         self.database.update_job(job_id, pid=process.pid)
+        if limits.get("wall_seconds"):
+            threading.Thread(
+                target=self._watch_wall_clock,
+                args=(job_id, process, int(limits["wall_seconds"])),
+                name=f"wall-clock-{job_id[:8]}",
+                daemon=True,
+            ).start()
         if stdin_text is not None and process.stdin is not None:
             process.stdin.write(stdin_text)
             process.stdin.close()
@@ -189,9 +350,22 @@ class JobManager:
         finally:
             with self._lock:
                 self._processes.pop(job_id, None)
+                limit_hit = self._limit_hits.pop(job_id, None)
             self.database.update_job(job_id, pid=None)
         if event.is_set():
             raise Cancelled("Job cancelled")
+        if limit_hit == "wall":
+            raise LimitExceeded(
+                f"The wall-clock limit of {limits.get('wall_seconds')} seconds was exceeded"
+            )
+        if limits.get("cpu_seconds") and return_code in {-signal.SIGXCPU, -signal.SIGKILL}:
+            raise LimitExceeded(
+                f"The CPU-time limit of {limits.get('cpu_seconds')} seconds was exceeded"
+            )
+        if limits.get("memory_mb") and return_code in {-signal.SIGABRT, -signal.SIGSEGV}:
+            raise LimitExceeded(
+                f"The engine aborted under the {limits.get('memory_mb')} MB address-space limit"
+            )
         return return_code, "".join(captured)
 
     @staticmethod
@@ -208,19 +382,21 @@ class JobManager:
         number: int,
         *,
         pretest_only: bool,
+        algorithm: str | None = None,
     ) -> tuple[list[dict[str, object]], int]:
         command = ["yafu", "-threads", str(job["threads"]), "-terse"]
         if pretest_only:
             command += ["-pretest", str(job["pretest_level"])]
+        expression = f"{algorithm}({number})" if algorithm else f"factor({number})"
         return_code, output = self._run_process(
             job,
             command,
             cwd=Path(job["workdir"]),
-            stdin_text=f"factor({number})\nquit\n",
+            stdin_text=f"{expression}\nquit\n",
         )
         if return_code != 0:
             raise RuntimeError(f"YAFU exited with status {return_code}")
-        records = parse_yafu_factors(output)
+        records = [{**record, "engine": "YAFU"} for record in parse_yafu_factors(output)]
         known = self._known_factors(records)
         product = prime_factor_product(known)
         if number % product != 0:
@@ -234,7 +410,247 @@ class JobManager:
         )
         if return_code != 0:
             raise RuntimeError(f"Msieve exited with status {return_code}")
-        return parse_msieve_factors(output)
+        return [{**record, "engine": "Msieve"} for record in parse_msieve_factors(output)]
+
+    def _run_tune(self, job: dict[str, Any]) -> list[dict[str, object]]:
+        """Run YAFU's own `tune` and report the crossover it measures.
+
+        The measurement is performed entirely by YAFU. Numerisect supplies the
+        siever directory and thread count, reads the ``tune_info`` line YAFU writes
+        to ``yafu.ini`` in the job directory, and reports a suggested threshold. It
+        never rewrites its own configuration.
+
+        Raises:
+            RuntimeError: If YAFU or the GGNFS sievers are unavailable, or the run
+                produced no tune_info line.
+        """
+
+        if not executable_path("yafu"):
+            raise RuntimeError("YAFU is required to tune the engine thresholds")
+        sievers = GGNFS_DIR
+        if not sievers or not Path(sievers).is_dir():
+            raise RuntimeError(
+                "YAFU's tune needs the GGNFS lattice sievers. Set NUMERISECT_GGNFS_DIR "
+                "to the directory holding gnfs-lasieve4I*e."
+            )
+        workdir = Path(job["workdir"])
+        command = [
+            "yafu", "-threads", str(job["threads"]), "-ggnfs_dir", str(sievers).rstrip("/") + "/",
+        ]
+        self.database.update_job(
+            job["id"],
+            phase="YAFU tune: measuring the SIQS/NFS crossover on this machine",
+            progress=5,
+        )
+        return_code, output = self._run_process(
+            job, command, cwd=workdir, stdin_text="tune()\nquit\n"
+        )
+        if return_code != 0:
+            raise RuntimeError(f"YAFU tune exited with status {return_code}")
+        # YAFU records the result in yafu.ini next to where it ran.
+        ini = workdir / "yafu.ini"
+        text = output
+        if ini.is_file():
+            text = f"{output}\n{ini.read_text(encoding='utf-8', errors='replace')}"
+        try:
+            parsed = parse_tune_info(text)
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
+        suggestion = tune_recommendation(parsed, DEFAULT_CADO_THRESHOLD)
+        self.database.update_job(
+            job["id"],
+            warning=(
+                f"Measured crossover {suggestion['measured_crossover_digits']} digits; "
+                f"current threshold {suggestion['current_threshold']}. "
+                + (suggestion["apply_with"] or "no change suggested")
+            ),
+        )
+        # A tuning run produces a measurement, not a factorization.
+        return [
+            {
+                "value": str(suggestion["suggested_threshold"] or DEFAULT_CADO_THRESHOLD),
+                "digits": 0,
+                "status": "measurement",
+                "engine": f"YAFU tune ({suggestion['cpu'] or 'this machine'})",
+            }
+        ]
+
+    def _run_ecm_campaign(self, job: dict[str, Any], number: int) -> list[dict[str, object]]:
+        """Run a resumable GMP-ECM campaign.
+
+        GMP-ECM performs the whole computation, including deciding whether the
+        factor and cofactor are prime. Its own ``-save``/``-resume`` residue files
+        make the campaign resumable, and ``-c`` bounds the curve count.
+
+        Args:
+            job: The job row, carrying ``ecm_b1``, ``ecm_b2``, ``ecm_curves``,
+                ``ecm_sigma`` and ``ecm_param``.
+            number: The integer to work on.
+
+        Returns:
+            Factor records as reported and classified by GMP-ECM.
+
+        Raises:
+            RuntimeError: If GMP-ECM is unavailable or fails.
+        """
+
+        if not executable_path("ecm"):
+            raise RuntimeError("GMP-ECM is not installed")
+        workdir = Path(job["workdir"])
+        residues = workdir / "ecm-residues.txt"
+        b1 = int(job.get("ecm_b1") or 50_000)
+        b2 = str(job.get("ecm_b2") or "").strip()
+        curves = int(job.get("ecm_curves") or 100)
+        sigma = str(job.get("ecm_sigma") or "").strip()
+        param = job.get("ecm_param")
+
+        command: list[str] = ["ecm", "-c", str(curves)]
+        # Resume from a previous run's stage-1 residues when they exist, so a
+        # cancelled campaign continues instead of starting over.
+        if residues.is_file() and residues.stat().st_size > 0:
+            command += ["-resume", str(residues)]
+        else:
+            command += ["-save", str(residues)]
+        if sigma:
+            command += ["-sigma", sigma]
+        if param is not None:
+            command += ["-param", str(int(param))]
+        command.append(str(b1))
+        if b2:
+            command.append(b2)
+
+        self.database.update_job(
+            job["id"],
+            phase=f"GMP-ECM campaign: {curves} curves at B1={b1:,}",
+            progress=10,
+        )
+        return_code, output = self._run_process(
+            job, command, cwd=workdir, stdin_text=f"{number}\n"
+        )
+        parsed = parse_ecm_output(output)
+        self.database.update_job(
+            job["id"], ecm_curves_done=int(parsed["curves_run"] or 0)
+        )
+        # GMP-ECM uses a bitwise exit status; bit 1 means a factor was found.
+        # Any other nonzero status without a factor is a genuine failure.
+        if not parsed["factors"] and return_code not in (0,):
+            raise RuntimeError(f"GMP-ECM exited with status {return_code}")
+        candidates = [int(str(record["value"])) for record in parsed["factors"]]
+        if parsed["cofactor"]:
+            candidates.append(int(str(parsed["cofactor"])))
+        if not candidates:
+            return []
+        # GMP-ECM peels factors off across curves, so the raw list can overlap and
+        # need not multiply to the input. PARI/GP reconciles it into a consistent
+        # decomposition and decides primality; nothing is divided out in Python.
+        reconciled = reconcile_factors(number, candidates)
+        records: list[dict[str, object]] = []
+        for entry in reconciled["factors"]:
+            for _ in range(int(entry["exponent"])):
+                records.append(
+                    {
+                        "value": entry["value"],
+                        "digits": len(entry["value"]),
+                        "status": "prime" if entry["prime"] else "composite",
+                        "engine": "GMP-ECM",
+                    }
+                )
+        cofactor = str(reconciled["cofactor"])
+        if cofactor != "1":
+            records.append(
+                {
+                    "value": cofactor,
+                    "digits": len(cofactor),
+                    "status": "prime" if reconciled["cofactor_prime"] else "composite",
+                    "engine": "GMP-ECM cofactor",
+                }
+            )
+        return records
+
+    def _label_primality(
+        self, job: dict[str, Any], values: list[int], engine: str
+    ) -> list[dict[str, object]]:
+        """Label each value prime or composite using PARI/GP's isprime.
+
+        Primality is decided by the engine, never in Python.
+
+        Raises:
+            RuntimeError: If GP fails or does not label every value.
+        """
+
+        program = (
+            "v=[" + ",".join(str(value) for value in values) + "];"
+            'for(i=1,#v,print("NPRIME:",v[i],"|",isprime(v[i])));'
+            'print("NPRIME_DONE:",#v);quit\n'
+        )
+        return_code, output = self._run_process(
+            job, ["gp", "-fq"], cwd=Path(job["workdir"]), stdin_text=program
+        )
+        if return_code != 0:
+            raise RuntimeError(f"PARI/GP primality labelling exited with status {return_code}")
+        labels: dict[str, bool] = {}
+        done: int | None = None
+        for line in output.splitlines():
+            if line.startswith("NPRIME_DONE:"):
+                text = line.removeprefix("NPRIME_DONE:").strip()
+                done = int(text) if text.isdigit() else None
+            elif line.startswith("NPRIME:"):
+                fields = line.removeprefix("NPRIME:").split("|")
+                if len(fields) != 2 or not all(re.fullmatch(r"\d+", item.strip()) for item in fields):
+                    raise RuntimeError("PARI/GP returned an invalid primality record")
+                labels[fields[0].strip()] = fields[1].strip() == "1"
+        if done != len(values) or len(labels) != len(values):
+            raise RuntimeError("PARI/GP did not label every factor")
+        return [
+            {
+                "value": str(value),
+                "digits": len(str(value)),
+                "status": "prime" if labels[str(value)] else "composite",
+                "engine": engine,
+            }
+            for value in values
+        ]
+
+    def _run_pari_trial(
+        self, job: dict[str, Any], number: int
+    ) -> list[dict[str, object]]:
+        bound = int(job["trial_bound"])
+        program = (
+            f"f=factor({number},{bound + 1});"
+            "for(i=1,matsize(f)[1],"
+            'print("NTRIAL:",f[i,1],"|",f[i,2],"|",isprime(f[i,1])));'
+            'print("NTRIAL_DONE:",matsize(f)[1]);quit\n'
+        )
+        return_code, output = self._run_process(
+            job, ["gp", "-fq"], cwd=Path(job["workdir"]), stdin_text=program
+        )
+        if return_code != 0:
+            raise RuntimeError(f"PARI/GP trial division exited with status {return_code}")
+        records: list[dict[str, object]] = []
+        rows = 0
+        done: int | None = None
+        for line in output.splitlines():
+            if line.startswith("NTRIAL_DONE:"):
+                value = line.removeprefix("NTRIAL_DONE:")
+                done = int(value) if value.isdigit() else None
+            elif line.startswith("NTRIAL:"):
+                fields = line.removeprefix("NTRIAL:").split("|")
+                if len(fields) != 3 or not all(re.fullmatch(r"\d+", item) for item in fields):
+                    raise RuntimeError("PARI/GP returned an invalid trial-division record")
+                factor, exponent, proven = map(int, fields)
+                rows += 1
+                records.extend(
+                    {
+                        "value": str(factor),
+                        "digits": len(str(factor)),
+                        "status": "prime" if proven else "composite",
+                        "engine": f"PARI/GP bounded trial division (B={bound})",
+                    }
+                    for _ in range(exponent)
+                )
+        if done is None or done != rows or not records:
+            raise RuntimeError("PARI/GP returned an incomplete trial-division result")
+        return records
 
     def _snapshot(self, job: dict[str, Any]) -> Path | None:
         cado_dir = Path(job["workdir"]) / "cado"
@@ -280,7 +696,7 @@ class JobManager:
         records = parse_cado_factors(output, number)
         if not records:
             raise RuntimeError("CADO-NFS finished without a verifiable factorization")
-        return records
+        return [{**record, "engine": "CADO-NFS"} for record in records]
 
     def _run(self, job_id: str, resume: bool) -> None:
         job = self.database.get_job(job_id)
@@ -309,7 +725,9 @@ class JobManager:
         number = int(job["number"])
         factors: list[dict[str, object]] = []
         if job["negative"]:
-            factors.append({"value": "-1", "digits": 1, "status": "unit"})
+            factors.append(
+                {"value": "-1", "digits": 1, "status": "unit", "engine": "Numerisect"}
+            )
         try:
             backend = job["selected_backend"]
             if resume and backend in {"cado", "hybrid"} and self._snapshot(job):
@@ -330,13 +748,90 @@ class JobManager:
                             "value": str(residual),
                             "digits": len(str(residual)),
                             "status": "composite",
+                            "engine": "YAFU",
                         }
                     )
             elif backend == "msieve":
                 factors.extend(self._run_msieve(job, number))
+            elif backend == "pari_trial":
+                factors.extend(self._run_pari_trial(job, number))
+            elif backend == "cross_verify":
+                known, residual = self._run_yafu(job, number, pretest_only=False)
+                if residual != 1:
+                    known.append(
+                        {
+                            "value": str(residual),
+                            "digits": len(str(residual)),
+                            "status": "composite",
+                            "engine": "YAFU",
+                        }
+                    )
+                independent = self._run_msieve(job, number)
+                left = sorted(int(str(item["value"])) for item in known)
+                right = sorted(int(str(item["value"])) for item in independent)
+                if left != right:
+                    raise RuntimeError(
+                        "YAFU and Msieve returned different factor multisets; "
+                        "no verified result was accepted"
+                    )
+                factors.extend(
+                    {**item, "engine": "YAFU + Msieve (independently verified)"}
+                    for item in known
+                )
+            elif backend == "tune":
+                factors.extend(self._run_tune(job))
+            elif backend == "ecm_campaign":
+                found = self._run_ecm_campaign(job, number)
+                if not found:
+                    raise RuntimeError(
+                        "The ECM campaign completed its curves without finding a factor. "
+                        "This is inconclusive: raise B1 or the curve count, or switch to "
+                        "SIQS or NFS."
+                    )
+                factors.extend(found)
+            elif backend == "squfof":
+                self.database.update_job(
+                    job_id, phase="SQUFOF cycle (numerisect-squfof)", progress=20
+                )
+                outcome = squfof(number, timeout=3600)
+                if outcome["status"] != "found":
+                    raise RuntimeError(
+                        "SQUFOF did not split the input within its iteration limit; "
+                        "this is inconclusive, not a primality claim"
+                    )
+                parts = [int(str(outcome["factor"])), int(str(outcome["cofactor"]))]
+                factors.extend(
+                    self._label_primality(job, parts, "numerisect-squfof (C/GMP)")
+                )
+            elif backend.startswith("yafu_"):
+                algorithm = {
+                    "yafu_rho": "rho",
+                    "yafu_pm1": "pm1",
+                    "yafu_pp1": "pp1",
+                    "yafu_ecm": "ecm",
+                    "yafu_siqs": "siqs",
+                    "yafu_nfs": "nfs",
+                    "yafu_snfs": "snfs",
+                    "yafu_fermat": "fermat",
+                }[backend]
+                known, residual = self._run_yafu(
+                    job, number, pretest_only=False, algorithm=algorithm
+                )
+                factors.extend(known)
+                if residual != 1:
+                    factors.append(
+                        {
+                            "value": str(residual),
+                            "digits": len(str(residual)),
+                            "status": "composite",
+                            "engine": f"YAFU {algorithm}",
+                        }
+                    )
             elif backend == "cado":
                 self.database.update_job(job_id, engine_target=str(number))
                 factors.extend(self._run_cado(job, number, resume=False))
+            elif backend.startswith("adapter:"):
+                factors.extend(self._run_adapter(job, number, backend.removeprefix("adapter:")))
             elif backend == "hybrid":
                 self.database.update_job(
                     job_id, phase="YAFU small-factor and ECM pretest", progress=5
@@ -364,6 +859,7 @@ class JobManager:
                                     "value": str(final_residual),
                                     "digits": len(str(final_residual)),
                                     "status": "composite",
+                                    "engine": "YAFU",
                                 }
                             )
                     else:
@@ -419,6 +915,17 @@ class JobManager:
                 factors_json=json.dumps(factors),
                 finished_at=utc_now(),
             )
+        except LimitExceeded as exc:
+            self._append_log(job, f"\nResource limit: {exc}\n")
+            self.database.update_job(
+                job_id,
+                status="failed",
+                phase="Stopped by resource limit",
+                error=str(exc),
+                failure_reason="limit_exceeded",
+                factors_json=json.dumps(factors),
+                finished_at=utc_now(),
+            )
         except Exception as exc:
             self._append_log(job, f"\nApplication error: {exc}\n")
             self.database.update_job(
@@ -433,17 +940,22 @@ class JobManager:
             with self._lock:
                 self._cancel_events.pop(job_id, None)
                 self._futures.pop(job_id, None)
+                self._paused_since.pop(job_id, None)
+                self._paused_total.pop(job_id, None)
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         job = self.database.get_job(job_id)
         if not job:
             raise KeyError(job_id)
-        if job["status"] not in {"queued", "running", "cancelling"}:
+        if job["status"] not in ACTIVE_STATUSES:
             return job
+        if job["status"] == "paused":
+            self._continue_process(job_id)
         with self._lock:
             event = self._cancel_events.get(job_id)
             process = self._processes.get(job_id)
             future = self._futures.get(job_id)
+            self._pending = [item for item in self._pending if item[0] != job_id]
         if event:
             event.set()
         if future and future.cancel():
@@ -472,7 +984,7 @@ class JobManager:
         job = self.database.get_job(job_id)
         if not job:
             raise KeyError(job_id)
-        if job["status"] in {"queued", "running", "cancelling"}:
+        if job["status"] in ACTIVE_STATUSES:
             raise ValueError("Job is already active")
         self._append_log(job, "\n--- Resuming job ---\n")
         self.database.update_job(
@@ -489,12 +1001,188 @@ class JobManager:
     def shutdown(self) -> None:
         with self._lock:
             active = list(self._processes.items())
+            self._pending.clear()
         for job_id, process in active:
             event = self._cancel_events.get(job_id)
             if event:
                 event.set()
             try:
+                os.killpg(process.pid, signal.SIGCONT)
                 os.killpg(process.pid, signal.SIGINT)
             except ProcessLookupError:
                 pass
         self.executor.shutdown(wait=False, cancel_futures=True)
+
+    # ----- workspace tranche: priorities, queue order, pause/resume, adapters ---------
+
+    def queue_snapshot(self) -> list[dict[str, Any]]:
+        """Return queued jobs in dispatch order (highest priority, then oldest)."""
+
+        with self._lock:
+            ordered = sorted(self._pending, key=lambda item: (-item[1], item[2]))
+        result: list[dict[str, Any]] = []
+        for position, (job_id, _priority, _, resume) in enumerate(ordered, start=1):
+            job = self.database.get_job(job_id)
+            if job:
+                result.append({**job, "queue_position": position, "resume": resume})
+        return result
+
+    def set_priority(self, job_id: str, priority: int) -> dict[str, Any]:
+        """Change a job's priority; queued jobs are re-sorted immediately."""
+
+        if not MIN_PRIORITY <= priority <= MAX_PRIORITY:
+            raise ValueError(f"Priority must be between {MIN_PRIORITY} and {MAX_PRIORITY}")
+        job = self.database.get_job(job_id)
+        if not job:
+            raise KeyError(job_id)
+        with self._lock:
+            self._pending = [
+                (identifier, priority if identifier == job_id else item_priority, seq, resume)
+                for identifier, item_priority, seq, resume in self._pending
+            ]
+        updated = self.database.update_job(job_id, priority=priority)
+        self._dispatch()
+        return updated  # type: ignore[return-value]
+
+    def reorder(self, job_ids: list[str]) -> list[dict[str, Any]]:
+        """Run the listed queued jobs in the given order.
+
+        Every listed job must currently be queued.  The jobs receive the highest
+        priority among them and fresh sequence numbers in list order, so their
+        relative order is exact while unrelated queued jobs keep their own priority.
+        """
+
+        if len(set(job_ids)) != len(job_ids):
+            raise ValueError("Duplicate job identifiers in reorder request")
+        with self._lock:
+            pending = {item[0]: item for item in self._pending}
+            missing = [job_id for job_id in job_ids if job_id not in pending]
+            if missing:
+                raise ValueError("Only queued jobs can be reordered")
+            top = max(pending[job_id][1] for job_id in job_ids) if job_ids else 0
+            remaining = [item for item in self._pending if item[0] not in set(job_ids)]
+            reordered = []
+            for job_id in job_ids:
+                self._sequence += 1
+                reordered.append((job_id, top, self._sequence, pending[job_id][3]))
+            self._pending = remaining + reordered
+        for job_id in job_ids:
+            self.database.update_job(job_id, priority=top)
+        return self.queue_snapshot()
+
+    def _continue_process(self, job_id: str) -> None:
+        with self._lock:
+            process = self._processes.get(job_id)
+            paused_since = self._paused_since.pop(job_id, None)
+            if paused_since is not None:
+                self._paused_total[job_id] = (
+                    self._paused_total.get(job_id, 0.0) + time.monotonic() - paused_since
+                )
+        if process and process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGCONT)
+            except ProcessLookupError:
+                pass
+
+    def pause(self, job_id: str) -> dict[str, Any]:
+        """Suspend a running engine with SIGSTOP on its process group."""
+
+        job = self.database.get_job(job_id)
+        if not job:
+            raise KeyError(job_id)
+        if job["status"] == "paused":
+            return job
+        if job["status"] != "running":
+            raise ValueError("Only a running job can be paused")
+        with self._lock:
+            process = self._processes.get(job_id)
+        if not process or process.poll() is not None:
+            raise ValueError("The job has no running engine process to pause")
+        try:
+            os.killpg(process.pid, signal.SIGSTOP)
+        except ProcessLookupError as exc:
+            raise ValueError("The engine process already exited") from exc
+        with self._lock:
+            self._paused_since[job_id] = time.monotonic()
+        self._append_log(job, "\n--- Paused (SIGSTOP) ---\n")
+        return self.database.update_job(  # type: ignore[return-value]
+            job_id, status="paused", paused_at=utc_now()
+        )
+
+    def resume_paused(self, job_id: str) -> dict[str, Any]:
+        """Continue a paused engine with SIGCONT."""
+
+        job = self.database.get_job(job_id)
+        if not job:
+            raise KeyError(job_id)
+        if job["status"] != "paused":
+            raise ValueError("Only a paused job can be continued")
+        self._continue_process(job_id)
+        self._append_log(job, "\n--- Continued (SIGCONT) ---\n")
+        return self.database.update_job(  # type: ignore[return-value]
+            job_id, status="running", paused_at=None
+        )
+
+    def _run_adapter(
+        self, job: dict[str, Any], number: int, name: str
+    ) -> list[dict[str, object]]:
+        """Run a declarative user adapter and label its factors with PARI ``isprime``."""
+
+        adapter = ADAPTER_REGISTRY.get(name)
+        if adapter is None or adapter.builtin:
+            raise RuntimeError(f"Unknown engine adapter: {name}")
+        request = {
+            "number": str(number),
+            "threads": str(job["threads"]),
+            "workdir": str(job["workdir"]),
+            "trial_bound": str(job["trial_bound"]),
+            "pretest_level": str(job["pretest_level"]),
+            "parameter_file": job.get("cado_parameter_file") or "",
+        }
+        return_code, output = self._run_process(
+            job,
+            adapter.build_command(request),
+            cwd=Path(job["workdir"]),
+            stdin_text=adapter.build_stdin(request),
+        )
+        if return_code != 0:
+            raise RuntimeError(f"Adapter '{name}' exited with status {return_code}")
+        records = adapter.parse_factors(output, number)
+        if not records:
+            raise RuntimeError(f"Adapter '{name}' produced no parsable factors")
+        values = [int(str(record["value"])) for record in records]
+        if any(value in {0, 1, -1} for value in values):
+            raise RuntimeError(f"Adapter '{name}' returned a unit or zero as a factor")
+        program = (
+            "v=[" + ",".join(str(abs(value)) for value in values) + "];"
+            'for(i=1,#v,print("ADAPTER_PRIME:",v[i],"|",isprime(v[i])));'
+            'print("ADAPTER_DONE:",#v);quit\n'
+        )
+        code, verdicts = self._run_process(
+            job, ["gp", "-fq"], cwd=Path(job["workdir"]), stdin_text=program
+        )
+        if code != 0:
+            raise RuntimeError("PARI/GP could not classify the adapter factors")
+        proven: dict[str, bool] = {}
+        done: int | None = None
+        for line in verdicts.splitlines():
+            if line.startswith("ADAPTER_PRIME:"):
+                value, flag = line.removeprefix("ADAPTER_PRIME:").split("|", 1)
+                proven[value] = flag.strip() == "1"
+            elif line.startswith("ADAPTER_DONE:"):
+                text = line.removeprefix("ADAPTER_DONE:").strip()
+                done = int(text) if text.isdigit() else None
+        if done != len(values) or len(proven) != len(set(map(abs, values))):
+            raise RuntimeError("PARI/GP returned an incomplete adapter classification")
+        labelled: list[dict[str, object]] = []
+        for record in records:
+            value = str(abs(int(str(record["value"]))))
+            labelled.append(
+                {
+                    **record,
+                    "value": value,
+                    "status": "prime" if proven[value] else "composite",
+                    "engine": f"adapter:{name} (PARI/GP isprime)",
+                }
+            )
+        return labelled

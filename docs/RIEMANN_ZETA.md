@@ -9,10 +9,14 @@ layer evaluates the zeta function.
 
 Start the source checkout with `./run.sh` and select **Riemann zeta**, or open
 <http://127.0.0.1:8765/#zeta>. Zeta uses its own workspace, separate from the
-38 individually routed Prime Tools pages. Choose an operation, enter its
+116 individually routed Prime Tools pages. Zeta itself has 22 individually
+routed operations. Choose an operation, enter its
 precision and any available thread settings, then submit it. The zeta result
 panel contains the native result, exact report path, and download control.
 Restart the server and refresh the browser after source updates.
+
+The twelve explicit-formula, zero-statistics, and L-function operations are
+documented separately in [Zeta lab](ZETA_LAB.md).
 
 The versioned user installer and Linux/WSL/macOS prerequisites are documented
 in [Installation and versioning](INSTALLATION.md). FLINT development headers
@@ -23,6 +27,11 @@ are required for the zeta helper.
 | Tool | Native operation | Result semantics |
 |---|---|---|
 | Evaluate `ζ(s)` | `acb_zeta` | Rigorous Arb enclosures for real part, imaginary part, magnitude, and argument |
+| Hardy/Riemann–Siegel `Z(t)` | `acb_dirichlet_hardy_z` | Rigorous real enclosure on the critical line |
+| Completed xi / Dirichlet eta | `acb_dirichlet_xi`, `acb_dirichlet_eta` | Rigorous complex enclosures and analytic continuation |
+| Functional equation | Independent FLINT/Arb evaluation of both sides | Verified only when the resulting complex balls overlap |
+| Stieltjes constants | `acb_dirichlet_stieltjes` | Rigorous enclosure for `γ_n` in the Laurent expansion at 1 |
+| Gram point | `acb_dirichlet_gram_point` | Rigorous enclosure for one requested `g_n` |
 | Consecutive zeros | `acb_dirichlet_hardy_z_zeros` | Rigorous intervals for consecutive Hardy Z zeros on `Re(s)=1/2` |
 | Count zeros through T | `acb_dirichlet_zeta_nzeros` | Exact uniquely isolated count using FLINT's Turing method |
 | Critical-line plot | Parallel `acb_zeta` samples | Exploratory chart of enclosure midpoints |
@@ -80,6 +89,10 @@ curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/zeros \
 curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/count \
   -H 'Content-Type: application/json' \
   -d '{"height":"100","precision":50,"threads":8}'
+
+curl --cookie numerisect.cookies -X POST http://127.0.0.1:8765/api/zeta/functional-equation \
+  -H 'Content-Type: application/json' \
+  -d '{"sigma":"0.25","ordinate":"12","precision":50}'
 ```
 
 Plot endpoints are `/api/zeta/line` and `/api/zeta/heatmap`. Their output

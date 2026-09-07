@@ -149,3 +149,89 @@ def cado_parameter_warning(digits: int, parameter: CadoParameter) -> str | None:
             f"available set, c{parameter.size}. Expert review is recommended."
         )
     return f"Using the next installed CADO parameter set, c{parameter.size}, for a c{digits} input."
+
+# GMP-ECM reports a discovered factor on its own line, then classifies it and the
+# cofactor. The classification lines are what give prime/composite status; the
+# "Factor found" line alone does not.
+_ECM_FACTOR_FOUND = re.compile(r"Factor found in step \d+:\s*(\d+)")
+_ECM_CLASSIFIED = re.compile(
+    r"Found (prime|probable prime|composite) factor of \s*\d+ digits:\s*(\d+)", re.I
+)
+_ECM_COFACTOR = re.compile(
+    r"(Prime|Probable prime|Composite) cofactor\s+(\d+)\s+has", re.I
+)
+_ECM_CURVE = re.compile(r"Run (\d+) out of (\d+)")
+_ECM_SIGMA = re.compile(r"sigma=([0-9:]+)")
+
+
+def parse_ecm_output(output: str) -> dict[str, object]:
+    """Parse GMP-ECM output into factors, cofactor, and campaign progress.
+
+    GMP-ECM decides primality of the factor and cofactor itself and prints it;
+    this function only reads those decisions.
+
+    Args:
+        output: Combined stdout/stderr from ``ecm``.
+
+    Returns:
+        ``{"factors": [...], "cofactor": str | None, "curves_run": int,
+        "curves_requested": int, "sigmas": [...]}``.
+    """
+
+    status_map = {
+        "prime": "prime",
+        "probable prime": "probable_prime",
+        "composite": "composite",
+    }
+    factors: list[dict[str, object]] = []
+    seen: set[str] = set()
+    cofactor: str | None = None
+    curves_run = 0
+    curves_requested = 0
+    sigmas: list[str] = []
+    text = output.replace("\r", "\n")
+
+    for match in _ECM_CURVE.finditer(text):
+        curves_run = max(curves_run, int(match.group(1)))
+        curves_requested = max(curves_requested, int(match.group(2)))
+    for match in _ECM_SIGMA.finditer(text):
+        sigmas.append(match.group(1))
+
+    for match in _ECM_CLASSIFIED.finditer(text):
+        kind, value = match.group(1).lower(), match.group(2)
+        if value in seen:
+            continue
+        seen.add(value)
+        factors.append(
+            {
+                "value": value,
+                "digits": len(value),
+                "status": status_map.get(kind, "composite"),
+                "engine": "GMP-ECM",
+            }
+        )
+    # A factor announced but never classified is still a factor of unknown status.
+    for match in _ECM_FACTOR_FOUND.finditer(text):
+        value = match.group(1)
+        if value not in seen:
+            seen.add(value)
+            factors.append(
+                {
+                    "value": value,
+                    "digits": len(value),
+                    "status": "unknown",
+                    "engine": "GMP-ECM",
+                }
+            )
+
+    cofactor_match = _ECM_COFACTOR.search(text)
+    if cofactor_match:
+        cofactor = cofactor_match.group(2)
+    return {
+        "factors": factors,
+        "cofactor": cofactor,
+        "curves_run": curves_run,
+        "curves_requested": curves_requested,
+        "sigmas": sigmas,
+    }
+

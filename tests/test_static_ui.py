@@ -17,8 +17,8 @@ def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     )[0]
     categorized_forms = re.findall(r"'([^']+-form)'", page_catalogue)
 
-    assert len(html_forms) == len(set(html_forms)) == 38
-    assert len(categorized_forms) == len(set(categorized_forms)) == 38
+    assert len(html_forms) == len(set(html_forms)) == 116
+    assert len(categorized_forms) == len(set(categorized_forms)) == 116
     assert set(categorized_forms) == set(html_forms)
 
 
@@ -38,11 +38,22 @@ def test_prime_results_are_placed_below_the_submitted_form():
     assert "Result saved automatically to output/${data.output_file}" in APP
 
 
+def test_zeta_tools_use_individual_routes_and_local_results():
+    grid = INDEX.split('id="zeta-page-grid"', 1)[1].split('id="zeta-result-panel"', 1)[0]
+    forms = re.findall(r'<form id="(zeta-[^"]+-form)"', grid)
+    catalogue = APP.split("const zetaSections = {", 1)[1].split("const zetaTools", 1)[0]
+    categorized = re.findall(r"'(zeta-[^']+-form)'", catalogue)
+    assert len(forms) == len(set(forms)) == 22
+    assert set(forms) == set(categorized)
+    assert "form.insertAdjacentElement('afterend', panel)" in APP
+
+
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260905-workstation' in INDEX
-    assert '/assets/app.js?v=20260905-workstation' in INDEX
+    assert '/assets/styles.css?v=20260907-libraries-first' in INDEX
+    assert '/assets/app.js?v=20260907-libraries-first' in INDEX
+    assert '/assets/favicon.svg?v=20260907-libraries-first' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260905-workstation#primes/prime-check' in RUNNER
+    assert '?ui=20260907-libraries-first#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -52,3 +63,10 @@ def test_browser_bootstraps_local_request_protection():
     assert "X-Numerisect-Token" in APP
     assert "window.confirm" in APP
     assert "body: JSON.stringify({ confirm: true })" in APP
+
+
+def test_system_diagnostics_are_a_first_class_local_workspace():
+    assert 'data-view="diagnostic-view"' in INDEX
+    assert 'id="run-diagnostics"' in INDEX
+    assert "#diagnostics" in APP
+    assert "Report saved automatically to output/${escapeHtml(data.output_file)}" in APP

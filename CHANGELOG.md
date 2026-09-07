@@ -5,6 +5,81 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.5.0 — 2026-09-07
+
+- Stated the governing development policy: Numerisect is a user interface over existing
+  number-theory libraries. A computation uses a library routine first, an optimized C or
+  C++ program with GMP/FLINT only when no library provides one, and never Python or
+  JavaScript. Added `tests/test_native_computation_policy.py` so the policy is enforced
+  by the suite rather than by review, and documented it in `CONTRIBUTING.md`.
+- Added `numerisect-squfof`, an optimized C implementation of Shanks' square forms
+  factorization using GMP. No installed library provides SQUFOF: the YAFU build has no
+  such function, PARI/GP exposes none, Msieve implements only QS/NFS, and GMP-ECM only
+  ECM/P-1/P+1. Verified against 150 random semiprimes with no incorrect answers; inputs
+  at or above 2^62 are rejected explicitly and an exhausted search is inconclusive.
+- Added the expert factorization laboratory: SQUFOF, special-form and SNFS suitability
+  analysis, algebraic and Aurifeuillean factors verified by division, a strategy adviser
+  with an expected-factor-size estimate, an engine decision path, bounded educational
+  algorithm traces, and batch primality certificates.
+- Added a resumable GMP-ECM campaign manager using the engine's own save and resume
+  residue files, with PARI/GP reconciling the factors GMP-ECM peels off across curves
+  into a consistent decomposition.
+- Added the primality laboratory: a comparison lab across Fermat, Solovay-Strassen,
+  Miller-Rabin, Lucas, Frobenius, BPSW, APR-CL and ECPP; deterministic Miller-Rabin
+  witness sets; Pocklington and Pratt certificates with independent verification; the
+  probable-prime taxonomy; the Carmichael analyzer; Sierpinski and Riesel covering sets;
+  bi-twin chains; and provable constrained-prime generation.
+- Added the algebra laboratory: reciprocity traces, congruences over composite moduli,
+  four selectable discrete-logarithm algorithms, finite fields, divisor lattices,
+  smoothness and roughness, record-number families, a proven weird-number check,
+  sociable cycles, Cornacchia with a step trace, quadratic rings, general number fields
+  with prime-ideal decomposition, and Chebotarev density experiments.
+- Added the visualization and education workbench: Ulam, Sacks and polar spirals, the
+  Eisenstein hexagonal lattice, arbitrary-base modular wheels, residue heatmaps, gap and
+  record-gap timelines, the prime-race animation, step-traced Eratosthenes, segmented
+  Eratosthenes, Sundaram and Atkin sieves, and a cited complexity dashboard.
+- Added application infrastructure: complete command-line parity through an in-process
+  ASGI caller, CSV/JSON/JSON Lines/Markdown/LaTeX/PARI exports, file-based batch import
+  with GP-side expansion, saved workspaces, searchable job and report history,
+  revision-keyed result caching, job priorities and reordering, per-job CPU, memory and
+  wall-clock limits, pause and resume, opt-in desktop notifications, declarative engine
+  adapters, a performance-history dashboard, API clients for five languages, and a
+  standard-library client for notebooks.
+- Added permissioned catalogue lookups (OEIS and local known-factor tables) that are off
+  by default and require both `NUMERISECT_ALLOW_NETWORK=1` and a per-request
+  confirmation. Only the query is transmitted, and every claimed factor is verified by
+  PARI/GP before being reported as a divisor.
+- Fixed the wheel smoke test, which asserted six pinned engines after primesieve and
+  primecount brought the manifest to eight.
+- Added the analytic prime-distribution laboratory: approximation-error and
+  prime-number-theorem convergence charts, cited nth-prime bounds, prime races and
+  Chebyshev bias, progressions with expected-versus-observed counts, Hardy-Littlewood
+  singular series with a rigorous tail bound, constellation predictions,
+  Bateman-Horn estimates, maximal-gap search with merit and Cramer, Granville and
+  Firoozbakht comparisons verified against the published table, Maier-matrix
+  experiments, and a two-parameter density surface.
+- Extended the zeta workspace with explicit-formula prime counting from certified
+  zeros, Chebyshev psi reconstruction, Riemann-Siegel remainder analysis, Euler-product
+  comparison, zero-spacing histograms, pair correlation against the GUE prediction,
+  Gram blocks and Gram's-law exceptions, the Backlund S(T) remainder, Dirichlet
+  characters and L-functions with independent Hurwitz cross-checks, L-function zeros
+  for GRH experiments, and Dedekind zeta functions through PARI.
+- Corrected the Prime Tools group count in the README and prime-manipulation guide, the
+  README route list, and the stale test count in the prime-manipulation guide.
+- Added engine tuning through YAFU's own `tune`: `POST /api/factor-lab/tune` measures
+  this machine's SIQS/NFS crossover and reports a suggested `NUMERISECT_CADO_THRESHOLD`.
+  Numerisect never rewrites its own configuration. Needs `NUMERISECT_GGNFS_DIR` to point
+  at the GGNFS lattice sievers.
+- Recorded two declined items in `docs/ROADMAP_STATUS.md` rather than leaving them as
+  open gaps: synthetic engine benchmarking, superseded by the performance history built
+  from real jobs, and the side-by-side engine timing view, whose correctness half is
+  already covered by cross-verification.
+- Bumped the interface asset tag to `20260907-libraries-first`.
+
+## 0.4.0 — 2026-09-06
+
 - Added strict loopback Host validation, foreign-origin rejection, Fetch
   Metadata checks, and a cryptographically random per-process API session.
 - Removed automatic native-engine installation from application startup and
@@ -15,6 +90,30 @@ binary packages are published.
   source wheel resources independent of the original checkout.
 - Added public project metadata, third-party notices, community/security files,
   and SHA-pinned GitHub Actions quality checks.
+- Added factor-tree visualization, partial-cofactor continuation, validated
+  batch queues, independent YAFU/Msieve verification, and bounded PARI trial
+  division in place of YAFU's crashing trial command.
+- Added JSON factorization manifests containing factor provenance, full command
+  history, parameters, immutable engine revisions, and executable SHA-256 sums.
+- Added pinned primesieve 12.15 and primecount 8.5 integrations for parallel
+  interval sieving, exact prime counting, indexed primes, and asymptotic
+  comparisons.
+- Added independent PARI certificate verification and a native primality
+  comparison laboratory.
+- Added special-family and NTT prime generation, Cunningham chains,
+  Lucas–Lehmer and Pépin tests, perfect-power and factor-strategy analysis.
+- Added generalized CRT, character symbols, Tonelli–Shanks traces, modular kth
+  roots, Hensel lifting, discrete logs, unit groups, order/power-residue
+  distributions, p-adic valuation, and polynomial/cyclotomic factorization.
+- Added extended arithmetic and divisor classifications, aliquot sequences,
+  summatory functions, Eisenstein primes, and quadratic prime-ideal
+  decomposition.
+- Extended the compiled FLINT/Arb helper with Hardy Z, xi, eta, Stieltjes,
+  Gram-point, and rigorous functional-equation operations.
+- Expanded the workstation to 65 individually routed Prime Tools pages and 10
+  Zeta pages, plus a sanitized local diagnostics workspace.
+- Added a cache-busted Numerisect `N` favicon to prevent stale generic branding.
+- Added the `numerisect` CLI and bumped the pre-release version to 0.4.0.
 
 ## 0.3.0 — 2026-09-05
 

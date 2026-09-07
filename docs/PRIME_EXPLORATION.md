@@ -1,5 +1,17 @@
 # Prime exploration and notebook problems
 
+Numerisect 0.5.0 extends this workspace with rigorously proven Mersenne,
+Fermat, Cullen, Woodall, Wagstaff, decimal-repunit, primorial ± 1, and
+factorial ± 1 family searches, both Cunningham-chain recurrences, and
+exact-bit-length NTT-friendly primes. These operations are implemented in
+PARI/GP and preserve an explicit incomplete status when a result or candidate
+limit is reached.
+
+Eligible 64-bit interval enumeration now streams from multithreaded
+primesieve. Larger arbitrary-precision endpoints continue through PARI/GP and
+every candidate is proven before display. Exact indexed primes and prime counts
+use parallel primecount when available.
+
 Numerisect imports the useful operations from `primes_gap.ipynb` and
 `prime_problems.ipynb` without retaining their Python/SymPy calculations or
 dependence on a pre-generated prime file. PARI/GP generates and proves primes,

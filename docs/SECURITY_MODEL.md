@@ -48,3 +48,10 @@ Native-engine installation is the exception: after a visible confirmation, it
 connects to the official upstream repositories listed in the pinned engine
 manifest. Calculations, SQLite state, engine logs, and text exports remain on
 the machine unless the user deliberately shares them.
+
+The diagnostics workspace follows the same rule. Its report excludes
+hostnames, usernames, IP addresses, absolute paths, job inputs, and results;
+the user must review and share it manually. Factorization JSON manifests are
+more detailed and may include the submitted expression and engine command
+arguments, so treat them as calculation results rather than anonymized
+diagnostics.

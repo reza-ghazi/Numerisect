@@ -34,7 +34,7 @@ jobs:
       - name: Install lightweight native test prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --yes pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc autoconf automake libtool shellcheck
+          sudo apt-get install --yes pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc primesieve autoconf automake libtool shellcheck
       - name: Install project test dependencies
         run: python -m pip install '.[test,dev]'
       - name: Run Python tests
@@ -74,4 +74,4 @@ jobs:
           python -m zipfile --list dist/numerisect-*.whl
           python -m venv /tmp/numerisect-wheel-smoke
           /tmp/numerisect-wheel-smoke/bin/pip install dist/numerisect-*.whl
-          /tmp/numerisect-wheel-smoke/bin/python -c "from numerisect.config import NATIVE_DIR, STATIC_DIR; from numerisect.installer import load_engine_manifest; assert (STATIC_DIR / 'index.html').is_file(); assert (STATIC_DIR / 'app.js').is_file(); assert (NATIVE_DIR / 'numerisect_zeta.c').is_file(); assert len(load_engine_manifest()) == 6"
+          /tmp/numerisect-wheel-smoke/bin/python -c "from numerisect.config import NATIVE_DIR, STATIC_DIR; from numerisect.installer import load_engine_manifest; assert (STATIC_DIR / 'index.html').is_file(); assert (STATIC_DIR / 'app.js').is_file(); assert (NATIVE_DIR / 'numerisect_zeta.c').is_file(); assert (NATIVE_DIR / 'numerisect_squfof.c').is_file(); assert len(list(STATIC_DIR.parent.glob('*.gp'))) >= 11; assert len(load_engine_manifest()) == 8"

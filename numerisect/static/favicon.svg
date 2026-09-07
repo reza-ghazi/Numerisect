@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Numerisect">
+  <rect width="64" height="64" rx="14" fill="#0b121b"/>
+  <rect x="3" y="3" width="58" height="58" rx="11" fill="none" stroke="#4e9bf5" stroke-width="3"/>
+  <path d="M18 45V19h6l16 18V19h6v26h-6L24 27v18z" fill="#dcecff"/>
+</svg>

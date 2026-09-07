@@ -1,5 +1,9 @@
 # Reciprocals of primes
 
+Numerisect 0.5.0 preserves the streamed native-output contract described here:
+the 100,000-digit browser ceiling is only a preview limit and does not cap the
+complete finite decimal or repetend written directly by PARI/GP to the report.
+
 Numerisect analyzes the base-10 expansion of `1/p` for a rigorously proven
 prime `p`. PARI/GP performs the primality test, multiplicative-order
 calculation, primitive-root test, and decimal-digit generation. Python and

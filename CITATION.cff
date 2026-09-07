@@ -9,8 +9,8 @@ authors:
 repository-code: "https://github.com/reza-ghazi/Numerisect"
 url: "https://numerisect.com"
 license: GPL-3.0-or-later
-version: 0.3.0
-date-released: 2026-09-06
+version: 0.5.0
+date-released: 2026-09-07
 keywords:
   - integer factorization
   - prime numbers

@@ -4,11 +4,16 @@ from numerisect.native_tools import _ensure_flint_link_flag
 from numerisect.zeta import (
     ZetaEngineError,
     count_zeta_zeros,
+    evaluate_hardy_z,
+    evaluate_xi_eta,
     evaluate_zeta,
     find_zeta_zeros,
+    gram_point,
     sample_zeta_heatmap,
     sample_zeta_line,
+    stieltjes_constant,
     validated_real,
+    verify_functional_equation,
 )
 
 
@@ -64,3 +69,21 @@ def test_zeta_validation_and_pole_error():
         validated_real("nan", "Input")
     with pytest.raises(ZetaEngineError, match="pole"):
         evaluate_zeta("1", "0", 20)
+
+
+def test_rigorous_hardy_xi_eta_and_stieltjes_values():
+    hardy = evaluate_hardy_z("14.134725", 30)
+    assert hardy["imaginary"] == "0"
+    assert hardy["rigorous"] is True
+    eta = evaluate_xi_eta("eta", "1", "0", 30)
+    assert eta["real"].startswith("[0.693147180559")
+    stieltjes = stieltjes_constant("0", 30)
+    assert stieltjes["real"].startswith("[0.577215664901")
+
+
+def test_gram_point_and_functional_equation_verification():
+    gram = gram_point("0", 30)
+    assert gram["value"].startswith("[17.8455995404")
+    result = verify_functional_equation("0.25", "12", 40)
+    assert result["verified"] is True
+    assert "+/-" in result["residual_real"]

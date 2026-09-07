@@ -13,7 +13,8 @@ python3 -m venv .venv
 ```
 
 PARI/GP and FLINT development files are required by the full native integration
-suite. The heavyweight factorization engines are not required for ordinary CI.
+suite. primesieve and primecount exercise the high-performance range/count
+paths when installed. The heavyweight factorization engines are not required for ordinary CI.
 See [the installation guide](docs/INSTALLATION.md) for system prerequisites.
 
 ## Checks
@@ -21,7 +22,7 @@ See [the installation guide](docs/INSTALLATION.md) for system prerequisites.
 Run these before opening a pull request:
 
 ```bash
-pytest -q
+python -m pytest -q
 ruff check .
 mypy
 shellcheck install.sh run.sh
@@ -40,10 +41,11 @@ not say GitHub Actions passed until the workflow has completed on GitHub.
    resource limits, and arbitrary-precision behavior where applicable.
 4. Add type annotations and Google-style docstrings to new or modified public
    Python APIs.
-5. Keep Python and JavaScript as validation, orchestration, persistence, and UI
-   layers. Computationally intensive mathematics belongs in a proven native
-   engine or optimized C/C++ using GMP/FLINT and appropriate HPC facilities.
+5. Follow the native-computation policy below. It is the governing rule of this
+   project and `tests/test_native_computation_policy.py` enforces it.
 6. Update documentation and `CHANGELOG.md` when behavior changes.
+7. Register each new Prime Tools form exactly once in `primeSections`, keep its
+   hash route unique, and preserve the explicit saved `output/<filename>` notice.
 
 Formatting and imports are enforced by Ruff. Shell scripts must pass
 ShellCheck. JavaScript should remain dependency-light and must not duplicate
@@ -51,6 +53,45 @@ native mathematical algorithms. Strict mypy checking currently covers the
 localhost security boundary. Extending the strict baseline across the older
 orchestration modules remains follow-up work and should be done incrementally
 with real annotations rather than broad ignores.
+
+## Native-computation policy
+
+Numerisect is a well-designed user interface over existing number-theory libraries. It
+gathers, in one place, almost every operation concerning prime numbers and integer
+factorization. It is not a place to reimplement mathematics a mature library provides.
+
+Decide every feature in this order, without skipping or stopping early:
+
+1. **Use an existing library routine.** Search the installed engines first: PARI/GP for
+   number theory, FLINT/Arb for analytic and ball arithmetic, YAFU, Msieve, CADO-NFS and
+   GMP-ECM for factoring, primesieve for enumeration, primecount for counting. Prefer the
+   routine the library authors optimized over anything hand-written, and check the
+   documentation and installed headers before concluding one is missing.
+2. **Only if no library provides it, write an optimized C or C++ program** using GMP,
+   FLINT/Arb and appropriate HPC facilities, exposed through a narrow subprocess
+   boundary. This is the fallback, not the default. `numerisect/native/numerisect_squfof.c`
+   is the worked example: SQUFOF is absent from every installed engine, and the file
+   documents that before implementing it.
+3. **Python and JavaScript are interface, API, and orchestration only.** Python
+   validates input, launches engines, parses tagged output, persists results, and serves
+   HTTP. JavaScript renders. Neither computes a mathematical result, ever.
+
+A PARI/GP script drives a library rather than replacing one. It is the right tool for a
+short composition of PARI routines, and for features that deliberately expose an
+algorithm's individual steps (comparison laboratories, certificate trees, algorithm
+traces). It is the wrong tool when it reimplements a routine the library already exposes,
+or when it becomes a performance-critical inner loop; escalate those to step 2.
+
+Violations include arithmetic on mathematical quantities in Python or JavaScript
+(divisibility, primality, gcd, factoring, modular exponentiation, series summation, prime
+counting), reimplementing in GP script what the library exposes as a routine, and
+silently substituting a Python or JavaScript fallback when an engine is missing.
+Formatting, sorting, bookkeeping and request bounds checking are not violations. If the
+engines cannot deliver a requested feature, report the gap explicitly rather than
+approximating it.
+
+Every new mathematical module must name, in its docstring and its `docs/*.md` page, the
+library routine or C program that performs the computation.
 
 ## Adding or updating an engine
 

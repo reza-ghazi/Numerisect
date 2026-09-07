@@ -239,6 +239,37 @@ class EngineInstaller:
             self._install_flint()
         build_zeta_tool()
 
+    def _install_primesieve(self) -> None:
+        source = self._clone("primesieve")
+        prefix = TOOLS_DIR / "prefix"
+        build = source / "build-numerisect"
+        self._run(
+            [
+                "cmake", "-S", str(source), "-B", str(build),
+                "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_INSTALL_PREFIX={prefix}",
+            ]
+        )
+        self._run(["cmake", "--build", str(build), "-j", str(os.cpu_count() or 1)])
+        self._run(["cmake", "--install", str(build)])
+        self._copy_executable(prefix / "bin" / "primesieve", "primesieve")
+
+    def _install_primecount(self) -> None:
+        prefix = TOOLS_DIR / "prefix"
+        if not (prefix / "lib" / "cmake" / "primesieve").exists():
+            self._install_primesieve()
+        source = self._clone("primecount")
+        build = source / "build-numerisect"
+        self._run(
+            [
+                "cmake", "-S", str(source), "-B", str(build),
+                "-DCMAKE_BUILD_TYPE=Release", f"-DCMAKE_INSTALL_PREFIX={prefix}",
+                f"-DCMAKE_PREFIX_PATH={prefix}",
+            ]
+        )
+        self._run(["cmake", "--build", str(build), "-j", str(os.cpu_count() or 1)])
+        self._run(["cmake", "--install", str(build)])
+        self._copy_executable(prefix / "bin" / "primecount", "primecount")
+
     def _install(self) -> None:
         recipes: dict[str, Callable[[], None]] = {
             "PARI/GP": self._install_pari,
@@ -247,6 +278,8 @@ class EngineInstaller:
             "YAFU": self._install_yafu,
             "CADO-NFS": self._install_cado,
             "FLINT/Zeta": self._install_flint_zeta,
+            "primesieve": self._install_primesieve,
+            "primecount": self._install_primecount,
         }
         missing = self.missing()
         if not missing:

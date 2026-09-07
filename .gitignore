@@ -36,6 +36,7 @@ data/
 *.db
 *.log
 output/*.txt
+output/*.json
 !output/.gitkeep
 
 # Native build products
@@ -48,6 +49,9 @@ output/*.txt
 *.exe
 numerisect-zeta
 
-# Local agent instructions
+# Local agent instructions and scratch prompts (never published)
 AGENTS.md
+CLAUDE.md
+new_prompt.md
 codex_resume_command.txt
+claude_resume_command.txt

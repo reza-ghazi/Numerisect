@@ -1,6 +1,6 @@
 const state = {
   jobs: [], selectedId: null, poller: null, setupPoller: null,
-  logOpen: false, primeTool: 'prime-check', requestToken: null,
+  logOpen: false, primeTool: 'prime-check', zetaTool: 'zeta-evaluate', requestToken: null, batchJobIds: [],
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -40,6 +40,10 @@ async function loadCapabilities() {
     $('#threads').max = data.cpu_count;
     $('#threads').value = data.cpu_count;
     document.querySelectorAll('.zeta-threads').forEach((input) => {
+      input.max = data.cpu_count;
+      input.value = data.cpu_count;
+    });
+    document.querySelectorAll('.native-threads').forEach((input) => {
       input.max = data.cpu_count;
       input.value = data.cpu_count;
     });
@@ -107,6 +111,7 @@ function renderJobs() {
 
 async function loadJobs() {
   state.jobs = await api('/api/jobs');
+  if (typeof announceFinishedJobs === 'function') announceFinishedJobs(state.jobs);
   renderJobs();
   if (state.selectedId) await refreshSelected();
 }
@@ -118,14 +123,37 @@ function renderFactors(job) {
     $('#copy-result').classList.add('hidden');
     $('#download-result').classList.add('hidden');
     $('#factor-equation').classList.add('hidden');
+    $('#factor-tree').classList.add('hidden');
     return;
   }
-  container.innerHTML = job.factors.map((factor) => `
+  container.innerHTML = job.factors.map((factor, index) => `
     <div class="factor-row">
       <code>${escapeHtml(factor.value)}</code>
-      <span class="factor-kind">${escapeHtml(factor.status.replace('_', ' '))} · ${factor.digits}d</span>
+      <span class="factor-kind">${escapeHtml(factor.status.replace('_', ' '))} · ${factor.digits}d · ${escapeHtml(factor.engine || job.selected_backend)}${['composite', 'unknown'].includes(factor.status) ? `<button class="cofactor-continue secondary" type="button" data-factor-index="${index}">Continue cofactor</button>` : ''}</span>
     </div>
   `).join('');
+  container.querySelectorAll('.cofactor-continue').forEach((button) => {
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const child = await api(`/api/jobs/${job.id}/continue-cofactor`, {
+          method: 'POST',
+          body: JSON.stringify({
+            factor_index: Number(button.dataset.factorIndex),
+            backend: 'auto', threads: Number($('#threads').value),
+            pretest_level: Number($('#pretest-level').value),
+            trial_bound: Number($('#trial-bound').value),
+          }),
+        });
+        state.selectedId = child.id;
+        await loadJobs();
+      } catch (error) {
+        $('#job-error').textContent = error.message;
+        $('#job-error').classList.remove('hidden');
+        button.disabled = false;
+      }
+    });
+  });
   $('#copy-result').classList.remove('hidden');
   const equation = $('#factor-equation');
   equation.innerHTML = `<span>${job.negative ? '−' : ''}${escapeHtml(shortNumber(job.number, 52))}</span><span class="equals">=</span>${job.factors.map((factor, index) => `${index ? '<span class="multiply">×</span>' : ''}<span>${escapeHtml(factor.value)}</span>`).join('')}`;
@@ -133,6 +161,23 @@ function renderFactors(job) {
   const download = $('#download-result');
   download.classList.toggle('hidden', !job.result_available);
   download.href = `/api/jobs/${job.id}/export`;
+  const manifest = $('#download-manifest');
+  manifest.classList.toggle('hidden', !job.manifest_file);
+  manifest.href = job.manifest_file ? `/api/outputs/${encodeURIComponent(job.manifest_file)}` : '#';
+
+  const grouped = new Map();
+  job.factors.forEach((factor) => {
+    const key = `${factor.value}|${factor.status}|${factor.engine || job.selected_backend}`;
+    const current = grouped.get(key) || { ...factor, exponent: 0 };
+    current.exponent += 1;
+    grouped.set(key, current);
+  });
+  const elapsed = job.started_at && job.finished_at
+    ? Math.max(0, (new Date(job.finished_at) - new Date(job.started_at)) / 1000)
+    : null;
+  const tree = $('#factor-tree');
+  tree.innerHTML = `<div class="factor-tree-root"><span>Input</span><code>${job.negative ? '−' : ''}${escapeHtml(shortNumber(job.number, 64))}</code><small>${job.digits} digits${elapsed === null ? '' : ` · ${elapsed.toFixed(3)} s total`}</small></div><div class="factor-tree-branches">${[...grouped.values()].map((factor) => `<article class="factor-tree-leaf ${escapeHtml(factor.status)}"><span>${escapeHtml(factor.status.replace('_', ' '))}</span><code>${escapeHtml(shortNumber(factor.value, 64))}${factor.exponent > 1 ? `<sup>${factor.exponent}</sup>` : ''}</code><small>${factor.digits} digits · ${escapeHtml(factor.engine || job.selected_backend)}</small></article>`).join('')}</div>`;
+  tree.classList.remove('hidden');
 }
 
 function renderDetail(job) {
@@ -203,6 +248,7 @@ $('#factor-form').addEventListener('submit', async (event) => {
         backend: $('#backend').value,
         threads: Number($('#threads').value),
         pretest_level: Number($('#pretest-level').value),
+        trial_bound: Number($('#trial-bound').value),
         cado_parameter_size: parameter ? Number(parameter) : null,
       }),
     });
@@ -213,6 +259,84 @@ $('#factor-form').addEventListener('submit', async (event) => {
     errorBox.classList.remove('hidden');
   } finally {
     button.disabled = false;
+  }
+});
+
+document.querySelectorAll('[data-factor-page]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('[data-factor-page]').forEach((item) => item.classList.toggle('active', item === button));
+    document.querySelectorAll('.factor-page').forEach((page) => page.classList.toggle('hidden', page.id !== button.dataset.factorPage));
+  });
+});
+
+$('#batch-file').addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const message = $('#batch-factor-message');
+  try {
+    const text = await file.text();
+    let values;
+    if (file.name.toLowerCase().endsWith('.json')) {
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) throw new Error('JSON batch input must be an array.');
+      values = parsed.map((value) => String(value));
+    } else {
+      values = text.split(/[\n,;]+/).map((value) => value.trim()).filter(Boolean);
+    }
+    $('#batch-expressions').value = values.join('\n');
+    message.textContent = `Imported ${values.length.toLocaleString()} expressions from ${file.name}.`;
+    message.className = 'message';
+  } catch (error) {
+    message.textContent = `Could not import file: ${error.message}`;
+    message.className = 'message error';
+  }
+});
+
+$('#batch-factor-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  const message = $('#batch-factor-message');
+  button.disabled = true;
+  try {
+    const expressions = $('#batch-expressions').value.split(/\n+/).map((value) => value.trim()).filter(Boolean);
+    const data = await api('/api/jobs/batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        expressions, backend: $('#batch-backend').value,
+        threads: Number($('#threads').value),
+        pretest_level: Number($('#pretest-level').value),
+        trial_bound: Number($('#trial-bound').value),
+      }),
+    });
+    state.batchJobIds = data.jobs.map((job) => job.id);
+    state.selectedId = state.batchJobIds[0] || null;
+    message.textContent = `${data.count.toLocaleString()} validated jobs were added to the queue.`;
+    message.className = 'message';
+    $('#batch-export').classList.remove('hidden');
+    $('#batch-download').classList.add('hidden');
+    await loadJobs();
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'message error';
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$('#batch-export').addEventListener('click', async () => {
+  const message = $('#batch-factor-message');
+  try {
+    const data = await api('/api/jobs/batch-export', {
+      method: 'POST', body: JSON.stringify({ job_ids: state.batchJobIds }),
+    });
+    message.textContent = `✓ Consolidated result saved automatically to output/${data.output_file}.`;
+    message.className = 'message saved-output-note';
+    const download = $('#batch-download');
+    download.href = `/api/outputs/${encodeURIComponent(data.output_file)}`;
+    download.classList.remove('hidden');
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'message error';
   }
 });
 
@@ -256,13 +380,21 @@ const primeSections = {
     label: 'Primality & navigation',
     forms: ['prime-check-form', 'prime-batch-form', 'prime-classify-form', 'prime-nearby-form', 'prime-range-form', 'prime-nth-form', 'prime-count-form'],
   },
+  proofs: {
+    label: 'Primality laboratories',
+    forms: ['certificate-verify-form', 'primality-lab-form', 'special-form-test-form', 'primality-compare-form', 'deterministic-witness-form', 'pocklington-proof-form', 'pratt-certificate-form', 'primality-certificate-form', 'proth-test-form', 'lucas-sequence-form', 'pseudoprime-taxonomy-form', 'carmichael-analysis-form', 'covering-set-form', 'lucas-lehmer-steps-form', 'ecpp-steps-form'],
+  },
   generation: {
     label: 'Prime generation',
-    forms: ['prime-generate-form', 'prime-special-form', 'prime-progression-form', 'random-range-form', 'digit-constrained-form', 'perfect-number-form', 'primorial-form'],
+    forms: ['prime-generate-form', 'prime-special-form', 'special-prime-family-form', 'ntt-primes-form', 'prime-progression-form', 'random-range-form', 'digit-constrained-form', 'perfect-number-form', 'primorial-form', 'proth-search-form', 'chernick-carmichael-form', 'repunit-search-form', 'sierpinski-riesel-form', 'bitwin-chain-form', 'prime-ladder-form', 'constrained-prime-form'],
   },
   patterns: {
     label: 'Patterns & distribution',
-    forms: ['prime-gaps-form', 'prime-tuples-form', 'gap-statistics-form', 'prime-distribution-form', 'goldbach-form'],
+    forms: ['prime-gaps-form', 'prime-tuples-form', 'cunningham-chain-form', 'gap-statistics-form', 'prime-distribution-form', 'goldbach-form'],
+  },
+  analytic: {
+    label: 'Analytic prime distribution',
+    forms: ['prime-approximation-form', 'summatory-functions-form', 'approximation-error-form', 'pnt-convergence-form', 'nth-prime-bounds-form', 'prime-race-form', 'progression-deviation-form', 'singular-series-form', 'tuple-prediction-form', 'bateman-horn-form', 'maximal-gap-form', 'short-interval-form', 'density-surface-form'],
   },
   structures: {
     label: 'Prime structures',
@@ -270,11 +402,23 @@ const primeSections = {
   },
   arithmetic: {
     label: 'Arithmetic & factors',
-    forms: ['integer-profile-form', 'prime-modular-form', 'coprime-profile-form', 'factor-count-distribution-form', 'witness-form', 'prime-constant-form'],
+    forms: ['factor-strategy-form', 'integer-profile-form', 'extended-arithmetic-form', 'divisor-classification-form', 'aliquot-sequence-form', 'perfect-power-form', 'prime-modular-form', 'coprime-profile-form', 'factor-count-distribution-form', 'witness-form', 'prime-constant-form', 'divisor-lattice-form', 'smoothness-profile-form', 'record-numbers-form', 'weird-number-form', 'sociable-cycle-form', 'cornacchia-form'],
+  },
+  modular: {
+    label: 'Modular & polynomial algebra',
+    forms: ['character-symbol-form', 'tonelli-shanks-form', 'crt-form', 'modular-roots-form', 'hensel-roots-form', 'discrete-log-form', 'unit-group-form', 'order-distribution-form', 'power-residues-form', 'p-adic-valuation-form', 'polynomial-factor-form', 'cyclotomic-form', 'reciprocity-trace-form', 'congruence-solver-form', 'dlog-lab-form', 'finite-field-form'],
+  },
+  algebraic: {
+    label: 'Algebraic primes',
+    forms: ['eisenstein-prime-form', 'quadratic-decomposition-form', 'quadratic-ring-form', 'number-field-form', 'chebotarev-form'],
   },
   explorations: {
     label: 'Advanced explorations',
     forms: ['prime-pyramid-form', 'special-number-form', 'contiguous-digits-form', 'prime-problem-form', 'prime-polynomial-form', 'palindrome-derived-form'],
+  },
+  visual: {
+    label: 'Visualization & education',
+    forms: ['visual-spiral-form', 'visual-eisenstein-form', 'visual-wheel-form', 'visual-heatmap-form', 'visual-gap-timeline-form', 'visual-prime-race-form', 'visual-sieve-form', 'visual-complexity-form'],
   },
 };
 
@@ -388,6 +532,62 @@ function activatePrimeTool(slug, updateHash = true, focusPage = false) {
   if (focusPage) $('#prime-tool-page').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+const zetaSections = {
+  functions: { label: 'Rigorous functions', forms: ['zeta-evaluate-form', 'zeta-hardy-form', 'zeta-xi-eta-form', 'zeta-functional-form', 'zeta-stieltjes-form'] },
+  zeros: { label: 'Zeros & Gram geometry', forms: ['zeta-count-form', 'zeta-zeros-form', 'zeta-gram-form', 'zeta-gram-blocks-form', 'zeta-backlund-form'] },
+  explicit: { label: 'Explicit formulas & zero statistics', forms: ['zeta-explicit-pi-form', 'zeta-psi-form', 'zeta-riemann-siegel-form', 'zeta-euler-product-form', 'zeta-spacing-form', 'zeta-pair-correlation-form'] },
+  lfunctions: { label: 'Dirichlet & Dedekind L-functions', forms: ['zeta-characters-form', 'zeta-lfunction-form', 'zeta-lzeros-form', 'zeta-dedekind-form'] },
+  visualization: { label: 'Exploratory plots', forms: ['zeta-line-form', 'zeta-heatmap-form'] },
+};
+const zetaTools = new Map();
+
+function initializeZetaTools() {
+  const navigation = $('#zeta-tool-navigation');
+  const select = $('#zeta-tool-select');
+  let index = 0;
+  Object.entries(zetaSections).forEach(([section, details]) => {
+    const group = document.createElement('section');
+    group.className = 'tool-nav-group';
+    const heading = document.createElement('h3'); heading.textContent = details.label; group.appendChild(heading);
+    const options = document.createElement('optgroup'); options.label = details.label;
+    details.forms.forEach((formId) => {
+      const form = document.getElementById(formId);
+      if (!form) throw new Error(`Zeta tool form is missing: ${formId}`);
+      const slug = formId.replace(/-form$/, '');
+      const title = form.querySelector('h2').textContent.trim();
+      const description = form.querySelector(':scope > p:not(.eyebrow)')?.textContent.trim() || '';
+      zetaTools.set(slug, { slug, formId, title, description, section, index });
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'prime-tool-link'; button.textContent = title;
+      button.addEventListener('click', () => activateZetaTool(slug, true));
+      button.dataset.zetaTool = slug; group.appendChild(button);
+      const option = document.createElement('option'); option.value = slug; option.textContent = title; options.appendChild(option);
+      index += 1;
+    });
+    navigation.appendChild(group); select.appendChild(options);
+  });
+  select.addEventListener('change', (event) => activateZetaTool(event.target.value, true));
+}
+
+function activateZetaTool(slug, updateHash = true) {
+  const selected = zetaTools.get(slug) || zetaTools.values().next().value;
+  state.zetaTool = selected.slug;
+  document.querySelectorAll('[data-zeta-tool]').forEach((button) => {
+    const active = button.dataset.zetaTool === selected.slug;
+    button.classList.toggle('active', active);
+    active ? button.setAttribute('aria-current', 'page') : button.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('#zeta-page-grid > form').forEach((form) => form.classList.toggle('prime-page-hidden', form.id !== selected.formId));
+  $('#zeta-tool-select').value = selected.slug;
+  $('#zeta-tool-section').textContent = zetaSections[selected.section].label;
+  $('#zeta-page-title').textContent = selected.title;
+  $('#zeta-page-description').textContent = selected.description;
+  $('#zeta-page-count').textContent = `Operation ${selected.index + 1} of ${zetaTools.size}`;
+  const panel = $('#zeta-result-panel');
+  panel.classList.toggle('prime-page-hidden', Boolean(panel.dataset.ownerForm && panel.dataset.ownerForm !== selected.formId));
+  document.title = `${selected.title} · Riemann Zeta · Numerisect`;
+  if (updateHash) history.pushState(null, '', `#zeta/${selected.slug}`);
+}
+
 function activateView(button, updateHash = true) {
   document.querySelectorAll('.mode-tab').forEach((tab) => tab.classList.remove('active'));
   document.querySelectorAll('.tool-view').forEach((view) => view.classList.add('hidden'));
@@ -396,12 +596,14 @@ function activateView(button, updateHash = true) {
   document.body.dataset.activeView = button.dataset.view;
   if (button.dataset.view === 'prime-view') activatePrimeTool(state.primeTool, false);
   if (button.dataset.view === 'factor-view') document.title = 'Integer Factorization · Numerisect';
-  if (button.dataset.view === 'zeta-view') document.title = 'Riemann Zeta · Numerisect';
+  if (button.dataset.view === 'zeta-view') activateZetaTool(state.zetaTool, false);
+  if (button.dataset.view === 'diagnostic-view') document.title = 'System Diagnostics · Numerisect';
   if (updateHash) {
     const hashes = {
       'factor-view': '#factor',
       'prime-view': `#primes/${state.primeTool}`,
-      'zeta-view': '#zeta',
+      'zeta-view': `#zeta/${state.zetaTool}`,
+      'diagnostic-view': '#diagnostics',
     };
     history.replaceState(null, '', hashes[button.dataset.view]);
   }
@@ -419,16 +621,42 @@ function applyHashRoute() {
     activateView(document.querySelector('[data-view="prime-view"]'), false);
     activatePrimeTool(state.primeTool, false);
   } else if (section === 'zeta') {
+    if (zetaTools.has(primeTool)) state.zetaTool = primeTool;
     activateView(document.querySelector('[data-view="zeta-view"]'), false);
+  } else if (section === 'diagnostics') {
+    activateView(document.querySelector('[data-view="diagnostic-view"]'), false);
+  } else if (section === 'workspaces' || section === 'history') {
+    activateView(document.querySelector('[data-view="workspace-view"]'), false);
+    loadWorkspaces();
   } else {
     activateView(document.querySelector('[data-view="factor-view"]'), false);
   }
 }
 
 initializePrimeTools();
+initializeZetaTools();
 applyHashRoute();
 window.addEventListener('hashchange', applyHashRoute);
 window.addEventListener('popstate', applyHashRoute);
+
+$('#run-diagnostics').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const result = $('#diagnostic-result');
+  button.disabled = true;
+  result.classList.remove('hidden');
+  result.innerHTML = '<div class="empty">Inspecting local engines and prerequisites…</div>';
+  try {
+    const data = await api('/api/diagnostics', { method: 'POST', body: '{}' });
+    const metrics = Object.entries(data.metrics).map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('');
+    const engines = data.rows.map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('');
+    const prerequisites = data.prerequisites.map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('');
+    result.innerHTML = `<p class="saved-output-note">${escapeHtml(data.note)} ✓ Report saved automatically to output/${escapeHtml(data.output_file)}.</p><div class="reciprocal-summary">${metrics}</div><div class="result-table-wrap"><table class="result-table"><thead><tr>${data.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr></thead><tbody>${engines}</tbody></table></div><h3>Build prerequisites</h3><div class="result-table-wrap"><table class="result-table"><thead><tr><th>Command</th><th>Status</th></tr></thead><tbody>${prerequisites}</tbody></table></div><a class="secondary button-link" href="/api/outputs/${encodeURIComponent(data.output_file)}">Review diagnostic bundle</a>`;
+  } catch (error) {
+    result.innerHTML = `<div class="message error">${escapeHtml(error.message)}</div>`;
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function placePrimeResult(form) {
   const panel = $('#prime-result-panel');
@@ -452,6 +680,10 @@ function showPrimeResult(title, data, type, form) {
     const metrics = Object.entries(data.metrics || {}).map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('');
     const rows = data.rows.slice(0, 2000).map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('');
     content.innerHTML = `${metrics ? `<div class="reciprocal-summary">${metrics}</div>` : ''}<div class="result-table-wrap"><table class="result-table"><thead><tr>${data.columns.map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${data.rows.length ? '' : '<p class="empty">No values found. See the result note above.</p>'}</div>`;
+    if (data.rows.length > 2000) $('#prime-result-note').textContent += ' Showing the first 2,000 rows; the report contains all returned rows.';
+  } else if (type === 'distribution') {
+    content.innerHTML = distributionMarkup(data);
+    drawDistributionChart(data);
     if (data.rows.length > 2000) $('#prime-result-note').textContent += ' Showing the first 2,000 rows; the report contains all returned rows.';
   } else if (type === 'check') {
     content.innerHTML = `<div class="prime-verdict"><strong>${escapeHtml(data.classification)}</strong><code>${escapeHtml(data.number)}</code>${data.certificate_included ? '<span class="proof-badge">Certificate saved</span>' : ''}</div>`;
@@ -804,7 +1036,8 @@ $('#prime-range-form').addEventListener('submit', (event) => {
   submitPrimeForm(event.currentTarget, '/api/primes/range', {
     start: $('#prime-range-start').value,
     end: $('#prime-range-end').value,
-    limit: Number($('#prime-range-limit').value)
+    limit: Number($('#prime-range-limit').value),
+    threads: Number($('#prime-range-threads').value),
   }, (data) => `${data.count.toLocaleString()} primes in range`, 'list');
 });
 
@@ -829,7 +1062,8 @@ $('#prime-special-form').addEventListener('submit', (event) => {
 $('#prime-nth-form').addEventListener('submit', (event) => {
   event.preventDefault();
   submitPrimeForm(event.currentTarget, '/api/primes/nth', {
-    index: Number($('#prime-index').value),
+    index: $('#prime-index').value,
+    threads: Number($('#prime-index-threads').value),
   }, (data) => `${data.label} · ${data.digits} digits`, 'metric');
 });
 
@@ -837,6 +1071,7 @@ $('#prime-count-form').addEventListener('submit', (event) => {
   event.preventDefault();
   submitPrimeForm(event.currentTarget, '/api/primes/count', {
     expression: $('#prime-count-through').value,
+    threads: Number($('#prime-count-threads').value),
   }, () => 'Exact prime count', 'metric');
 });
 
@@ -1053,6 +1288,467 @@ $('#palindrome-derived-form').addEventListener('submit', (event) => {
   }, (data) => `${Number(data.count).toLocaleString()} palindrome-derived prime values`, 'palindrome-derived');
 });
 
+// --- Visualization & education workbench -----------------------------------
+// Every mathematical quantity below arrives from a library routine (primesieve,
+// or PARI forprime/isprime/gcd/eulerphi) through /api/visual/*. This code maps
+// engine-supplied integers and flags to canvas coordinates, colours, and
+// playback frames and does nothing else: it never decides primality, evaluates
+// a membership test, counts, totals, or derives an axis scale. Spiral and grid
+// coordinates are pure layout; every count and maximum is read from the
+// response, never recomputed here.
+
+const visualState = { race: null, sieve: null };
+const VISUAL_KIND_COLOURS = { 1: '#4f9cf9', 2: '#d6a34a', 3: '#e0685f' };
+const VISUAL_LINE_COLOURS = ['#4f9cf9', '#d6a34a', '#7fd0a2', '#e0685f', '#b98cf0', '#63c7d6', '#e8a0c4', '#9aa7b2'];
+
+function visualTable(columns, rows) {
+  const head = columns.map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join('');
+  const body = rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('');
+  return `<div class="result-table-wrap"><table class="result-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function visualMetrics(entries) {
+  return `<div class="reciprocal-summary">${entries.map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('')}</div>`;
+}
+
+function showVisualResult(title, data, form, html) {
+  placePrimeResult(form);
+  $('#prime-result-title').textContent = title;
+  let note = data.note || '';
+  if (data.truncated || data.event_truncated) note += `${note ? ' ' : ''}Display/export stopped at the requested limit.`;
+  if (data.output_file) note += `${note ? ' ' : ''}✓ Result saved automatically to output/${data.output_file}.`;
+  const noteElement = $('#prime-result-note');
+  noteElement.textContent = note;
+  noteElement.classList.toggle('saved-output-note', Boolean(data.output_file));
+  $('#prime-result-content').innerHTML = html;
+  const download = $('#prime-download');
+  download.href = `/api/outputs/${encodeURIComponent(data.output_file)}`;
+  download.classList.toggle('hidden', !data.output_file);
+  $('#prime-result-panel').classList.remove('hidden');
+}
+
+async function submitVisualForm(form, path, payload, title, render) {
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  const oldText = button.firstElementChild.textContent;
+  button.firstElementChild.textContent = 'Working…';
+  try {
+    const data = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+    showVisualResult(title(data), data, form, render(data, form));
+  } catch (error) {
+    placePrimeResult(form);
+    $('#prime-result-title').textContent = 'Could not complete request';
+    $('#prime-result-note').textContent = error.message;
+    $('#prime-result-note').classList.remove('saved-output-note');
+    $('#prime-result-content').innerHTML = '';
+    $('#prime-result-panel').classList.remove('hidden');
+    $('#prime-download').classList.add('hidden');
+  } finally {
+    button.disabled = false;
+    button.firstElementChild.textContent = oldText;
+  }
+}
+
+function visualBackground(canvas) {
+  const prepared = prepareCanvas(canvas);
+  prepared.context.fillStyle = '#0c0f11';
+  prepared.context.fillRect(0, 0, prepared.width, prepared.height);
+  return prepared;
+}
+
+function visualEmpty(ctx, width, height, message) {
+  ctx.fillStyle = '#8d9aa5';
+  ctx.font = '13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(message, width / 2, height / 2);
+  ctx.textAlign = 'left';
+}
+
+// Square-spiral coordinate of the 0-based offset i: purely geometric, verified
+// to visit every lattice cell exactly once in unit steps.
+function ulamPoint(i) {
+  const k = Math.ceil((Math.sqrt(i + 1) - 1) / 2);
+  let t = 2 * k + 1;
+  let m = t * t;
+  t -= 1;
+  if (i >= m - t) return [k - (m - 1 - i), -k];
+  m -= t;
+  if (i >= m - t) return [-k, -k + (m - 1 - i)];
+  m -= t;
+  if (i >= m - t) return [-k + (m - 1 - i), k];
+  return [k, k - (m - 1 - i - t)];
+}
+
+function drawVisualSpiral(canvas, data) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  const base = Number(data.start);
+  if (!Number.isFinite(base) || !Number.isSafeInteger(base)) {
+    visualEmpty(ctx, width, height, 'The range starts beyond the exact drawing range; see the saved report.');
+    return;
+  }
+  const highlighted = new Set(data.highlighted);
+  const offsets = data.primes.map((prime) => Number(prime) - base).filter((offset) => Number.isFinite(offset));
+  if (!offsets.length) {
+    visualEmpty(ctx, width, height, 'PARI/GP found no primes in this range.');
+    return;
+  }
+  const last = data.count - 1;
+  const points = offsets.map((offset) => {
+    if (data.layout === 'ulam') return ulamPoint(offset);
+    if (data.layout === 'sacks') {
+      const radius = Math.sqrt(offset);
+      const angle = 2 * Math.PI * radius;
+      return [radius * Math.cos(angle), radius * Math.sin(angle)];
+    }
+    return [offset * Math.cos(offset), offset * Math.sin(offset)];
+  });
+  let extent = 1;
+  if (data.layout === 'ulam') extent = Math.ceil((Math.sqrt(last + 1) - 1) / 2) + 1;
+  else if (data.layout === 'sacks') extent = Math.sqrt(last) + 1;
+  else extent = last + 1;
+  const pad = 18;
+  const scale = (Math.min(width, height) / 2 - pad) / extent;
+  const dot = Math.max(0.6, Math.min(4, scale * 0.45));
+  points.forEach((point, index) => {
+    ctx.fillStyle = highlighted.has(data.primes[index]) ? '#d6a34a' : '#4f9cf9';
+    ctx.beginPath();
+    ctx.arc(width / 2 + point[0] * scale, height / 2 - point[1] * scale, dot, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#8d9aa5';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(`${data.layout} spiral · ${data.prime_count.toLocaleString()} primes · ${data.highlight_count.toLocaleString()} highlighted`, 12, 20);
+}
+
+function drawVisualEisenstein(canvas, points) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  if (!points.length) {
+    visualEmpty(ctx, width, height, 'PARI/GP found no Eisenstein primes within this norm bound.');
+    return;
+  }
+  // omega = exp(2*pi*i/3), so a + b*omega sits at (a - b/2, b*sqrt(3)/2).
+  const placed = points.map((point) => [point.a - point.b / 2, point.b * Math.sqrt(3) / 2]);
+  const extent = Math.max(...placed.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y))), 1);
+  const pad = 24;
+  const scale = (Math.min(width, height) / 2 - pad) / extent;
+  const dot = Math.max(1.2, Math.min(4.5, scale * 0.35));
+  ctx.strokeStyle = '#35404a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, height / 2); ctx.lineTo(width - pad, height / 2);
+  ctx.moveTo(width / 2, pad); ctx.lineTo(width / 2, height - pad);
+  ctx.stroke();
+  placed.forEach(([x, y], index) => {
+    ctx.fillStyle = VISUAL_KIND_COLOURS[points[index].kind] || '#46515b';
+    ctx.beginPath();
+    ctx.arc(width / 2 + x * scale, height / 2 - y * scale, dot, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawVisualHeatmap(canvas, data) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  const pad = 46;
+  const columns = data.bins.length;
+  const rows = data.modulus;
+  const cellWidth = (width - pad * 2) / columns;
+  const cellHeight = (height - pad * 2) / rows;
+  const maximum = Math.max(Number(data.max_cell), 1);
+  data.bins.forEach((bin, column) => {
+    bin.counts.forEach((count, residue) => {
+      const intensity = Number(count) / maximum;
+      ctx.fillStyle = data.residues[residue].coprime
+        ? `hsl(${210 - 170 * intensity}, ${45 + 40 * intensity}%, ${12 + 46 * intensity}%)`
+        : '#191d21';
+      ctx.fillRect(pad + column * cellWidth, pad + residue * cellHeight, Math.max(1, cellWidth), Math.max(1, cellHeight));
+    });
+  });
+  ctx.fillStyle = '#8d9aa5';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(`${data.start} → ${data.end}`, pad, height - 18);
+  ctx.fillText(`residue ${data.residues[0].residue} … ${data.residues[data.residues.length - 1].residue} (mod ${data.modulus})`, pad, 26);
+  ctx.fillText(`maximum cell ${Number(data.max_cell).toLocaleString()} primes`, Math.max(pad, width - 250), 26);
+}
+
+function drawVisualGapTimeline(canvas, data) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  if (!data.gaps.length) {
+    visualEmpty(ctx, width, height, 'Fewer than two primes occur in this range.');
+    return;
+  }
+  const records = new Set(data.records.map((record) => record.from));
+  const pad = 46;
+  const maximum = Number(data.max_gap) || 1;
+  const barWidth = (width - pad * 2) / data.gaps.length;
+  data.gaps.forEach((item, index) => {
+    const barHeight = item.gap / maximum * (height - pad * 2);
+    ctx.fillStyle = records.has(item.prime) ? '#d6a34a' : '#4f9cf9';
+    ctx.fillRect(pad + index * barWidth, height - pad - barHeight, Math.max(1, barWidth - 0.5), barHeight);
+  });
+  ctx.fillStyle = '#8d9aa5';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(String(data.first_prime), pad, height - 18);
+  ctx.fillText(String(data.last_prime), Math.max(pad, width - 140), height - 18);
+  ctx.fillText(`largest gap ${data.max_gap} after ${data.max_gap_at}`, pad, 26);
+}
+
+function drawVisualRace(canvas, data, frames) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  const shown = Math.max(1, Math.min(frames, data.checkpoints.length));
+  const pad = 50;
+  const maximum = Number(data.max_count) || 1;
+  ctx.strokeStyle = '#35404a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, height - pad); ctx.lineTo(width - pad, height - pad);
+  ctx.moveTo(pad, pad); ctx.lineTo(pad, height - pad);
+  ctx.stroke();
+  data.classes.forEach((residue, series) => {
+    ctx.strokeStyle = VISUAL_LINE_COLOURS[series % VISUAL_LINE_COLOURS.length];
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let frame = 0; frame < shown; frame += 1) {
+      const x = pad + (shown === 1 ? 0 : frame / (data.checkpoints.length - 1 || 1)) * (width - pad * 2);
+      const y = height - pad - Number(data.checkpoints[frame].counts[series]) / maximum * (height - pad * 2);
+      frame ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  });
+  ctx.font = '12px sans-serif';
+  data.classes.forEach((residue, series) => {
+    ctx.fillStyle = VISUAL_LINE_COLOURS[series % VISUAL_LINE_COLOURS.length];
+    ctx.fillText(`${residue} mod ${data.modulus}: ${Number(data.checkpoints[shown - 1].counts[series]).toLocaleString()}`, width - 210, 26 + series * 16);
+  });
+  ctx.fillStyle = '#8d9aa5';
+  ctx.fillText(`up to ${data.checkpoints[shown - 1].x} · leader ${data.checkpoints[shown - 1].leader < 0 ? 'none yet' : data.checkpoints[shown - 1].leader}`, pad, 26);
+}
+
+function visualSieveStates(data, upto) {
+  // Playback of the trace PARI/GP recorded and verified: this only reads the
+  // step codes back and sets a colour flag per cell. It performs no sieving,
+  // no divisibility test, and no primality decision of its own.
+  const states = new Array(data.n + 1).fill(0);
+  let segment = null;
+  for (let index = 0; index < upto && index < data.steps.length; index += 1) {
+    const [kind, value, a, , flag] = data.steps[index];
+    if (kind === 1 || kind === 3) states[value] = 2;
+    else if (kind === 2 || kind === 4 || kind === 8) states[value] = 1;
+    else if (kind === 5 || kind === 6 || kind === 7) states[value] = flag ? 3 : 0;
+    else if (kind === 9) segment = [value, a];
+  }
+  return { states, segment, current: upto > 0 ? data.steps[Math.min(upto, data.steps.length) - 1] : null };
+}
+
+function drawVisualSieve(canvas, data, upto) {
+  const { context: ctx, width, height } = visualBackground(canvas);
+  const { states, segment, current } = visualSieveStates(data, upto);
+  const pad = 34;
+  const columns = Math.max(1, Math.ceil(Math.sqrt(data.n * (width - pad * 2) / (height - pad * 2))));
+  const rows = Math.ceil(data.n / columns);
+  const cell = Math.min((width - pad * 2) / columns, (height - pad * 2) / rows);
+  for (let value = 1; value <= data.n; value += 1) {
+    const column = (value - 1) % columns;
+    const row = Math.floor((value - 1) / columns);
+    const x = pad + column * cell;
+    const y = pad + row * cell;
+    const state = states[value];
+    ctx.fillStyle = state === 2 ? '#4f9cf9' : (state === 3 ? '#7fd0a2' : (state === 1 ? '#46515b' : '#171b1f'));
+    if (segment && value >= segment[0] && value <= segment[1] && state === 0) ctx.fillStyle = '#22303a';
+    ctx.fillRect(x + 0.5, y + 0.5, Math.max(1, cell - 1.5), Math.max(1, cell - 1.5));
+    if (current && current[1] === value) {
+      ctx.strokeStyle = '#d6a34a';
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(x + 0.5, y + 0.5, Math.max(1, cell - 1.5), Math.max(1, cell - 1.5));
+    }
+  }
+  ctx.fillStyle = '#8d9aa5';
+  ctx.font = '12px sans-serif';
+  const label = current ? `${data.step_kinds[current[0]]} · value ${current[1]}` : 'ready';
+  ctx.fillText(`step ${Math.min(upto, data.steps.length).toLocaleString()} of ${data.steps.length.toLocaleString()} · ${label}`, pad, 22);
+}
+
+function visualPlay(key, total, speed, draw) {
+  if (visualState[key]) window.clearInterval(visualState[key]);
+  let frame = 0;
+  draw(frame);
+  visualState[key] = window.setInterval(() => {
+    frame += 1;
+    draw(frame);
+    if (frame >= total) {
+      window.clearInterval(visualState[key]);
+      visualState[key] = null;
+    }
+  }, Math.max(8, 1000 / Math.max(1, speed)));
+}
+
+$('#visual-spiral-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/spiral', {
+    start: $('#visual-spiral-start').value,
+    count: Number($('#visual-spiral-count').value),
+    layout: $('#visual-spiral-layout').value,
+    highlight: $('#visual-spiral-highlight').value,
+    a: Number($('#visual-spiral-a').value),
+    b: Number($('#visual-spiral-b').value),
+    c: Number($('#visual-spiral-c').value),
+    modulus: Number($('#visual-spiral-modulus').value),
+    residue: Number($('#visual-spiral-residue').value),
+    timeout_seconds: Number($('#visual-spiral-timeout').value),
+  }, (data) => `${Number(data.prime_count).toLocaleString()} primes on a ${data.layout} spiral`, (data) => {
+    drawVisualSpiral($('#visual-spiral-canvas'), data);
+    return visualMetrics([
+      ['Range', `${data.start} → ${data.end}`],
+      ['Primes', Number(data.prime_count).toLocaleString()],
+      ['Highlighted', Number(data.highlight_count).toLocaleString()],
+      ['Highlight rule', data.highlight_description],
+      ['Engine', data.engine],
+    ]);
+  });
+});
+
+$('#visual-eisenstein-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/eisenstein-lattice', {
+    norm_bound: Number($('#visual-eisenstein-bound').value),
+    limit: Number($('#visual-eisenstein-limit').value),
+    timeout_seconds: Number($('#visual-eisenstein-timeout').value),
+  }, (data) => `${Number(data.count).toLocaleString()} Eisenstein primes of norm ≤ ${data.norm_bound}`, (data) => {
+    drawVisualEisenstein($('#visual-eisenstein-canvas'), data.points);
+    return visualMetrics([
+      ['Norm bound', String(data.norm_bound)],
+      ['Lattice points', Number(data.count).toLocaleString()],
+    ]) + visualTable(['Kind', 'Meaning', 'Points'], Object.keys(data.kinds).map((kind) => [kind, data.kinds[kind], String(data.kind_counts[kind])]));
+  });
+});
+
+$('#visual-wheel-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/modular-wheel', {
+    modulus: Number($('#visual-wheel-modulus').value),
+    start: Number($('#visual-wheel-start').value),
+    count: Number($('#visual-wheel-count').value),
+    timeout_seconds: Number($('#visual-wheel-timeout').value),
+  }, (data) => `Modular wheel · base ${data.modulus}`, (data) => {
+    drawModularWheel($('#visual-wheel-canvas'), data.cells, data.modulus);
+    return visualMetrics([
+      ['Wheel base', String(data.modulus)],
+      ['Range', `${data.start} → ${data.end}`],
+      ['Rings', Number(data.ring_count).toLocaleString()],
+      ['Primes', Number(data.prime_count).toLocaleString()],
+      ['φ(m)', String(data.totient)],
+      ['Spokes carrying primes', String(data.spokes_with_primes)],
+    ]) + visualTable(['Spoke', 'Coprime to base', 'Primes'], data.spokes.filter((spoke) => spoke.prime_count).slice(0, 500).map((spoke) => [String(spoke.residue), spoke.coprime ? 'yes' : 'no', String(spoke.prime_count)]));
+  });
+});
+
+$('#visual-heatmap-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/residue-heatmap', {
+    start: $('#visual-heatmap-start').value,
+    end: $('#visual-heatmap-end').value,
+    modulus: Number($('#visual-heatmap-modulus').value),
+    bins: Number($('#visual-heatmap-bins').value),
+    timeout_seconds: Number($('#visual-heatmap-timeout').value),
+  }, (data) => `Residue heatmap modulo ${data.modulus}`, (data) => {
+    drawVisualHeatmap($('#visual-heatmap-canvas'), data);
+    return visualMetrics([
+      ['Range', `${data.start} → ${data.end}`],
+      ['Primes counted', Number(data.prime_count).toLocaleString()],
+      ['Bins', String(data.bin_count)],
+      ['Busiest cell', Number(data.max_cell).toLocaleString()],
+    ]) + visualTable(['Residue', 'Coprime to modulus', 'Primes in range'], data.residues.map((item) => [String(item.residue), item.coprime ? 'yes' : 'no', Number(item.total).toLocaleString()]));
+  });
+});
+
+$('#visual-gap-timeline-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/gap-timeline', {
+    start: $('#visual-gap-start').value,
+    end: $('#visual-gap-end').value,
+    limit: Number($('#visual-gap-limit').value),
+    timeout_seconds: Number($('#visual-gap-timeout').value),
+  }, (data) => `${Number(data.gap_count).toLocaleString()} prime gaps · ${data.records.length} records`, (data) => {
+    drawVisualGapTimeline($('#visual-gap-canvas'), data);
+    return visualMetrics([
+      ['First prime', String(data.first_prime)],
+      ['Last prime', String(data.last_prime)],
+      ['Gaps measured', Number(data.gap_count).toLocaleString()],
+      ['Largest gap', `${data.max_gap} after ${data.max_gap_at}`],
+    ]) + visualTable(['From', 'To', 'Gap', 'Merit g/ln p'], data.records.map((record) => [record.from, record.to, String(record.gap), record.merit]));
+  });
+});
+
+$('#visual-prime-race-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/prime-race', {
+    start: $('#visual-race-start').value,
+    end: $('#visual-race-end').value,
+    modulus: Number($('#visual-race-modulus').value),
+    checkpoints: Number($('#visual-race-checkpoints').value),
+    timeout_seconds: Number($('#visual-race-timeout').value),
+  }, (data) => `Prime race modulo ${data.modulus} · leader ${data.leader}`, (data) => {
+    $('#visual-race-play').dataset.ready = 'yes';
+    visualState.raceData = data;
+    visualPlay('race', data.checkpoints.length, Number($('#visual-race-speed').value), (frame) => drawVisualRace($('#visual-race-canvas'), data, frame));
+    return visualMetrics([
+      ['Range', `${data.start} → ${data.end}`],
+      ['Primes counted', Number(data.prime_count).toLocaleString()],
+      ['Lead changes', Number(data.event_count).toLocaleString()],
+      ['Final leader', data.leader < 0 ? 'none' : `${data.leader} mod ${data.modulus}`],
+    ]) + visualTable(['Residue class', 'Primes'], data.final.map((item) => [`${item.residue} mod ${data.modulus}`, Number(item.count).toLocaleString()]))
+      + visualTable(['Lead change at prime', 'New leader'], data.events.slice(0, 500).map((event) => [event.prime, String(event.leader)]));
+  });
+});
+
+$('#visual-race-play').addEventListener('click', () => {
+  const data = visualState.raceData;
+  if (!data) return;
+  visualPlay('race', data.checkpoints.length, Number($('#visual-race-speed').value), (frame) => drawVisualRace($('#visual-race-canvas'), data, frame));
+});
+
+$('#visual-sieve-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const segment = $('#visual-sieve-segment').value;
+  submitVisualForm(event.currentTarget, '/api/visual/sieve-trace', {
+    kind: $('#visual-sieve-kind').value,
+    n: Number($('#visual-sieve-n').value),
+    segment_size: segment === '' ? null : Number(segment),
+    timeout_seconds: Number($('#visual-sieve-timeout').value),
+  }, (data) => `${data.kind} sieve · ${Number(data.step_count).toLocaleString()} steps to ${data.n}`, (data) => {
+    visualState.sieveData = data;
+    visualPlay('sieve', data.steps.length, Number($('#visual-sieve-speed').value), (frame) => drawVisualSieve($('#visual-sieve-canvas'), data, frame));
+    return visualMetrics([
+      ['Sieve', data.kind],
+      ['Limit n', String(data.n)],
+      ['Segment size', data.segment_size === null ? 'not applicable' : String(data.segment_size)],
+      ['Recorded steps', Number(data.step_count).toLocaleString()],
+      ['Survivors', Number(data.prime_count).toLocaleString()],
+      ['Verified against PARI', data.verified ? 'yes' : 'no'],
+    ]) + visualTable(['Step code', 'Meaning'], Object.keys(data.step_kinds).map((code) => [code, data.step_kinds[code]]));
+  });
+});
+
+$('#visual-sieve-play').addEventListener('click', () => {
+  const data = visualState.sieveData;
+  if (!data) return;
+  visualPlay('sieve', data.steps.length, Number($('#visual-sieve-speed').value), (frame) => drawVisualSieve($('#visual-sieve-canvas'), data, frame));
+});
+
+$('#visual-complexity-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitVisualForm(event.currentTarget, '/api/visual/complexity', {
+    job_limit: Number($('#visual-complexity-limit').value),
+  }, (data) => `${data.reference.length} reference algorithms · ${data.groups.length} measured groups`, (data) => {
+    drawCountBars($('#visual-complexity-canvas'), data.groups.map((group) => ({ label: `${group.engine} ${group.digits}`, count: group.median_seconds })));
+    return visualMetrics([
+      ['Reference algorithms', String(data.reference.length)],
+      ['Completed jobs measured', Number(data.measured_jobs).toLocaleString()],
+      ['Measured groups', String(data.groups.length)],
+    ]) + visualTable(['Algorithm', 'Category', 'Time', 'Memory', 'Source'], data.reference.map((row) => [row.algorithm, row.category, row.time, row.memory, row.source]))
+      + visualTable(['Engine', 'Digits', 'Runs', 'Min s', 'Median s', 'Mean s', 'Max s'], data.groups.map((group) => [group.engine, group.digits, String(group.runs), String(group.min_seconds), String(group.median_seconds), String(group.mean_seconds), String(group.max_seconds)]));
+  });
+});
+
 $('#prime-constant-form').addEventListener('submit', (event) => {
   event.preventDefault();
   submitPrimeForm(event.currentTarget, '/api/primes/indicator-constant', {
@@ -1060,8 +1756,825 @@ $('#prime-constant-form').addEventListener('submit', (event) => {
   }, () => 'Prime-indicator constant', 'prime-constant');
 });
 
-function showZetaResult(title, data, type) {
+const integerTokens = (value) => value.trim().split(/[\s,;]+/).filter(Boolean);
+
+$('#certificate-verify-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/verify-certificate', {
+    certificate_data: $('#certificate-data').value,
+  }, (data) => data.valid ? 'Valid ECPP certificate' : 'Invalid certificate', 'table');
+});
+
+$('#prime-approximation-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/prime-approximations', {
+    x: $('#approximation-x').value,
+    threads: Number($('#approximation-threads').value),
+  }, () => 'Prime-counting approximations', 'table');
+});
+
+$('#summatory-functions-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/summatory-functions', {
+    x: $('#summatory-x').value,
+  }, () => 'Summatory arithmetic functions', 'table');
+});
+
+const distributionPalette = ['#4f9cf9', '#d6a34a', '#7fd18b', '#e0705f', '#a98cf0', '#5ec8d8', '#f08fc0', '#9fb4c7'];
+
+function distributionTable(columns, rows) {
+  const body = rows.slice(0, 2000).map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('');
+  return `<div class="result-table-wrap"><table class="result-table"><thead><tr>${columns.map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>${rows.length ? '' : '<p class="empty">No rows were returned. See the result note above.</p>'}</div>`;
+}
+
+function distributionMarkup(data) {
+  const metrics = Object.entries(data.metrics || {}).map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('');
+  const sections = (data.sections || []).filter((section) => section.rows.length)
+    .map((section) => `<h3 class="distribution-heading">${escapeHtml(section.title)}</h3>${distributionTable(section.columns, section.rows)}`).join('');
+  let chart = '';
+  if (data.chart === 'density-surface') {
+    chart = '<canvas id="distribution-heatmap" class="math-canvas heatmap-canvas" width="1000" height="560" aria-label="Prime density surface"></canvas><div class="canvas-legend"><span class="legend-sparse">Low density</span><span class="legend-dense">High density</span><span>1.0 is the density predicted by the prime-number theorem</span></div>';
+  } else if (data.chart) {
+    chart = '<canvas id="distribution-canvas" class="math-canvas chart-canvas" width="1000" height="440" aria-label="Analytic prime-distribution chart"></canvas><div id="distribution-legend" class="canvas-legend"></div>';
+  }
+  return `${metrics ? `<div class="reciprocal-summary">${metrics}</div>` : ''}${chart}${distributionTable(data.columns, data.rows)}${sections}`;
+}
+
+function drawDistributionSeries(canvas, series, labels, signedLog) {
+  const { context: ctx, width, height } = prepareCanvas(canvas);
+  ctx.fillStyle = '#0c0f11'; ctx.fillRect(0, 0, width, height);
+  const scale = (value) => (signedLog ? Math.sign(value) * Math.log10(1 + Math.abs(value)) : value);
+  const points = series.flatMap((line) => line.values.filter(Number.isFinite).map(scale));
+  if (!points.length) return;
+  let yMin = Math.min(...points, 0), yMax = Math.max(...points, 0);
+  if (yMin === yMax) { yMin -= 1; yMax += 1; }
+  const count = Math.max(...series.map((line) => line.values.length));
+  const pad = 52;
+  const x = (index) => pad + (count > 1 ? index / (count - 1) : 0.5) * (width - pad * 2);
+  const y = (value) => height - pad - (scale(value) - yMin) / (yMax - yMin) * (height - pad * 2);
+  ctx.strokeStyle = '#35404a'; ctx.lineWidth = 1;
+  ctx.strokeRect(pad, pad, width - pad * 2, height - pad * 2);
+  if (yMin <= 0 && yMax >= 0) { ctx.beginPath(); ctx.moveTo(pad, y(0)); ctx.lineTo(width - pad, y(0)); ctx.stroke(); }
+  series.forEach((line, index) => {
+    ctx.strokeStyle = distributionPalette[index % distributionPalette.length];
+    ctx.lineWidth = 2; ctx.beginPath();
+    line.values.forEach((value, position) => {
+      if (!Number.isFinite(value)) return;
+      const px = x(position), py = y(value);
+      position ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#8d9aa5'; ctx.font = '12px sans-serif';
+  ctx.fillText(String(labels[0] ?? ''), pad, height - 18);
+  ctx.fillText(String(labels[labels.length - 1] ?? ''), Math.max(pad, width - 220), height - 18);
+  ctx.fillText(`${signedLog ? 'signed log₁₀ ' : ''}max ${yMax.toPrecision(4)}`, 6, pad - 12);
+  ctx.fillText(`${signedLog ? 'signed log₁₀ ' : ''}min ${yMin.toPrecision(4)}`, 6, height - pad + 22);
+  const legend = $('#distribution-legend');
+  if (legend) legend.innerHTML = series.map((line, index) => `<span style="color:${distributionPalette[index % distributionPalette.length]}">${escapeHtml(line.label)}</span>`).join('');
+}
+
+function drawDistributionBars(canvas, values, baseline) {
+  const { context: ctx, width, height } = prepareCanvas(canvas);
+  ctx.fillStyle = '#0c0f11'; ctx.fillRect(0, 0, width, height);
+  if (!values.length) return;
+  const numbers = values.map((item) => Number(item.value)).filter(Number.isFinite);
+  if (!numbers.length) return;
+  const pad = 52;
+  let low = Math.min(...numbers, baseline), high = Math.max(...numbers, baseline);
+  if (low === high) { low -= 1; high += 1; }
+  const y = (value) => height - pad - (value - low) / (high - low) * (height - pad * 2);
+  const barWidth = (width - pad * 2) / values.length;
+  values.forEach((item, index) => {
+    const value = Number(item.value);
+    if (!Number.isFinite(value)) return;
+    ctx.fillStyle = value >= baseline ? '#4f9cf9' : '#e0705f';
+    const top = Math.min(y(value), y(baseline));
+    const size = Math.abs(y(value) - y(baseline));
+    ctx.fillRect(pad + index * barWidth + 1, top, Math.max(1, barWidth - 2), Math.max(1, size));
+  });
+  ctx.strokeStyle = '#35404a'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y(baseline)); ctx.lineTo(width - pad, y(baseline)); ctx.stroke();
+  ctx.fillStyle = '#8d9aa5'; ctx.font = '12px sans-serif';
+  ctx.fillText(String(values[0].label), pad, height - 18);
+  ctx.fillText(String(values[values.length - 1].label), Math.max(pad, width - 160), height - 18);
+  ctx.fillText(`max ${high.toPrecision(5)}`, 6, pad - 12);
+  ctx.fillText(`min ${low.toPrecision(5)} · baseline ${baseline}`, 6, height - pad + 22);
+}
+
+function drawDensitySurface(canvas, rows, blocks, classes) {
+  const { context: ctx, width, height } = prepareCanvas(canvas);
+  ctx.fillStyle = '#0c0f11'; ctx.fillRect(0, 0, width, height);
+  const densities = rows.map((row) => Number(row[3])).filter(Number.isFinite);
+  if (!densities.length || !blocks || !classes) return;
+  const low = Math.min(...densities), high = Math.max(...densities);
+  const spread = high - low || 1;
+  const cellWidth = width / blocks, cellHeight = height / classes;
+  rows.forEach((row, position) => {
+    const block = Number(row[0]) - 1;
+    const index = position % classes;
+    const shade = (Number(row[3]) - low) / spread;
+    const hue = 210 - shade * 175;
+    ctx.fillStyle = `hsl(${hue}, 72%, ${28 + shade * 34}%)`;
+    ctx.fillRect(block * cellWidth, height - (index + 1) * cellHeight, Math.ceil(cellWidth) + 1, Math.ceil(cellHeight) + 1);
+  });
+}
+
+function drawDistributionChart(data) {
+  if (data.chart === 'density-surface') {
+    drawDensitySurface($('#distribution-heatmap'), data.rows, Number(data.blocks), Number(data.classes));
+    return;
+  }
+  const canvas = $('#distribution-canvas');
+  if (!canvas) return;
+  const rows = data.rows;
+  if (data.chart === 'approximation-error') {
+    drawDistributionSeries(canvas, [
+      { label: 'x/log x relative error (%)', values: rows.map((row) => Number(row[8])) },
+      { label: 'li(x) relative error (%)', values: rows.map((row) => Number(row[9])) },
+      { label: 'R(x) relative error (%)', values: rows.map((row) => Number(row[10])) },
+    ], rows.map((row) => row[0]), true);
+  } else if (data.chart === 'pnt-convergence') {
+    drawDistributionSeries(canvas, [
+      { label: 'π(x)/(x/log x)', values: rows.map((row) => Number(row[2])) },
+      { label: 'π(x)/li(x)', values: rows.map((row) => Number(row[3])) },
+    ], rows.map((row) => row[0]), false);
+  } else if (data.chart === 'prime-race') {
+    const classes = Number(data.classes) || 1;
+    const series = [];
+    for (let index = 0; index < classes; index += 1) {
+      series.push({
+        label: `a ≡ ${rows[index] ? rows[index][1] : index}`,
+        values: rows.filter((row, position) => position % classes === index).map((row) => Number(row[2])),
+      });
+    }
+    drawDistributionSeries(canvas, series, rows.filter((row, position) => position % classes === 0).map((row) => row[0]), false);
+  } else if (data.chart === 'progression-deviation') {
+    drawDistributionBars(canvas, rows.map((row) => ({ label: row[0], value: row[3] })), 0);
+  } else if (data.chart === 'maximal-gaps') {
+    drawDistributionSeries(canvas, [
+      { label: 'merit g/log p', values: rows.map((row) => Number(row[3])) },
+      { label: 'Cramér–Shanks g/log²p', values: rows.map((row) => Number(row[4])) },
+      { label: 'Granville g/(2e^−γ log²p)', values: rows.map((row) => Number(row[5])) },
+    ], rows.map((row) => row[0]), false);
+  } else if (data.chart === 'short-interval') {
+    drawDistributionBars(canvas, rows.map((row) => ({ label: row[0], value: row[5] })), 1);
+  }
+}
+
+const distributionOffsets = (value) => value.trim().split(/[\s,;]+/).filter(Boolean).map(Number);
+
+$('#approximation-error-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/approximation-error', {
+    exponent_from: Number($('#approximation-error-from').value),
+    exponent_to: Number($('#approximation-error-to').value),
+    points: Number($('#approximation-error-points').value),
+    threads: Number($('#approximation-error-threads').value),
+  }, () => 'Prime-counting approximation error', 'distribution');
+});
+
+$('#pnt-convergence-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/pnt-convergence', {
+    exponent_from: Number($('#pnt-convergence-from').value),
+    exponent_to: Number($('#pnt-convergence-to').value),
+    points: Number($('#pnt-convergence-points').value),
+    threads: Number($('#pnt-convergence-threads').value),
+  }, (data) => `Prime-number-theorem convergence · ${data.sign_changes} sign change${data.sign_changes === 1 ? '' : 's'}`, 'distribution');
+});
+
+$('#nth-prime-bounds-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/nth-prime-bounds', {
+    exponent_from: Number($('#nth-prime-bounds-from').value),
+    exponent_to: Number($('#nth-prime-bounds-to').value),
+    points: Number($('#nth-prime-bounds-points').value),
+    threads: Number($('#nth-prime-bounds-threads').value),
+  }, (data) => `Explicit n-th prime bounds · ${data.violations} violation${data.violations === 1 ? '' : 's'}`, 'distribution');
+});
+
+$('#prime-race-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/prime-race', {
+    modulus: $('#prime-race-modulus').value,
+    endpoint: $('#prime-race-endpoint').value,
+    checkpoints: Number($('#prime-race-checkpoints').value),
+  }, (data) => `Prime race modulo ${$('#prime-race-modulus').value} · ${data.lead_changes} lead change${data.lead_changes === 1 ? '' : 's'}`, 'distribution');
+});
+
+$('#progression-deviation-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/progressions', {
+    modulus: $('#progression-deviation-modulus').value,
+    endpoint: $('#progression-deviation-endpoint').value,
+  }, (data) => `π(x; q, a) across ${data.classes} reduced classes`, 'distribution');
+});
+
+$('#singular-series-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/singular-series', {
+    offsets: distributionOffsets($('#singular-series-offsets').value),
+    cutoff: Number($('#singular-series-cutoff').value),
+  }, (data) => data.admissible ? 'Admissible pattern · singular series' : 'Inadmissible pattern', 'distribution');
+});
+
+$('#tuple-prediction-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/tuple-prediction', {
+    offsets: distributionOffsets($('#tuple-prediction-offsets').value),
+    start: $('#tuple-prediction-start').value,
+    end: $('#tuple-prediction-end').value,
+    cutoff: Number($('#tuple-prediction-cutoff').value),
+  }, (data) => `${Number(data.observed).toLocaleString()} constellations counted by ${data.counted_by}`, 'distribution');
+});
+
+$('#bateman-horn-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/bateman-horn', {
+    polynomials: $('#bateman-horn-polynomials').value.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+      .map((line) => line.split(/[\s,;]+/).filter(Boolean)),
+    start: $('#bateman-horn-start').value,
+    end: $('#bateman-horn-end').value,
+    cutoff: Number($('#bateman-horn-cutoff').value),
+  }, (data) => `${Number(data.observed).toLocaleString()} prime values observed`, 'distribution');
+});
+
+$('#maximal-gap-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/maximal-gaps', {
+    start: $('#maximal-gap-start').value,
+    end: $('#maximal-gap-end').value,
+    baseline: Number($('#maximal-gap-baseline').value),
+    prime_cap: Number($('#maximal-gap-cap').value),
+  }, (data) => `${data.rows.length} record gaps · ${data.mismatches} published-table mismatch${data.mismatches === 1 ? '' : 'es'}`, 'distribution');
+});
+
+$('#short-interval-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/short-interval', {
+    modulus: $('#short-interval-modulus').value,
+    first_row: $('#short-interval-row').value,
+    rows: Number($('#short-interval-rows').value),
+    length: Number($('#short-interval-length').value),
+  }, (data) => `${data.rows.length} short intervals measured`, 'distribution');
+});
+
+$('#density-surface-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/distribution/density-surface', {
+    start: $('#density-surface-start').value,
+    end: $('#density-surface-end').value,
+    blocks: Number($('#density-surface-blocks').value),
+    modulus: $('#density-surface-modulus').value,
+  }, (data) => `${data.blocks} × ${data.classes} prime-density surface`, 'distribution');
+});
+
+$('#primality-lab-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/primality-lab', {
+    number: $('#primality-lab-number').value,
+    base: $('#primality-lab-base').value,
+    proof_mode: $('#primality-lab-proof').value,
+    timeout_seconds: 300,
+  }, () => 'Primality-test comparison', 'table');
+});
+
+$('#special-form-test-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/special-form-test', {
+    kind: $('#special-form-kind').value,
+    parameter: $('#special-form-parameter').value,
+    timeout_seconds: 300,
+  }, () => 'Special-form primality proof', 'table');
+});
+
+$('#primality-compare-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/compare', {
+    number: $('#primality-compare-number').value,
+    bases: integerTokens($('#primality-compare-bases').value),
+    budget_seconds: Number($('#primality-compare-budget').value),
+    timeout_seconds: Number($('#primality-compare-timeout').value),
+  }, (data) => `Comparison verdict: ${data.verdict}`, 'table');
+});
+
+$('#deterministic-witness-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/deterministic-witnesses', {
+    number: $('#deterministic-witness-number').value,
+    timeout_seconds: Number($('#deterministic-witness-timeout').value),
+  }, (data) => data.deterministic
+    ? `Deterministic verdict: ${data.verdict}`
+    : 'No sufficient witness set covers this magnitude', 'table');
+});
+
+$('#pocklington-proof-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/pocklington', {
+    number: $('#pocklington-number').value,
+    budget_seconds: Number($('#pocklington-budget').value),
+    witness_limit: Number($('#pocklington-witness').value),
+  }, (data) => `Pocklington N−1: ${data.verdict}`, 'table');
+});
+
+$('#pratt-certificate-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/pratt', {
+    number: $('#pratt-number').value,
+    max_nodes: Number($('#pratt-nodes').value),
+    budget_seconds: Number($('#pratt-budget').value),
+  }, (data) => `Pratt certificate: ${data.verdict}`, 'table');
+});
+
+$('#primality-certificate-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/verify-certificate', {
+    kind: $('#primality-certificate-kind').value,
+    certificate: $('#primality-certificate-data').value,
+  }, (data) => data.valid ? 'Valid certificate' : 'Invalid certificate', 'table');
+});
+
+$('#proth-test-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/proth', {
+    k: $('#proth-k').value,
+    exponent: Number($('#proth-exponent').value),
+    base: Number($('#proth-base').value),
+    witness_limit: Number($('#proth-witness').value),
+  }, (data) => `Proth criterion: ${data.verdict}`, 'table');
+});
+
+$('#proth-search-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/proth-search', {
+    k: $('#proth-search-k').value,
+    base: Number($('#proth-search-base').value),
+    n_start: Number($('#proth-search-start').value),
+    n_end: Number($('#proth-search-end').value),
+    limit: Number($('#proth-search-limit').value),
+  }, (data) => `${data.metrics['Hits reported']} generalized Proth results`, 'table');
+});
+
+$('#lucas-sequence-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/lucas-sequence', {
+    number: $('#lucas-sequence-number').value,
+    p: Number($('#lucas-sequence-p').value),
+    q: Number($('#lucas-sequence-q').value),
+    selfridge: $('#lucas-sequence-selfridge').value === '1',
+    witness_limit: Number($('#lucas-sequence-witness').value),
+    budget_seconds: Number($('#lucas-sequence-budget').value),
+  }, (data) => `Lucas / N+1 verdict: ${data.verdict}`, 'table');
+});
+
+$('#pseudoprime-taxonomy-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const parameters = integerTokens($('#pseudoprime-pq').value);
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/taxonomy', {
+    number: $('#pseudoprime-number').value,
+    bases: integerTokens($('#pseudoprime-bases').value),
+    p: Number(parameters[0]),
+    q: Number(parameters[1]),
+    selfridge: $('#pseudoprime-selfridge').value === '1',
+  }, (data) => data.metrics['Pseudoprime families'], 'table');
+});
+
+$('#carmichael-analysis-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/carmichael', {
+    number: $('#carmichael-number').value,
+    base_limit: Number($('#carmichael-bases').value),
+    budget_seconds: Number($('#carmichael-budget').value),
+  }, (data) => `Carmichael number: ${data.carmichael}`, 'table');
+});
+
+$('#chernick-carmichael-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/chernick', {
+    k_start: Number($('#chernick-start').value),
+    k_end: Number($('#chernick-end').value),
+    limit: Number($('#chernick-limit').value),
+  }, (data) => `${data.metrics['Carmichael numbers found']} Chernick Carmichael numbers`, 'table');
+});
+
+$('#repunit-search-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/repunit', {
+    base: Number($('#repunit-base').value),
+    n_start: Number($('#repunit-start').value),
+    n_end: Number($('#repunit-end').value),
+    limit: Number($('#repunit-limit').value),
+  }, (data) => `${data.metrics['Hits reported']} generalized repunit results`, 'table');
+});
+
+$('#sierpinski-riesel-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/sierpinski', {
+    k: $('#sierpinski-k').value,
+    kind: $('#sierpinski-kind').value,
+    n_max: Number($('#sierpinski-max').value),
+    budget_seconds: Number($('#sierpinski-budget').value),
+  }, (data) => data.metrics.Outcome, 'table');
+});
+
+$('#covering-set-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/covering-set', {
+    k: $('#covering-k').value,
+    kind: $('#covering-kind').value,
+    period: Number($('#covering-period').value),
+    candidates: integerTokens($('#covering-primes').value),
+  }, (data) => data.covered
+    ? 'Covering set verified: every exponent class is covered'
+    : 'This set leaves exponent classes uncovered', 'table');
+});
+
+$('#bitwin-chain-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/bitwin-chains', {
+    start: $('#bitwin-start').value,
+    end: $('#bitwin-end').value,
+    min_length: Number($('#bitwin-length').value),
+    limit: Number($('#bitwin-limit').value),
+  }, (data) => `${data.metrics['Chains found']} bi-twin chains`, 'table');
+});
+
+$('#prime-ladder-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/prime-ladder', {
+    start_prime: $('#ladder-start').value,
+    end_prime: $('#ladder-end').value,
+    max_steps: Number($('#ladder-steps').value),
+  }, (data) => data.metrics.Outcome, 'table');
+});
+
+$('#constrained-prime-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const seed = $('#constrained-seed').value.trim();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/constrained-prime', {
+    bits: Number($('#constrained-bits').value),
+    kind: $('#constrained-kind').value,
+    modulus: $('#constrained-modulus').value,
+    residue: $('#constrained-residue').value,
+    certificate: $('#constrained-certificate').checked,
+    seed: seed === '' ? null : seed,
+    candidate_limit: Number($('#constrained-limit').value),
+    budget_seconds: Number($('#constrained-budget').value),
+  }, (data) => data.metrics.Status, 'table');
+});
+
+$('#lucas-lehmer-steps-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/lucas-lehmer-steps', {
+    exponent: Number($('#lucas-lehmer-exponent').value),
+    show_limit: Number($('#lucas-lehmer-steps').value),
+    timeout_seconds: Number($('#lucas-lehmer-timeout').value),
+  }, (data) => `Lucas–Lehmer verdict: ${data.verdict}`, 'table');
+});
+
+$('#ecpp-steps-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primality-lab/ecpp-steps', {
+    number: $('#ecpp-number').value,
+    budget_seconds: Number($('#ecpp-budget').value),
+  }, (data) => `ECPP verdict: ${data.verdict}`, 'table');
+});
+
+$('#special-prime-family-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/special-prime-family', {
+    kind: $('#special-family-kind').value,
+    start_index: Number($('#special-family-start').value),
+    end_index: Number($('#special-family-end').value),
+    limit: Number($('#special-family-limit').value),
+    timeout_seconds: Number($('#special-family-timeout').value),
+  }, (data) => `${data.metrics['Proven primes found']} proven ${data.metrics.Family} primes`, 'table');
+});
+
+$('#special-family-kind').addEventListener('change', (event) => {
+  const end = $('#special-family-end');
+  end.max = event.target.value === 'fermat' ? '20' : '10000';
+  if (Number(end.value) > Number(end.max)) end.value = end.max;
+});
+
+$('#cunningham-chain-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/cunningham-chain', {
+    start_prime: $('#cunningham-start').value,
+    kind: Number($('#cunningham-kind').value),
+    length: Number($('#cunningham-length').value),
+    timeout_seconds: 300,
+  }, (data) => data.complete ? 'Complete Cunningham chain' : 'Chain stopped at a composite', 'table');
+});
+
+$('#ntt-primes-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/ntt-primes', {
+    bits: Number($('#ntt-bits').value),
+    power_two: Number($('#ntt-power').value),
+    count: Number($('#ntt-count').value),
+    candidate_limit: Number($('#ntt-limit').value),
+    timeout_seconds: Number($('#ntt-timeout').value),
+  }, (data) => `${data.metrics.Found} proven NTT-friendly primes`, 'table');
+});
+
+$('#tonelli-shanks-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/tonelli-shanks', {
+    value: $('#tonelli-value').value,
+    prime: $('#tonelli-prime').value,
+    trace_limit: Number($('#tonelli-limit').value),
+  }, (data) => data.roots.length ? `Square roots: ${data.roots.join(', ')}` : 'Quadratic nonresidue', 'table');
+});
+
+$('#hensel-roots-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/hensel-roots', {
+    coefficients: integerTokens($('#hensel-coefficients').value),
+    prime: $('#hensel-prime').value,
+    exponent: Number($('#hensel-exponent').value),
+    limit: Number($('#hensel-limit').value),
+  }, (data) => `${data.metrics['Root count']} p-adic roots`, 'table');
+});
+
+$('#order-distribution-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/order-distribution', {
+    modulus: $('#order-modulus').value,
+    limit: Number($('#order-limit').value),
+  }, () => 'Multiplicative-order distribution', 'table');
+});
+
+$('#power-residues-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/power-residues', {
+    modulus: $('#residue-prime').value,
+    exponent: Number($('#residue-exponent').value),
+    limit: Number($('#residue-limit').value),
+  }, () => 'Power-residue distribution', 'table');
+});
+
+$('#p-adic-valuation-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/valuation', {
+    number: $('#valuation-number').value,
+    prime: $('#valuation-prime').value,
+  }, () => 'p-adic valuation', 'table');
+});
+
+$('#cyclotomic-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/cyclotomic', {
+    index: Number($('#cyclotomic-index').value),
+    prime: $('#cyclotomic-prime').value,
+  }, () => 'Cyclotomic-polynomial factorization', 'table');
+});
+
+// --- Algebra laboratory: modular, arithmetic, and algebraic workbenches ------
+$('#reciprocity-trace-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/reciprocity', {
+    a: $('#reciprocity-a').value,
+    n: $('#reciprocity-n').value,
+    trace_limit: Number($('#reciprocity-limit').value),
+  }, () => 'Quadratic-reciprocity trace', 'table');
+});
+
+$('#congruence-solver-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/congruence', {
+    coefficients: integerTokens($('#congruence-coefficients').value),
+    modulus: $('#congruence-modulus').value,
+    limit: Number($('#congruence-limit').value),
+  }, (data) => data.complete ? 'Congruence solutions' : 'Congruence solutions (inconclusive)', 'table');
+});
+
+$('#dlog-lab-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/discrete-log', {
+    target: $('#dlog-target').value,
+    base: $('#dlog-base').value,
+    modulus: $('#dlog-modulus').value,
+    algorithm: $('#dlog-algorithm').value,
+    step_limit: Number($('#dlog-steps').value),
+    timeout_seconds: Number($('#dlog-timeout').value),
+  }, (data) => `Discrete logarithm: ${data.status}`, 'table');
+});
+
+$('#finite-field-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/finite-field', {
+    characteristic: $('#finite-field-p').value,
+    degree: Number($('#finite-field-m').value),
+    modulus_coefficients: integerTokens($('#finite-field-modulus').value),
+    a_coefficients: integerTokens($('#finite-field-a').value),
+    b_coefficients: integerTokens($('#finite-field-b').value),
+    exponent: Number($('#finite-field-exponent').value),
+  }, () => 'Finite-field arithmetic', 'table');
+});
+
+$('#divisor-lattice-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/divisor-lattice', {
+    number: $('#divisor-lattice-number').value,
+    divisor_limit: Number($('#divisor-lattice-limit').value),
+    lattice_cap: Number($('#divisor-lattice-cap').value),
+  }, () => 'Divisor enumeration and lattice', 'table');
+});
+
+$('#smoothness-profile-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/smoothness', {
+    number: $('#smoothness-number').value,
+    smooth_bound: $('#smoothness-bound').value,
+    rough_bound: $('#smoothness-rough').value,
+  }, () => 'Smoothness and roughness profile', 'table');
+});
+
+$('#record-numbers-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/record-numbers', {
+    number: $('#record-numbers-number').value,
+    bound: $('#record-numbers-bound').value,
+    limit: Number($('#record-numbers-limit').value),
+  }, () => 'Divisor-record analysis', 'table');
+});
+
+$('#weird-number-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/weird-numbers', {
+    number: $('#weird-number-number').value,
+    subset_cap: Number($('#weird-number-cap').value),
+    witness_bits: Number($('#weird-number-bits').value),
+  }, (data) => `Abundance analysis · weird: ${data.weird}`, 'table');
+});
+
+$('#sociable-cycle-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/sociable', {
+    start: $('#sociable-start').value,
+    end: $('#sociable-end').value,
+    max_length: Number($('#sociable-length').value),
+    term_bound: $('#sociable-term-bound').value,
+    limit: Number($('#sociable-limit').value),
+    timeout_seconds: Number($('#sociable-timeout').value),
+  }, () => 'Amicable and sociable cycles', 'table');
+});
+
+$('#cornacchia-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/cornacchia', {
+    d: $('#cornacchia-d').value,
+    number: $('#cornacchia-n').value,
+    trace_limit: Number($('#cornacchia-limit').value),
+  }, (data) => data.complete ? 'Cornacchia representations' : 'Cornacchia search (inconclusive)', 'table');
+});
+
+$('#quadratic-ring-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/quadratic-ring', {
+    radicand: $('#quadratic-ring-d').value,
+    a: $('#quadratic-ring-a').value,
+    b: $('#quadratic-ring-b').value,
+    prime: $('#quadratic-ring-prime').value,
+    certify_seconds: Number($('#quadratic-ring-certify').value),
+    timeout_seconds: Number($('#quadratic-ring-timeout').value),
+  }, () => 'Quadratic integer ring', 'table');
+});
+
+$('#number-field-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/number-field', {
+    coefficients: integerTokens($('#number-field-coefficients').value),
+    primes: integerTokens($('#number-field-primes').value),
+    element_coefficients: integerTokens($('#number-field-element').value),
+    class_seconds: Number($('#number-field-class').value),
+    timeout_seconds: Number($('#number-field-timeout').value),
+  }, () => 'Number-field prime decomposition', 'table');
+});
+
+$('#chebotarev-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/chebotarev', {
+    coefficients: integerTokens($('#chebotarev-coefficients').value),
+    bound: $('#chebotarev-bound').value,
+    group_seconds: Number($('#chebotarev-group').value),
+  }, (data) => data.predicted_available ? 'Chebotarev density experiment' : 'Chebotarev experiment (predictions inconclusive)', 'table');
+});
+
+$('#character-symbol-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/symbols', {
+    a: $('#symbol-a').value, n: $('#symbol-n').value,
+  }, () => 'Quadratic character symbols', 'table');
+});
+
+$('#crt-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/crt', {
+    residues: integerTokens($('#crt-residues').value),
+    moduli: integerTokens($('#crt-moduli').value),
+  }, (data) => data.compatible ? 'Compatible CRT system' : 'Incompatible CRT system', 'table');
+});
+
+$('#modular-roots-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/modular-roots', {
+    value: $('#modroot-value').value,
+    exponent: Number($('#modroot-exponent').value),
+    modulus: $('#modroot-prime').value,
+    limit: 10000,
+  }, () => 'Power-congruence roots', 'table');
+});
+
+$('#discrete-log-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/discrete-log', {
+    target: $('#dlog-target').value,
+    base: $('#dlog-base').value,
+    modulus: $('#dlog-modulus').value,
+  }, () => 'Discrete logarithm', 'table');
+});
+
+$('#unit-group-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/unit-group', {
+    modulus: $('#unit-group-modulus').value,
+    limit: Number($('#unit-group-limit').value),
+  }, () => 'Multiplicative-group structure', 'table');
+});
+
+$('#polynomial-factor-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/polynomial', {
+    coefficients: integerTokens($('#polynomial-coefficients').value),
+    prime_modulus: $('#polynomial-prime').value,
+  }, () => 'Polynomial factorization', 'table');
+});
+
+$('#extended-arithmetic-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/arithmetic-functions', {
+    number: $('#extended-number').value,
+    divisor_exponent: Number($('#extended-k').value),
+    smooth_bound: $('#extended-bound').value,
+    quadratic_form_d: Number($('#extended-d').value),
+    divisor_limit: Number($('#extended-divisor-limit').value),
+  }, () => 'Extended arithmetic analysis', 'table');
+});
+
+$('#divisor-classification-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/divisor-classification', {
+    number: $('#divisor-classification-number').value,
+  }, (data) => `${data.metrics.Classification} integer`, 'table');
+});
+
+$('#aliquot-sequence-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/aliquot', {
+    number: $('#aliquot-number').value,
+    max_steps: Number($('#aliquot-steps').value),
+    timeout_seconds: 300,
+  }, (data) => `Aliquot sequence: ${data.metrics.Status}`, 'table');
+});
+
+$('#perfect-power-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/perfect-power', {
+    number: $('#perfect-power-number').value,
+  }, (data) => data.is_power ? 'Perfect-power decomposition' : 'Not a perfect power', 'table');
+});
+
+$('#factor-strategy-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/factor-strategy', {
+    number: $('#factor-strategy-number').value,
+    trial_bound: Number($('#factor-strategy-bound').value),
+  }, () => 'Factorization strategy recommendation', 'table');
+});
+
+$('#eisenstein-prime-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/eisenstein', {
+    a: $('#eisenstein-a').value, b: $('#eisenstein-b').value,
+  }, () => 'Eisenstein-prime analysis', 'table');
+});
+
+$('#quadratic-decomposition-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/number-theory/quadratic-decomposition', {
+    radicand: $('#quadratic-radicand').value,
+    prime: $('#quadratic-prime').value,
+  }, () => 'Quadratic-field decomposition', 'table');
+});
+
+function showZetaResult(title, data, type, form) {
   const panel = $('#zeta-result-panel');
+  panel.dataset.ownerForm = form.id;
+  form.insertAdjacentElement('afterend', panel);
+  panel.classList.remove('prime-page-hidden');
   const content = $('#zeta-result-content');
   $('#zeta-result-title').textContent = title;
   let note = data.note || '';
@@ -1082,9 +2595,18 @@ function showZetaResult(title, data, type) {
   } else if (type === 'line') {
     content.innerHTML = '<canvas id="zeta-line-canvas" class="math-canvas chart-canvas" width="1000" height="560" aria-label="Riemann zeta plot"></canvas>';
     drawZetaLine($('#zeta-line-canvas'), data.points, $('#zeta-line-component').value);
+  } else if (type === 'complex') {
+    content.innerHTML = `<div class="zeta-value-grid"><article><span>Real enclosure</span><code>${escapeHtml(data.real)}</code></article><article><span>Imaginary enclosure</span><code>${escapeHtml(data.imaginary)}</code></article></div>`;
+  } else if (type === 'gram') {
+    content.innerHTML = `<div class="prime-metric"><span>${escapeHtml(data.label)}</span><strong>${escapeHtml(data.value)}</strong></div>`;
+  } else if (type === 'functional') {
+    content.innerHTML = `<div class="classification-summary"><span>${data.verified ? 'Verified overlap' : 'No overlap'}</span><small>Rigorous Arb enclosure comparison</small></div><div class="zeta-value-grid"><article><span>Left side</span><code>${escapeHtml(data.left_real)} + (${escapeHtml(data.left_imaginary)})i</code></article><article><span>Right side</span><code>${escapeHtml(data.right_real)} + (${escapeHtml(data.right_imaginary)})i</code></article><article><span>Residual enclosure</span><code>${escapeHtml(data.residual_real)} + (${escapeHtml(data.residual_imaginary)})i</code></article></div>`;
   } else if (type === 'heatmap') {
     content.innerHTML = '<canvas id="zeta-heatmap-canvas" class="math-canvas heatmap-canvas" width="1000" height="650" aria-label="Riemann zeta heatmap"></canvas><div class="canvas-legend"><span>Hue = phase</span><span>Lightness = log magnitude</span><span>Black = pole/undefined</span></div>';
     drawZetaHeatmap($('#zeta-heatmap-canvas'), data.points, data.width, data.height);
+  } else if (zetaRenderers[type]) {
+    content.innerHTML = zetaRenderers[type](data);
+    if (zetaPainters[type]) zetaPainters[type](data);
   }
   const download = $('#zeta-download');
   download.href = `/api/outputs/${encodeURIComponent(data.output_file)}`;
@@ -1099,8 +2621,11 @@ async function submitZetaForm(form, path, payload, title, type) {
   button.disabled = true; button.firstElementChild.textContent = 'Working…';
   try {
     const data = await api(path, { method: 'POST', body: JSON.stringify(payload) });
-    showZetaResult(title(data), data, type);
+    showZetaResult(title(data), data, type, form);
   } catch (error) {
+    const panel = $('#zeta-result-panel');
+    panel.dataset.ownerForm = form.id;
+    form.insertAdjacentElement('afterend', panel);
     $('#zeta-result-title').textContent = 'Could not complete request';
     $('#zeta-result-note').textContent = error.message;
     $('#zeta-result-note').classList.remove('saved-output-note');
@@ -1161,6 +2686,333 @@ $('#zeta-evaluate-form').addEventListener('submit', (event) => {
   }, (data) => `ζ(${data.sigma} + ${data.ordinate}i)`, 'value');
 });
 
+$('#zeta-hardy-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/hardy', {
+    ordinate: $('#zeta-hardy-t').value,
+    precision: Number($('#zeta-hardy-precision').value),
+  }, (data) => `Z(${data.input})`, 'complex');
+});
+
+$('#zeta-xi-eta-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/xi-eta', {
+    kind: $('#zeta-special-kind').value,
+    sigma: $('#zeta-special-sigma').value,
+    ordinate: $('#zeta-special-t').value,
+    precision: Number($('#zeta-special-precision').value),
+  }, (data) => `${data.function} at ${data.sigma} + ${data.ordinate}i`, 'complex');
+});
+
+$('#zeta-functional-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/functional-equation', {
+    sigma: $('#zeta-functional-sigma').value,
+    ordinate: $('#zeta-functional-t').value,
+    precision: Number($('#zeta-functional-precision').value),
+  }, () => 'Functional-equation verification', 'functional');
+});
+
+$('#zeta-stieltjes-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/stieltjes', {
+    index: $('#zeta-stieltjes-index').value,
+    precision: Number($('#zeta-stieltjes-precision').value),
+  }, (data) => `Stieltjes constant γ${data.index}`, 'complex');
+});
+
+$('#zeta-gram-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/gram', {
+    index: $('#zeta-gram-index').value,
+    precision: Number($('#zeta-gram-precision').value),
+  }, (data) => `Gram point g${data.index}`, 'gram');
+});
+
+// Presentation helpers for the explicit-formula and L-function panels. These
+// only format values that FLINT/Arb or PARI/GP already computed and map them to
+// canvas coordinates; no mathematics is evaluated in the browser.
+const zetaMetrics = (entries) => `<div class="reciprocal-summary">${entries
+  .filter(([, value]) => value !== undefined && value !== null && value !== '')
+  .map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></article>`)
+  .join('')}</div>`;
+
+const zetaTable = (columns, rows) => `<div class="result-table-wrap"><table class="result-table"><thead><tr>${columns
+  .map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join('')}</tr></thead><tbody>${rows
+  .slice(0, 2000)
+  .map((row) => `<tr>${row.map((value) => `<td>${escapeHtml(String(value))}</td>`).join('')}</tr>`)
+  .join('')}</tbody></table>${rows.length ? '' : '<p class="empty">No rows returned. See the result note above.</p>'}</div>`;
+
+const zetaCanvas = (id, label, height = 420) => `<canvas id="${id}" class="math-canvas chart-canvas" width="1000" height="${height}" aria-label="${escapeHtml(label)}"></canvas>`;
+
+function drawZetaCurve(canvas, points, key) {
+  if (!canvas) return;
+  drawZetaLine(canvas, points.map((point) => ({ t: point.x, magnitude: point[key] })), 'magnitude');
+}
+
+function drawZetaBars(canvas, bins) {
+  const node = canvas && prepareCanvas(canvas);
+  if (!node) return;
+  const { context: ctx, width, height } = node;
+  ctx.fillStyle = '#0c0f11'; ctx.fillRect(0, 0, width, height);
+  const pad = 44;
+  const peak = Math.max(...bins.map((bin) => Math.max(bin.observed || 0, bin.predicted || 0)), 1e-9);
+  const span = bins.length;
+  const barWidth = (width - pad * 2) / span;
+  const y = (value) => height - pad - (value / peak) * (height - pad * 2);
+  ctx.strokeStyle = '#35404a'; ctx.lineWidth = 1; ctx.strokeRect(pad, pad, width - pad * 2, height - pad * 2);
+  bins.forEach((bin, index) => {
+    const x = pad + index * barWidth;
+    ctx.fillStyle = 'rgba(79, 156, 249, 0.65)';
+    ctx.fillRect(x + 1, y(bin.observed || 0), Math.max(barWidth - 2, 1), height - pad - y(bin.observed || 0));
+  });
+  ctx.strokeStyle = '#f2b134'; ctx.lineWidth = 2; ctx.beginPath();
+  bins.forEach((bin, index) => {
+    const x = pad + (index + 0.5) * barWidth;
+    const py = y(bin.predicted || 0);
+    index ? ctx.lineTo(x, py) : ctx.moveTo(x, py);
+  });
+  ctx.stroke();
+  ctx.fillStyle = '#8d9aa5'; ctx.font = '12px sans-serif';
+  ctx.fillText(String(bins[0].lower.toPrecision(3)), pad, height - 15);
+  ctx.fillText(String(bins[bins.length - 1].upper.toPrecision(3)), width - pad - 30, height - 15);
+  ctx.fillText(peak.toPrecision(3), 5, pad);
+}
+
+const zetaRenderers = {
+  convergence: (data) => `${zetaMetrics([
+    ['Evaluation point x', data.bound],
+    ['Exact value', data.exact],
+    ['Certified zeros used', data.zeros],
+    ['Möbius terms', data.moebius_terms],
+  ])}${zetaCanvas('zeta-convergence-canvas', 'Explicit-formula convergence')}<p class="canvas-legend"><span>Signed error against the exact value as the number of certified zeros grows</span></p>${zetaTable(
+    ['Zeros N', 'Estimate (Arb enclosure)', 'Error against the exact value'],
+    data.terms.map((row) => [row.zeros, row.estimate, row.error]),
+  )}`,
+  rsanalysis: (data) => `${zetaMetrics([
+    ['s', `${data.sigma} + ${data.ordinate}i`],
+    ['Reference Re ζ(s)', data.reference_real],
+    ['Reference Im ζ(s)', data.reference_imaginary],
+  ])}${zetaTable(
+    ['Correction terms K', 'Re (main sum + K terms)', 'Im', 'Deviation from ζ(s)', 'FLINT remainder bound'],
+    data.rows.map((row) => [row.terms, row.real, row.imaginary, row.deviation, row.bound]),
+  )}`,
+  euler: (data) => `${zetaMetrics([
+    ['s', `${data.sigma} + ${data.ordinate}i`],
+    ['Reference Re ζ(s)', data.reference_real],
+    ['FLINT certified Euler product', data.certified_euler || 'not applicable at this s'],
+  ])}${zetaTable(
+    ['Primes', 'Largest prime', 'Re (partial product)', 'Im', 'Deviation from ζ(s)', 'Rigorous truncation bound'],
+    data.rows.map((row) => [row.primes, row.largest_prime, row.real, row.imaginary, row.deviation, row.truncation_bound]),
+  )}`,
+  histogram: (data) => `${zetaMetrics([
+    ['Zeros sampled', data.samples],
+    ['Pairs inside the window', data.pairs],
+    ['Mean spacing', data.mean === undefined ? undefined : data.mean.toPrecision(8)],
+    ['Variance', data.variance === undefined ? undefined : data.variance.toPrecision(6)],
+    ['Smallest gap', data.minimum === undefined ? undefined : data.minimum.toPrecision(6)],
+    ['Largest gap', data.maximum === undefined ? undefined : data.maximum.toPrecision(6)],
+    ['Outside the window', data.overflow],
+  ])}${zetaCanvas('zeta-histogram-canvas', 'Zero statistics against the GUE prediction')}<p class="canvas-legend"><span>Blue bars = observed</span><span>Amber line = GUE prediction</span></p>${zetaTable(
+    ['Bin lower', 'Bin upper', 'Count', 'Observed density', 'GUE prediction'],
+    data.bins.map((bin) => [bin.lower.toPrecision(4), bin.upper.toPrecision(4), bin.count, bin.observed.toPrecision(6), bin.predicted.toPrecision(6)]),
+  )}`,
+  gramblocks: (data) => `${zetaMetrics([
+    ['Gram points examined', data.count],
+    ["Gram's-law exceptions", data.exceptions.length],
+    ['Gram blocks of length ≥ 2', data.blocks.length],
+    ['Inconclusive enclosures', data.inconclusive],
+  ])}${data.exceptions.length ? `<div class="result-group"><span>Certified exceptions</span><div>${data.exceptions.map((row) => `<code class="prime-chip">n=${escapeHtml(row.index)} · Z=${escapeHtml(row.hardy_z)}</code>`).join('')}</div></div>` : '<p class="empty">No exception to Gram\'s law in this range.</p>'}${data.blocks.length ? zetaTable(['Block start n', 'Length', 'Pattern'], data.blocks.map((block) => [block.start_index, block.length, block.pattern])) : ''}${zetaTable(
+    ['n', 'Gram point gₙ', 'Z(gₙ)', "Gram's law"],
+    data.points.map((row) => [row.index, row.gram_point.toPrecision(12), row.hardy_z.toPrecision(10), row.status]),
+  )}`,
+  backlund: (data) => `${zetaMetrics([
+    ['S(T) enclosure', data.remainder],
+    ['Rigorous |S(T)| bound', data.remainder_bound],
+    ['θ(T) enclosure', data.theta],
+    ['Certified N(T)', data.zero_count],
+  ])}${zetaCanvas('zeta-backlund-canvas', 'Zero-counting remainder S(T)')}<p class="canvas-legend"><span>Exploratory midpoints of S(T); the endpoint values above are certified</span></p>`,
+  chartable: (data) => `${zetaMetrics([
+    ['Modulus q', data.modulus],
+    ['Characters', data.group_order],
+    ['Primitive characters', data.primitive_total],
+    ['Listing truncated', data.truncated ? 'yes' : 'no'],
+  ])}${zetaTable(
+    ['Conrey label m', 'Conductor', 'Parity', 'Order', 'Primitive', 'Real', 'Principal'],
+    data.characters.map((row) => [row.number, row.conductor, row.parity, row.order, row.primitive ? 'yes' : 'no', row.real ? 'yes' : 'no', row.principal ? 'yes' : 'no']),
+  )}`,
+  lvalue: (data) => `${zetaMetrics([
+    ['Character', `χ_${data.modulus}(${data.number}, ·)`],
+    ['Conductor', data.conductor],
+    ['Parity', data.parity],
+    ['Order', data.order],
+    ['Primitive', data.primitive ? 'yes' : 'no'],
+    ['Real character', data.real_character ? 'yes' : 'no'],
+    ['Independent enclosures overlap', data.verified ? 'yes' : 'no'],
+  ])}<div class="zeta-value-grid"><article><span>Re L(s, χ)</span><code>${escapeHtml(data.real)}</code></article><article><span>Im L(s, χ)</span><code>${escapeHtml(data.imaginary)}</code></article><article><span>Hurwitz cross-check Re</span><code>${escapeHtml(data.cross_real)}</code></article><article><span>Hurwitz cross-check Im</span><code>${escapeHtml(data.cross_imaginary)}</code></article>${data.root_number_real ? `<article><span>Root number</span><code>${escapeHtml(data.root_number_real)} + (${escapeHtml(data.root_number_imaginary)})i</code></article><article><span>Gauss sum</span><code>${escapeHtml(data.gauss_sum_real)} + (${escapeHtml(data.gauss_sum_imaginary)})i</code></article>` : ''}</div>`,
+  lzeros: (data) => `${zetaMetrics([
+    ['Character', `χ_${data.modulus}(${data.number}, ·)`],
+    ['Mode', data.mode === 'sign-changes' ? 'certified sign changes' : 'exploratory |L| minima'],
+    ['Certified sign changes', data.mode === 'sign-changes' ? data.sign_changes.length : undefined],
+    ['Exploratory minima', data.mode === 'sign-changes' ? undefined : data.minima.length],
+    ['Smooth θ(T,χ)/π count', data.smooth_count],
+  ])}${zetaCanvas('zeta-lzeros-canvas', 'Critical-line curve for the Dirichlet L-function')}<p class="canvas-legend"><span>${data.mode === 'sign-changes' ? 'Hardy Z(t, χ) midpoints' : '|L(½+it, χ)| midpoints'}</span></p>${data.mode === 'sign-changes'
+    ? zetaTable(['#', 'Certified bracket lower', 'Certified bracket upper'], data.sign_changes.map((row) => [row.index, row.lower.toPrecision(17), row.upper.toPrecision(17)]))
+    : zetaTable(['#', 'Ordinate t', '|L(½+it, χ)|'], data.minima.map((row) => [row.index, row.t.toPrecision(12), row.magnitude.toPrecision(8)]))}`,
+  dedekind: (data) => `${zetaMetrics([
+    ['Defining polynomial', data.polynomial],
+    ['Degree', data.degree],
+    ['Signature', `(${data.real_places}, ${data.complex_places})`],
+    ['Discriminant', data.discriminant],
+    ['lfuncheckfeq (log₂ error)', data.functional_equation_log2_error],
+    ['ζ_K(s) real part', data.value_real],
+    ['ζ_K(s) imaginary part', data.value_imaginary],
+    ['Class number', data.class_number],
+    ['Regulator', data.regulator],
+    ['Torsion units', data.torsion_units],
+    ['Class-number-formula residue', data.class_number_formula_residue],
+    ['Residue difference', data.residue_difference],
+    ['Zeros located', data.zeros_found],
+  ])}${data.poles.length ? zetaTable(['Pole at s', 'Residue'], data.poles.map((pole) => [pole.point, pole.residue])) : ''}${zetaTable(['#', 'Critical-line ordinate'], data.zeros.map((zero) => [zero.index, zero.ordinate]))}`,
+};
+
+const zetaPainters = {
+  convergence: (data) => drawZetaCurve($('#zeta-convergence-canvas'), data.terms.map((row) => ({ x: row.zeros, error: row.error_value })), 'error'),
+  histogram: (data) => drawZetaBars($('#zeta-histogram-canvas'), data.bins),
+  backlund: (data) => drawZetaCurve($('#zeta-backlund-canvas'), data.points.map((point) => ({ x: point.t, s: point.s })), 's'),
+  lzeros: (data) => drawZetaCurve($('#zeta-lzeros-canvas'), data.points.map((point) => ({ x: point.t, value: data.mode === 'sign-changes' ? point.hardy_z : point.magnitude })), 'value'),
+};
+
+$('#zeta-explicit-pi-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/explicit-prime-count', {
+    bound: $('#zeta-explicit-bound').value,
+    zeros: Number($('#zeta-explicit-zeros').value),
+    precision: Number($('#zeta-explicit-precision').value),
+    threads: Number($('#zeta-explicit-threads').value),
+  }, (data) => `Riemann explicit formula for π(${data.bound})`, 'convergence');
+});
+
+$('#zeta-psi-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/chebyshev-psi', {
+    bound: $('#zeta-psi-bound').value,
+    zeros: Number($('#zeta-psi-zeros').value),
+    precision: Number($('#zeta-psi-precision').value),
+    threads: Number($('#zeta-psi-threads').value),
+  }, (data) => `Chebyshev ψ(${data.bound}) from ${data.zeros} zeros`, 'convergence');
+});
+
+$('#zeta-riemann-siegel-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/riemann-siegel', {
+    sigma: $('#zeta-rs-sigma').value, ordinate: $('#zeta-rs-t').value,
+    terms: Number($('#zeta-rs-terms').value),
+    precision: Number($('#zeta-rs-precision').value),
+  }, (data) => `Riemann–Siegel remainder at ${data.sigma} + ${data.ordinate}i`, 'rsanalysis');
+});
+
+$('#zeta-euler-product-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/euler-product', {
+    sigma: $('#zeta-euler-sigma').value, ordinate: $('#zeta-euler-t').value,
+    primes: Number($('#zeta-euler-primes').value),
+    precision: Number($('#zeta-euler-precision').value),
+    threads: Number($('#zeta-euler-threads').value),
+  }, (data) => `Euler product at ${data.sigma} + ${data.ordinate}i`, 'euler');
+});
+
+$('#zeta-spacing-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/zero-spacing', {
+    start_index: $('#zeta-spacing-start').value,
+    count: Number($('#zeta-spacing-count').value),
+    bins: Number($('#zeta-spacing-bins').value),
+    precision: Number($('#zeta-spacing-precision').value),
+    threads: Number($('#zeta-spacing-threads').value),
+  }, (data) => `Normalized spacings of ${data.samples + 1} certified zeros`, 'histogram');
+});
+
+$('#zeta-pair-correlation-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/pair-correlation', {
+    start_index: $('#zeta-pair-start').value,
+    count: Number($('#zeta-pair-count').value),
+    bins: Number($('#zeta-pair-bins').value),
+    window: Number($('#zeta-pair-window').value),
+    precision: Number($('#zeta-pair-precision').value),
+    threads: Number($('#zeta-pair-threads').value),
+  }, (data) => `Pair correlation of ${data.samples} certified zeros`, 'histogram');
+});
+
+$('#zeta-gram-blocks-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/gram-blocks', {
+    start_index: $('#zeta-blocks-start').value,
+    count: Number($('#zeta-blocks-count').value),
+    precision: Number($('#zeta-blocks-precision').value),
+    threads: Number($('#zeta-blocks-threads').value),
+  }, (data) => `Gram's law over ${data.count} indices`, 'gramblocks');
+});
+
+$('#zeta-backlund-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/backlund-s', {
+    lower: $('#zeta-backlund-lower').value, upper: $('#zeta-backlund-upper').value,
+    samples: Number($('#zeta-backlund-samples').value),
+    precision: Number($('#zeta-backlund-precision').value),
+    threads: Number($('#zeta-backlund-threads').value),
+  }, (data) => `Zero-counting remainder S(${data.upper})`, 'backlund');
+});
+
+$('#zeta-characters-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/characters', {
+    modulus: $('#zeta-characters-modulus').value,
+    limit: Number($('#zeta-characters-limit').value),
+  }, (data) => `Dirichlet characters modulo ${data.modulus}`, 'chartable');
+});
+
+$('#zeta-lfunction-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/l-function', {
+    modulus: $('#zeta-lfunction-modulus').value,
+    number: $('#zeta-lfunction-number').value,
+    sigma: $('#zeta-lfunction-sigma').value,
+    ordinate: $('#zeta-lfunction-t').value,
+    precision: Number($('#zeta-lfunction-precision').value),
+  }, (data) => `L(${data.sigma} + ${data.ordinate}i, χ_${data.modulus}(${data.number}))`, 'lvalue');
+});
+
+$('#zeta-lzeros-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/l-zeros', {
+    modulus: $('#zeta-lzeros-modulus').value,
+    number: $('#zeta-lzeros-number').value,
+    lower: $('#zeta-lzeros-lower').value,
+    upper: $('#zeta-lzeros-upper').value,
+    samples: Number($('#zeta-lzeros-samples').value),
+    precision: Number($('#zeta-lzeros-precision').value),
+    threads: Number($('#zeta-lzeros-threads').value),
+  }, (data) => `Critical-line search for χ_${data.modulus}(${data.number})`, 'lzeros');
+});
+
+$('#zeta-dedekind-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitZetaForm(event.currentTarget, '/api/zeta/dedekind', {
+    family: $('#zeta-dedekind-family').value,
+    parameter: $('#zeta-dedekind-parameter').value,
+    polynomial: $('#zeta-dedekind-polynomial').value,
+    sigma: $('#zeta-dedekind-sigma').value,
+    ordinate: $('#zeta-dedekind-t').value,
+    zero_height: Number($('#zeta-dedekind-height').value),
+    zero_limit: Number($('#zeta-dedekind-limit').value),
+    class_data: $('#zeta-dedekind-class').checked,
+    precision: Number($('#zeta-dedekind-precision').value),
+    timeout_seconds: Number($('#zeta-dedekind-timeout').value),
+  }, (data) => `Dedekind zeta of ${data.polynomial}`, 'dedekind');
+});
+
 $('#zeta-count-form').addEventListener('submit', (event) => {
   event.preventDefault();
   submitZetaForm(event.currentTarget, '/api/zeta/count', {
@@ -1195,6 +3047,351 @@ $('#zeta-heatmap-form').addEventListener('submit', (event) => {
     precision: 20, threads: Number($('#zeta-heat-threads').value),
   }, () => 'Complex-plane zeta heatmap', 'heatmap');
 });
+
+
+// --- Workspaces, searchable history, performance, notifications, cache ---------------
+// Every number rendered here was computed by a native engine and stored locally;
+// this code only formats and draws.
+
+function renderRecordTable(target, columns, rows, emptyMessage) {
+  const panel = $(target);
+  panel.classList.remove('hidden');
+  if (!rows.length) {
+    panel.innerHTML = `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
+    return;
+  }
+  const head = columns.map((name) => `<th>${escapeHtml(name)}</th>`).join('');
+  const body = rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell ?? '')}</td>`).join('')}</tr>`)
+    .join('');
+  panel.innerHTML = `<table class="result-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+async function loadWorkspaces() {
+  const container = $('#workspace-list');
+  if (!container) return;
+  try {
+    const data = await api('/api/workspaces?limit=200');
+    if (!data.workspaces.length) {
+      container.innerHTML = '<div class="empty">No saved workspaces yet.</div>';
+      return;
+    }
+    container.innerHTML = data.workspaces
+      .map((row) => `
+        <article class="workspace-card" data-workspace="${escapeHtml(row.id)}">
+          <h3>${escapeHtml(row.name)}</h3>
+          <p>${escapeHtml(row.notes || 'No notes')}</p>
+          <p class="hint">${(row.job_ids || []).length} jobs · ${(row.report_files || []).length} reports · saved ${escapeHtml(row.created_at || '')}</p>
+          <button type="button" class="workspace-delete" data-workspace="${escapeHtml(row.id)}">Delete</button>
+        </article>`)
+      .join('');
+  } catch (error) {
+    container.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+if ($('#workspace-form')) {
+  $('#workspace-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const result = $('#workspace-result');
+    result.classList.remove('hidden');
+    try {
+      const payload = {
+        name: $('#workspace-name').value.trim(),
+        notes: $('#workspace-notes').value,
+        job_ids: $('#workspace-include-jobs').checked ? state.jobs.map((job) => job.id) : [],
+      };
+      const saved = await api('/api/workspaces', { method: 'POST', body: JSON.stringify(payload) });
+      result.innerHTML = `<div class="notice">Saved workspace “${escapeHtml(saved.name)}”.</div>`;
+      $('#workspace-form').reset();
+      await loadWorkspaces();
+    } catch (error) {
+      result.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+
+  $('#workspace-list').addEventListener('click', async (event) => {
+    const button = event.target.closest('.workspace-delete');
+    if (!button) return;
+    if (!window.confirm('Delete this workspace? Jobs and reports are not affected.')) return;
+    try {
+      await api(`/api/workspaces/${encodeURIComponent(button.dataset.workspace)}`, { method: 'DELETE' });
+      await loadWorkspaces();
+    } catch (error) {
+      $('#workspace-result').classList.remove('hidden');
+      $('#workspace-result').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+}
+
+if ($('#history-search-form')) {
+  $('#history-search-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const params = new URLSearchParams({ limit: '50' });
+    const query = $('#history-query').value.trim();
+    const status = $('#history-status').value;
+    const engine = $('#history-engine').value.trim();
+    if (query) params.set('q', query);
+    if (status) params.set('status', status);
+    if (engine) params.set('engine', engine);
+    try {
+      const [jobs, reports] = await Promise.all([
+        api(`/api/jobs?${params.toString()}`),
+        api(`/api/reports?${new URLSearchParams(query ? { q: query, limit: '50' } : { limit: '50' })}`),
+      ]);
+      const rows = jobs.map((job) => [
+        job.id.slice(0, 12), job.expression, job.status, job.selected_backend || job.requested_backend,
+        job.created_at,
+      ]);
+      const reportRows = (reports.reports || []).map((row) => [row.filename, row.kind, row.summary, row.created_at]);
+      renderRecordTable('#history-search-result', ['job', 'input', 'status', 'engine', 'created'], rows,
+        'No jobs matched.');
+      if (reportRows.length) {
+        const panel = $('#history-search-result');
+        panel.insertAdjacentHTML('beforeend', '<h3>Saved reports</h3>');
+        const table = document.createElement('div');
+        panel.appendChild(table);
+        const head = ['file', 'kind', 'summary', 'created'].map((n) => `<th>${escapeHtml(n)}</th>`).join('');
+        const body = reportRows
+          .map((row) => `<tr>${row.map((c) => `<td>${escapeHtml(c ?? '')}</td>`).join('')}</tr>`)
+          .join('');
+        table.innerHTML = `<table class="result-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+      }
+    } catch (error) {
+      $('#history-search-result').classList.remove('hidden');
+      $('#history-search-result').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+}
+
+function drawPerformance(buckets) {
+  const canvas = $('#performance-canvas');
+  if (!canvas) return;
+  const context = canvas.getContext('2d');
+  const style = getComputedStyle(document.body);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  if (!buckets.length) return;
+  const margin = 48;
+  const width = canvas.width - margin * 2;
+  const height = canvas.height - margin * 2;
+  const maxSeconds = Math.max(...buckets.map((row) => Number(row.average_seconds) || 0), 1);
+  const barWidth = Math.max(6, Math.floor(width / Math.max(buckets.length, 1)) - 6);
+  context.strokeStyle = style.getPropertyValue('--border') || '#888';
+  context.beginPath();
+  context.moveTo(margin, margin);
+  context.lineTo(margin, margin + height);
+  context.lineTo(margin + width, margin + height);
+  context.stroke();
+  context.fillStyle = style.getPropertyValue('--accent') || '#3b82f6';
+  buckets.forEach((row, index) => {
+    const value = Number(row.average_seconds) || 0;
+    const barHeight = Math.round((value / maxSeconds) * height);
+    const x = margin + index * (barWidth + 6) + 3;
+    context.fillRect(x, margin + height - barHeight, barWidth, barHeight);
+  });
+  context.fillStyle = style.getPropertyValue('--text') || '#222';
+  context.font = '12px system-ui, sans-serif';
+  context.fillText(`peak mean ${maxSeconds.toFixed(2)} s`, margin, margin - 12);
+}
+
+if ($('#load-performance')) {
+  $('#load-performance').addEventListener('click', async () => {
+    try {
+      const data = await api('/api/history/performance');
+      const rows = data.buckets.map((row) => [
+        row.engine, row.digit_bucket ?? row.bucket, row.jobs ?? row.count,
+        Number(row.average_seconds ?? 0).toFixed(2), Number(row.total_seconds ?? 0).toFixed(2),
+      ]);
+      renderRecordTable('#performance-result',
+        ['engine', 'digits', 'jobs', 'mean seconds', 'total seconds'], rows,
+        'No completed jobs recorded yet.');
+      $('#performance-result').insertAdjacentHTML('beforeend',
+        `<p class="hint">${escapeHtml(data.note || '')}</p>`);
+      drawPerformance(data.buckets);
+    } catch (error) {
+      $('#performance-result').classList.remove('hidden');
+      $('#performance-result').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+}
+
+const NOTIFY_KEY = 'numerisect-notify';
+state.notifiedJobs = new Set();
+
+function notifyStatus(message) {
+  if ($('#notify-status')) $('#notify-status').textContent = message;
+}
+
+if ($('#notify-toggle')) {
+  const toggle = $('#notify-toggle');
+  const supported = 'Notification' in window;
+  toggle.checked = supported && localStorage.getItem(NOTIFY_KEY) === '1';
+  notifyStatus(supported
+    ? (toggle.checked ? 'Notifications are on for this browser.' : 'Notifications are off.')
+    : 'This browser does not support desktop notifications.');
+  toggle.addEventListener('change', async () => {
+    if (!supported) { toggle.checked = false; return; }
+    if (toggle.checked) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        toggle.checked = false;
+        notifyStatus('The browser denied notification permission.');
+        return;
+      }
+      localStorage.setItem(NOTIFY_KEY, '1');
+      notifyStatus('Notifications are on for this browser.');
+    } else {
+      localStorage.removeItem(NOTIFY_KEY);
+      notifyStatus('Notifications are off.');
+    }
+  });
+}
+
+function announceFinishedJobs(jobs) {
+  if (!('Notification' in window)) return;
+  if (localStorage.getItem(NOTIFY_KEY) !== '1' || Notification.permission !== 'granted') return;
+  jobs.forEach((job) => {
+    if (!['completed', 'failed', 'cancelled'].includes(job.status)) return;
+    if (state.notifiedJobs.has(job.id)) return;
+    state.notifiedJobs.add(job.id);
+    new Notification(`Numerisect job ${job.status}`, {
+      body: `${shortNumber(String(job.expression), 40)} · ${job.selected_backend || job.requested_backend || ''}`,
+      tag: `numerisect-${job.id}`,
+    });
+  });
+}
+
+if ($('#cache-stats')) {
+  $('#cache-stats').addEventListener('click', async () => {
+    try {
+      const data = await api('/api/cache');
+      renderRecordTable('#cache-result', ['field', 'value'],
+        Object.entries(data).map(([key, value]) => [key, String(value)]),
+        'The cache is empty.');
+    } catch (error) {
+      $('#cache-result').classList.remove('hidden');
+      $('#cache-result').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+  $('#cache-clear').addEventListener('click', async () => {
+    try {
+      const data = await api('/api/cache', { method: 'DELETE' });
+      $('#cache-result').classList.remove('hidden');
+      $('#cache-result').innerHTML = `<div class="notice">Removed ${escapeHtml(data.removed)} cached results.</div>`;
+    } catch (error) {
+      $('#cache-result').classList.remove('hidden');
+      $('#cache-result').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+}
+
+// --- Expert factorization laboratory --------------------------------------------------
+// SQUFOF is computed by the numerisect-squfof C helper; every other operation here is
+// computed by PARI/GP. This code only submits forms and renders returned values.
+
+function renderFactorLab(title, rows, note, outputFile) {
+  const panel = $('#factor-lab-result');
+  panel.classList.remove('hidden');
+  const table = rows.length
+    ? `<table class="result-table"><tbody>${rows
+        .map((row) => `<tr><th>${escapeHtml(row[0])}</th><td>${escapeHtml(row[1])}</td></tr>`)
+        .join('')}</tbody></table>`
+    : '<div class="empty">The engine returned no rows.</div>';
+  const saved = outputFile
+    ? `<p class="notice">Result saved automatically to <code>output/${escapeHtml(outputFile)}</code>
+       · <a href="/api/outputs/${encodeURIComponent(outputFile)}" download>Download report</a></p>`
+    : '';
+  panel.innerHTML = `<h3>${escapeHtml(title)}</h3>${table}
+    ${note ? `<p class="hint">${escapeHtml(note)}</p>` : ''}${saved}`;
+}
+
+function factorLabError(message) {
+  const panel = $('#factor-lab-result');
+  panel.classList.remove('hidden');
+  panel.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
+}
+
+function bindFactorLab(formId, path, buildBody, buildRows, title) {
+  const form = $(formId);
+  if (!form) return;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const data = await api(path, { method: 'POST', body: JSON.stringify(buildBody()) });
+      renderFactorLab(title, buildRows(data), data.note, data.output_file);
+    } catch (error) {
+      factorLabError(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+bindFactorLab('#factor-lab-squfof-form', '/api/factor-lab/squfof', () => ({
+  expression: $('#squfof-expression').value.trim(),
+  max_iterations: Number($('#squfof-iterations').value),
+  timeout_seconds: Number($('#squfof-timeout').value),
+}), (data) => {
+  const rows = [['Input', data.number], ['Status', data.status],
+    ['Multiplier', data.multiplier], ['Iterations', data.iterations]];
+  if (data.factor) rows.push(['Split', `${data.factor} × ${data.cofactor}`]);
+  return rows;
+}, 'SQUFOF');
+
+bindFactorLab('#factor-lab-strategy-form', '/api/factor-lab/strategy', () => ({
+  expression: $('#strategy-expression').value.trim(),
+  pretest_level: Number($('#strategy-pretest').value),
+  timeout_seconds: Number($('#strategy-timeout').value),
+}), (data) => {
+  const rows = [['Value', data.value], ['Digits', data.digits],
+    ['Recommended engine', data.recommended_engine],
+    ['Expected factor digits', data.expected_factor_digits || 'not estimated'],
+    ['Basis', data.expected_basis]];
+  (data.decision_path || []).forEach((step) => {
+    rows.push([step.question, `${step.answer} — ${step.consequence}`]);
+  });
+  (data.small_factors || []).forEach((value) => rows.push(['Small factor', value]));
+  return rows;
+}, 'Strategy advice');
+
+bindFactorLab('#factor-lab-special-form', '/api/factor-lab/special-form', () => ({
+  expression: $('#special-form-expression').value.trim(),
+  timeout_seconds: Number($('#special-form-timeout').value),
+}), (data) => {
+  const rows = [['Value', data.value], ['Digits', data.digits],
+    ['SNFS suitable', data.snfs_suitable ? 'yes' : 'no']];
+  if (data.snfs_polynomial) rows.push(['SNFS polynomial', data.snfs_polynomial]);
+  if (data.snfs_difficulty) rows.push(['SNFS difficulty', data.snfs_difficulty]);
+  (data.forms || []).forEach((row) => rows.push([`Form: ${row.kind}`, row.detail]));
+  (data.algebraic_factors || []).forEach((row) =>
+    rows.push(['Algebraic factor', `${row.factor} (${row.identity})`]));
+  if (!data.complete) rows.push(['Search', 'incomplete — result is inconclusive']);
+  return rows;
+}, 'Special-form analysis');
+
+bindFactorLab('#factor-lab-trace-form', '/api/factor-lab/trace', () => ({
+  expression: $('#trace-expression').value.trim(),
+  algorithm: $('#trace-algorithm').value,
+  steps: Number($('#trace-steps').value),
+  timeout_seconds: 120,
+}), (data) => {
+  const rows = [['Value', data.value], ['Algorithm', data.algorithm],
+    ['Factor found', data.factor || 'none within the step limit']];
+  if (data.truncated) rows.push(['Trace', 'truncated at the step limit']);
+  (data.steps || []).forEach((step) =>
+    rows.push([`Step ${step.step}`, `${step.state} · quantity ${step.quantity} · gcd ${step.gcd}`]));
+  return rows;
+}, 'Algorithm trace');
+
+bindFactorLab('#factor-lab-certificates-form', '/api/factor-lab/certificates', () => ({
+  factors: $('#certificate-factors').value.split(/\s+/).filter(Boolean),
+  timeout_seconds: Number($('#certificate-timeout').value),
+}), (data) => (data.certificates || []).map((row) => [
+  row.factor,
+  `prime: ${row.prime ? 'yes' : 'no'} · certified: ${row.certified ? 'yes' : 'no'} · independently verified: ${row.verified ? 'yes' : 'no'}`,
+]), 'Batch primality certificates');
 
 async function initializeApplication() {
   const session = await api('/api/session');

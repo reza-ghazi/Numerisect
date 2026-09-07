@@ -25,6 +25,10 @@ session tokens, full environment dumps, complete engine or job logs, database
 files, or absolute filesystem paths. Redact sensitive integer inputs when they
 are not essential to the report.
 
+The local diagnostics page is the preferred starting point: review its
+sanitized text report before attaching it, because Numerisect never uploads it
+automatically.
+
 Numerisect launches external native tools and may compile optional engines from
 pinned upstream Git commits after explicit confirmation. Reports involving an
 upstream engine may need coordinated disclosure with that project.

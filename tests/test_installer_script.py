@@ -61,7 +61,7 @@ def test_installer_resolves_checkout_when_called_elsewhere(tmp_path):
     )
     if result.returncode:
         pytest.skip(f'Host lacks optional native prerequisites: {result.stderr.strip()}')
-    assert 'Numerisect 0.3.0 prerequisites are available' in result.stdout
+    assert 'Numerisect 0.5.0 prerequisites are available' in result.stdout
 
 
 def test_installer_rejects_unsupported_operating_system(tmp_path):
@@ -109,6 +109,15 @@ def test_installer_refuses_unconfirmed_system_changes(tmp_path):
 def test_engine_manifest_is_complete_and_immutable():
     sources = load_engine_manifest()
     assert sources == ENGINE_SOURCES
-    assert set(sources) == {'PARI/GP', 'GMP-ECM', 'Msieve', 'YAFU', 'CADO-NFS', 'FLINT/Zeta'}
+    assert set(sources) == {
+        "PARI/GP",
+        "GMP-ECM",
+        "Msieve",
+        "YAFU",
+        "CADO-NFS",
+        "FLINT/Zeta",
+        "primesieve",
+        "primecount",
+    }
     assert all(len(source.revision) == 40 for source in sources.values())
     assert all(source.repository.startswith('https://') for source in sources.values())

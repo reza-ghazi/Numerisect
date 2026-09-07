@@ -1,6 +1,6 @@
 # Installation and versioning
 
-Numerisect 0.3.0 is an experimental, source-distributed pre-release. No
+Numerisect 0.5.0 is an experimental, source-distributed pre-release. No
 official RPM, DEB, AppImage, macOS package, Windows executable, or other binary
 installer is published. The repository includes `install.sh` as a convenience
 for installing a checked-out source revision into a user-owned directory.
@@ -34,11 +34,12 @@ compiler, CMake, `pkg-config`, Autoconf, Automake, Libtool, GMP, MPFR, and FLINT
 development files. On macOS, Homebrew's `glibtoolize` supplies the Libtool
 command expected by the source builds.
 
-Optional native engines are YAFU, Msieve, GMP-ECM, CADO-NFS, PARI/GP, and the
-FLINT-backed Numerisect zeta helper. Prime Tools require PARI/GP. Zeta Tools
-require FLINT/Arb and the compiled helper. Factorization backends require their
-corresponding executable. Missing optional engines do not prevent the browser
-shell from starting.
+Optional native engines are YAFU, Msieve, GMP-ECM, CADO-NFS, PARI/GP,
+primesieve, primecount, and the FLINT-backed Numerisect zeta helper. Most Prime
+Tools require PARI/GP; 64-bit interval sieving and large exact counting use
+primesieve and primecount. Zeta Tools require FLINT/Arb and the compiled helper.
+Factorization backends require their corresponding executable. Missing
+optional engines do not prevent the browser shell from starting.
 
 ## Run from a source checkout
 
@@ -98,8 +99,8 @@ The default layout is:
 ```text
 ~/.local/share/numerisect/
 ├── bin/numerisect
-├── current -> releases/0.3.0
-├── releases/0.3.0/
+├── current -> releases/0.5.0
+├── releases/0.5.0/
 ├── state/
 └── output/
 ```
@@ -124,6 +125,11 @@ used. The current implementation uses Git rather than source archives, so no
 archive checksum applies. Third-party sources are not committed to this
 repository.
 
+The reviewed 0.5.0 manifest pins primesieve 12.15 and primecount 8.5 in
+addition to the existing engines. `primecount` is built against the managed
+primesieve development tree so a system executable without development files
+cannot produce a mismatched build.
+
 To review a proposed upstream pin without modifying the manifest:
 
 ```bash
@@ -139,6 +145,14 @@ The setup banner reports the component that failed and keeps detailed commands
 in the local state log. Full installation logs and executable paths are not
 returned by ordinary API status responses. Resolve the named prerequisite or
 engine build failure, restart Numerisect, and retry explicitly from the banner.
+
+The **System diagnostics** workspace (`/#diagnostics`) creates a sanitized
+local readiness report containing engine status, pinned revision prefixes,
+licenses, build-command availability, CPU count, reported memory, and CADO
+parameter sizes. It deliberately excludes hostnames, usernames, network
+addresses, absolute paths, job inputs, and results. The exact
+`output/diagnostics-<id>.txt` path is shown before the user chooses whether to
+share it.
 
 See [the localhost security model](SECURITY_MODEL.md) for API authentication
 and safe command-line access. See

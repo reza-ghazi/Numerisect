@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="stylesheet" href="/assets/styles.css?v=20260905-workstation" />
+    <link rel="icon" href="/assets/favicon.svg?v=20260907-libraries-first" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260907-libraries-first" />
   </head>
   <body>
     <header class="topbar">
@@ -31,11 +32,18 @@
         <button class="mode-tab active" data-view="factor-view">Factor integers</button>
         <button class="mode-tab" data-view="prime-view">Prime tools</button>
         <button class="mode-tab" data-view="zeta-view">Riemann zeta</button>
+        <button class="mode-tab" data-view="diagnostic-view">System diagnostics</button>
+        <button class="mode-tab" data-view="workspace-view">Workspaces &amp; history</button>
       </nav>
 
       <div id="factor-view" class="tool-view">
 
-      <section class="submit-card panel">
+      <nav class="workspace-switch" aria-label="Factorization workspace">
+        <button class="secondary active" type="button" data-factor-page="single-factor-page">Single integer</button>
+        <button class="secondary" type="button" data-factor-page="batch-factor-page">Batch queue</button>
+      </nav>
+
+      <section id="single-factor-page" class="submit-card panel factor-page">
         <form id="factor-form">
           <label for="expression">Integer or expression</label>
           <textarea
@@ -60,6 +68,16 @@
                 <option value="hybrid">YAFU pretest → CADO</option>
                 <option value="cado">CADO-NFS directly</option>
                 <option value="msieve">Msieve</option>
+                <option value="cross_verify">Cross-check · YAFU and Msieve</option>
+                <optgroup label="Manual algorithm laboratory">
+                  <option value="pari_trial">Bounded trial division · PARI/GP</option>
+                  <option value="yafu_rho">Pollard rho / Brent</option>
+                  <option value="yafu_pm1">Pollard p−1</option>
+                  <option value="yafu_pp1">Williams p+1</option>
+                  <option value="yafu_ecm">ECM</option>
+                  <option value="yafu_siqs">SIQS</option>
+                  <option value="yafu_nfs">NFS</option>
+                </optgroup>
               </select>
             </label>
             <label>
@@ -82,6 +100,10 @@
                   <option value="">Choose automatically</option>
                 </select>
               </label>
+              <label>
+                Trial-division bound
+                <input id="trial-bound" type="number" min="2" max="100000000" value="100000" />
+              </label>
             </div>
           </details>
 
@@ -90,6 +112,83 @@
             <span>Start factorization</span><span aria-hidden="true">→</span>
           </button>
         </form>
+      </section>
+
+      <section id="batch-factor-page" class="submit-card panel factor-page hidden">
+        <form id="batch-factor-form">
+          <p class="eyebrow">CONTROLLED BATCH</p>
+          <h2>Queue multiple factorizations</h2>
+          <p>Enter one integer expression per line or import a TXT, CSV, or JSON array. Every input is validated before any job is queued.</p>
+          <label>Integer expressions<textarea id="batch-expressions" rows="10" spellcheck="false" placeholder="8051&#10;2^127-1&#10;9762764972076045602745703475074502450747777777777611191" required></textarea></label>
+          <div class="controls-grid">
+            <label>Import file<input id="batch-file" type="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" /></label>
+            <label>Strategy<select id="batch-backend"><option value="auto">Automatic</option><option value="yafu">YAFU</option><option value="hybrid">YAFU → CADO</option><option value="cado">CADO-NFS</option><option value="msieve">Msieve</option><option value="cross_verify">Cross-check YAFU + Msieve</option></select></label>
+          </div>
+          <div id="batch-factor-message" class="message hidden"></div>
+          <div class="actions">
+            <button class="primary" type="submit"><span>Validate and queue batch</span><span>→</span></button>
+            <button id="batch-export" class="secondary hidden" type="button">Export completed batch</button>
+            <a id="batch-download" class="secondary button-link hidden" href="#">Download batch report</a>
+          </div>
+        </form>
+
+        <form id="factor-lab-squfof-form">
+          <p class="eyebrow">SHANKS SQUARE FORMS</p>
+          <h2>SQUFOF</h2>
+          <p>Shanks' square forms factorization, for odd inputs below 2<sup>62</sup>. No installed library provides SQUFOF, so Numerisect supplies it as a compiled C program using GMP. An exhausted search is inconclusive and never a claim that the input is prime.</p>
+          <label>Integer expression<input id="squfof-expression" type="text" spellcheck="false" placeholder="11111111111" required /></label>
+          <details>
+            <summary>Advanced</summary>
+            <div class="controls-grid">
+              <label>Iteration limit per multiplier<input id="squfof-iterations" type="number" min="1000" max="200000000" value="4000000" /></label>
+              <label>Timeout (seconds)<input id="squfof-timeout" type="number" min="1" max="3600" value="300" /></label>
+            </div>
+          </details>
+          <div class="actions"><button class="primary" type="submit"><span>Run SQUFOF</span><span>→</span></button></div>
+        </form>
+
+        <form id="factor-lab-strategy-form">
+          <p class="eyebrow">ENGINE SELECTION</p>
+          <h2>Strategy adviser and decision tree</h2>
+          <p>PARI/GP screens the input for small factors, perfect powers, and special forms, then reports the decision path, the recommended engine, and the expected size of any remaining factor.</p>
+          <label>Integer expression<input id="strategy-expression" type="text" spellcheck="false" placeholder="2^101-1" required /></label>
+          <div class="controls-grid">
+            <label>ECM depth already completed (digits)<input id="strategy-pretest" type="number" min="0" max="80" value="0" /></label>
+            <label>Timeout (seconds)<input id="strategy-timeout" type="number" min="1" max="600" value="120" /></label>
+          </div>
+          <div class="actions"><button class="primary" type="submit"><span>Advise</span><span>→</span></button></div>
+        </form>
+
+        <form id="factor-lab-special-form">
+          <p class="eyebrow">ALGEBRAIC STRUCTURE</p>
+          <h2>Special forms, algebraic factors, and SNFS suitability</h2>
+          <p>Recognises perfect powers, a<sup>k</sup>&nbsp;&plusmn;&nbsp;1, and cyclotomic values, reports Aurifeuillean and cyclotomic factors verified by division, and gives the SNFS polynomial and difficulty when the input is suitable.</p>
+          <label>Integer expression<input id="special-form-expression" type="text" spellcheck="false" placeholder="2^101-1" required /></label>
+          <label>Timeout (seconds)<input id="special-form-timeout" type="number" min="1" max="600" value="120" /></label>
+          <div class="actions"><button class="primary" type="submit"><span>Analyse form</span><span>→</span></button></div>
+        </form>
+
+        <form id="factor-lab-trace-form">
+          <p class="eyebrow">EDUCATIONAL TRACE</p>
+          <h2>Algorithm trace</h2>
+          <p>A bounded, step-by-step trace of Pollard rho, p&minus;1, or ECM stage 1, computed by PARI/GP. This is for teaching: real factorization uses YAFU, Msieve, GMP-ECM, and CADO-NFS.</p>
+          <label>Integer expression<input id="trace-expression" type="text" spellcheck="false" placeholder="8051" required /></label>
+          <div class="controls-grid">
+            <label>Algorithm<select id="trace-algorithm"><option value="rho">Pollard rho</option><option value="pm1">Pollard p-1</option><option value="ecm">ECM stage 1</option></select></label>
+            <label>Maximum steps<input id="trace-steps" type="number" min="1" max="500" value="40" /></label>
+          </div>
+          <div class="actions"><button class="primary" type="submit"><span>Trace</span><span>→</span></button></div>
+        </form>
+
+        <form id="factor-lab-certificates-form">
+          <p class="eyebrow">PROOF EXPORT</p>
+          <h2>Batch primality certificates</h2>
+          <p>Generates a PARI/GP primality certificate for each factor and re-checks every certificate independently with primecertisvalid.</p>
+          <label>Factors, one per line<textarea id="certificate-factors" rows="5" spellcheck="false" placeholder="83&#10;97" required></textarea></label>
+          <label>Timeout (seconds)<input id="certificate-timeout" type="number" min="1" max="3600" value="300" /></label>
+          <div class="actions"><button class="primary" type="submit"><span>Certify factors</span><span>→</span></button></div>
+        </form>
+        <section id="factor-lab-result" class="prime-results hidden" aria-live="polite"></section>
       </section>
 
       <section class="workspace">
@@ -140,6 +239,7 @@
                 <div><p class="eyebrow">RESULT</p><h3>Factors</h3></div>
                 <div class="actions">
                   <a id="download-result" class="secondary button-link hidden" href="#">Save .txt</a>
+                  <a id="download-manifest" class="secondary button-link hidden" href="#">Manifest .json</a>
                   <button id="copy-result" class="secondary hidden">Copy</button>
                 </div>
               </div>
@@ -147,6 +247,7 @@
               <div id="factor-list" class="factor-list">
                 <div class="empty">Factors will appear when verified.</div>
               </div>
+              <div id="factor-tree" class="factor-tree hidden" aria-label="Factor tree"></div>
             </div>
 
             <div class="log-section">
@@ -349,7 +450,10 @@
               <label>From<input id="prime-range-start" value="2" required /></label>
               <label>Through<input id="prime-range-end" value="10000" required /></label>
             </div>
-            <label>Maximum results<input id="prime-range-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            <div class="controls-grid">
+              <label>Maximum results<input id="prime-range-limit" type="number" min="1" max="100000" value="10000" required /></label>
+              <label>CPU threads<input id="prime-range-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
             <button class="primary" type="submit"><span>Find primes</span><span>→</span></button>
           </form>
 
@@ -377,21 +481,19 @@
           <form id="prime-nth-form" class="panel utility-card">
             <p class="eyebrow">PRIME INDEX</p>
             <h2>Find the n-th prime</h2>
-            <p>Look up p(n), with indexed checkpoints and PARI's native sieve.</p>
-            <label>Positive index n
-              <input id="prime-index" type="number" min="1" max="100000000000" value="1000000" required />
-            </label>
+            <p>Look up p(n) exactly using parallel primecount, with a PARI/GP fallback.</p>
+            <div class="controls-grid"><label>Positive index n ≤ 10²⁹<input id="prime-index" inputmode="numeric" value="1000000" required /></label><label>CPU threads<input id="prime-index-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label></div>
             <button class="primary" type="submit"><span>Find indexed prime</span><span>→</span></button>
           </form>
 
           <form id="prime-count-form" class="panel utility-card">
             <p class="eyebrow">PRIME COUNTING</p>
             <h2>Calculate π(x)</h2>
-            <p>Count every positive prime less than or equal to x, exactly.</p>
-            <label>Integer or expression
-              <input id="prime-count-through" value="10^8" required />
-              <span class="field-note">Safety limit: 10¹² because exact counting is memory intensive</span>
-            </label>
+            <p>Count every positive prime less than or equal to x exactly with primecount's parallel Gourdon algorithm.</p>
+            <div class="controls-grid">
+              <label>Integer or expression<input id="prime-count-through" value="10^15" required /><span class="field-note">primecount range: through 10³¹</span></label>
+              <label>CPU threads<input id="prime-count-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
             <button class="primary" type="submit"><span>Count primes</span><span>→</span></button>
           </form>
 
@@ -717,12 +819,1048 @@
             <button class="primary" type="submit"><span>Find derived primes</span><span>→</span></button>
           </form>
 
+          <form id="visual-spiral-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME SPIRALS · ULAM · SACKS · POLAR</p>
+            <h2>Draw a prime spiral</h2>
+            <p>Lay a range of integers on an Ulam square spiral, a Sacks parabolic spiral, or an Archimedean polar spiral, optionally highlighting a residue class or a quadratic family. PARI/GP proves every primality and decides highlight membership.</p>
+            <div class="five-controls">
+              <label>Start<input id="visual-spiral-start" value="1" required /></label>
+              <label>Integers<input id="visual-spiral-count" type="number" min="1" max="1000000" value="10000" required /></label>
+              <label>Layout<select id="visual-spiral-layout"><option value="ulam">Ulam square spiral</option><option value="sacks">Sacks spiral</option><option value="polar">Polar spiral</option></select></label>
+              <label>Highlight<select id="visual-spiral-highlight"><option value="none">None</option><option value="polynomial">Quadratic family</option><option value="residue">Residue class</option></select></label>
+              <label>Engine seconds<input id="visual-spiral-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <details>
+              <summary>Highlight parameters</summary>
+              <div class="five-controls advanced">
+                <label>a in ak²+bk+c<input id="visual-spiral-a" type="number" min="-1000000" max="1000000" value="1" /></label>
+                <label>b<input id="visual-spiral-b" type="number" min="-1000000" max="1000000" value="1" /></label>
+                <label>c<input id="visual-spiral-c" type="number" min="-1000000" max="1000000" value="41" /></label>
+                <label>Modulus<input id="visual-spiral-modulus" type="number" min="2" max="1000000" value="4" /></label>
+                <label>Residue<input id="visual-spiral-residue" type="number" min="0" max="999999" value="1" /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Draw spiral</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-spiral-canvas" class="math-canvas visual-canvas" width="820" height="820" aria-label="Prime spiral"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">Prime</span><span class="visual-swatch-highlight">Highlighted family</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-eisenstein-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">EISENSTEIN LATTICE</p>
+            <h2>Map Eisenstein primes on the hexagonal lattice</h2>
+            <p>Enumerate every Eisenstein prime a + bω with norm a² − ab + b² up to a bound and separate the split, inert, and ramified cases. PARI/GP applies the exact criterion at each lattice point.</p>
+            <div class="triple-controls">
+              <label>Norm bound<input id="visual-eisenstein-bound" type="number" min="2" max="200000" value="2000" required /></label>
+              <label>Point limit<input id="visual-eisenstein-limit" type="number" min="1" max="200000" value="20000" required /></label>
+              <label>Engine seconds<input id="visual-eisenstein-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Map Eisenstein primes</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-eisenstein-canvas" class="math-canvas visual-canvas" width="820" height="740" aria-label="Eisenstein prime lattice"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-split">Split · norm ≡ 1 mod 3</span><span class="visual-swatch-inert">Inert associate</span><span class="visual-swatch-ramified">Ramified · norm 3</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-wheel-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INTERACTIVE MODULAR WHEEL</p>
+            <h2>Spin a wheel with an arbitrary base</h2>
+            <p>Place consecutive integers on a wheel of any base up to 10,000 from any starting point, with per-spoke prime counts and Euler's totient computed natively. Only the φ(m) spokes coprime to the base can carry primes above the base.</p>
+            <div class="four-controls">
+              <label>Wheel base<input id="visual-wheel-modulus" type="number" min="2" max="10000" value="30" required /></label>
+              <label>Start<input id="visual-wheel-start" type="number" min="0" value="0" required /></label>
+              <label>Integers<input id="visual-wheel-count" type="number" min="1" max="200000" value="600" required /></label>
+              <label>Engine seconds<input id="visual-wheel-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Draw wheel</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-wheel-canvas" class="math-canvas visual-canvas" width="780" height="780" aria-label="Interactive modular prime wheel"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">Prime</span><span class="visual-swatch-highlight">Coprime to base</span><span class="visual-swatch-plain">Neither</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-heatmap-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">RESIDUE-CLASS HEATMAP</p>
+            <h2>Count primes by residue class and interval</h2>
+            <p>Split a range into equal bins and count the primes in every residue class modulo m, exposing the reduced classes predicted by Dirichlet's theorem. PARI/GP produces every count.</p>
+            <div class="five-controls">
+              <label>From<input id="visual-heatmap-start" value="1" required /></label>
+              <label>Through<input id="visual-heatmap-end" value="100000" required /></label>
+              <label>Modulus<input id="visual-heatmap-modulus" type="number" min="2" max="360" value="30" required /></label>
+              <label>Bins<input id="visual-heatmap-bins" type="number" min="1" max="200" value="50" required /></label>
+              <label>Engine seconds<input id="visual-heatmap-timeout" type="number" min="1" max="3600" value="120" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Build heatmap</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-heatmap-canvas" class="math-canvas heatmap-canvas visual-canvas" width="1000" height="620" aria-label="Prime residue-class heatmap"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-low">Few primes</span><span class="visual-swatch-high">Many primes</span><span class="visual-swatch-blocked">Class shares a factor with the modulus</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-gap-timeline-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-GAP TIMELINE</p>
+            <h2>Follow gaps and record gaps</h2>
+            <p>Plot every consecutive prime gap across a range and mark each record gap with its merit g / ln p. PARI/GP measures each gap and detects each record; the record list is never truncated.</p>
+            <div class="four-controls">
+              <label>From<input id="visual-gap-start" value="1" required /></label>
+              <label>Through<input id="visual-gap-end" value="100000" required /></label>
+              <label>Timeline limit<input id="visual-gap-limit" type="number" min="1" max="200000" value="20000" required /></label>
+              <label>Engine seconds<input id="visual-gap-timeout" type="number" min="1" max="3600" value="120" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Plot gap timeline</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-gap-canvas" class="math-canvas chart-canvas visual-canvas" width="1000" height="460" aria-label="Prime gap timeline with record gaps"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">Consecutive gap</span><span class="visual-swatch-highlight">Record gap</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-prime-race-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME RACE ANIMATION</p>
+            <h2>Race the reduced residue classes</h2>
+            <p>Animate the running prime counts of every class coprime to m at native checkpoints and replay each exact lead change. Modulus 4 reproduces the Chebyshev bias towards 3 mod 4.</p>
+            <div class="five-controls">
+              <label>From<input id="visual-race-start" value="1" required /></label>
+              <label>Through<input id="visual-race-end" value="100000" required /></label>
+              <label>Modulus<input id="visual-race-modulus" type="number" min="2" max="360" value="4" required /></label>
+              <label>Checkpoints<input id="visual-race-checkpoints" type="number" min="1" max="1000" value="200" required /></label>
+              <label>Engine seconds<input id="visual-race-timeout" type="number" min="1" max="3600" value="120" required /></label>
+            </div>
+            <div class="visual-playback">
+              <button id="visual-race-play" class="secondary" type="button">Replay animation</button>
+              <label>Frames per second<input id="visual-race-speed" type="number" min="1" max="120" value="30" /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run prime race</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-race-canvas" class="math-canvas chart-canvas visual-canvas" width="1000" height="520" aria-label="Prime race between residue classes"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">One coloured line per reduced residue class</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-sieve-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">SIEVE ANIMATIONS</p>
+            <h2>Replay a sieve step by step</h2>
+            <p>Play back the exact execution trace of the sieve of Eratosthenes, its segmented variant, Sundaram's sieve, or Atkin's sieve. PARI/GP records every selection, strike, toggle, and survivor and verifies the result against its own prime table.</p>
+            <div class="four-controls">
+              <label>Sieve<select id="visual-sieve-kind"><option value="eratosthenes">Eratosthenes</option><option value="segmented">Segmented Eratosthenes</option><option value="sundaram">Sundaram</option><option value="atkin">Atkin</option></select></label>
+              <label>Limit n<input id="visual-sieve-n" type="number" min="2" max="5000" value="200" required /></label>
+              <label>Segment size<input id="visual-sieve-segment" type="number" min="1" max="5000" placeholder="⌈√n⌉" /></label>
+              <label>Engine seconds<input id="visual-sieve-timeout" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <div class="visual-playback">
+              <button id="visual-sieve-play" class="secondary" type="button">Replay animation</button>
+              <label>Steps per second<input id="visual-sieve-speed" type="number" min="1" max="2000" value="60" /></label>
+            </div>
+            <button class="primary" type="submit"><span>Trace sieve</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-sieve-canvas" class="math-canvas visual-canvas" width="1000" height="620" aria-label="Sieve animation grid"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">Confirmed prime</span><span class="visual-swatch-highlight">Current step</span><span class="visual-swatch-struck">Struck earlier</span></figcaption>
+            </figure>
+          </form>
+
+          <form id="visual-complexity-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COMPLEXITY AND MEMORY DASHBOARD</p>
+            <h2>Compare asymptotics with measured runs</h2>
+            <p>Combine a cited reference table of time and memory bounds for trial division, rho, p−1, ECM, SIQS, GNFS, SNFS, AKS, ECPP, APR-CL, and the four sieves with the wall-clock timings of completed local factorization jobs.</p>
+            <label>Job-history depth<input id="visual-complexity-limit" type="number" min="1" max="500" value="500" required /></label>
+            <button class="primary" type="submit"><span>Build dashboard</span><span>→</span></button>
+            <figure class="visual-stage">
+              <canvas id="visual-complexity-canvas" class="math-canvas chart-canvas visual-canvas" width="1000" height="440" aria-label="Measured factorization timings by engine and input size"></canvas>
+              <figcaption class="visual-legend"><span class="visual-swatch-prime">Median seconds per engine and digit bucket</span></figcaption>
+            </figure>
+          </form>
+
           <form id="prime-constant-form" class="panel utility-card">
             <p class="eyebrow">PRIME-INDICATOR CONSTANT</p>
             <h2>Encode primality as binary digits</h2>
             <p>Calculate C = Σ [n is prime]·2⁻ⁿ with a certified tail bound and arbitrary-precision decimal output.</p>
             <label>Decimal digits<input id="prime-constant-digits" type="number" min="1" max="100000" value="100" required /></label>
             <button class="primary" type="submit"><span>Calculate constant</span><span>→</span></button>
+          </form>
+
+          <form id="divisor-lattice-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DIVISOR STRUCTURE</p>
+            <h2>Enumerate every divisor and factor pair</h2>
+            <p>List each divisor with its cofactor and Ω value, and build the covering relation of the divisor lattice when the divisor count stays inside the configured cap.</p>
+            <div class="triple-controls">
+              <label>Positive integer n<input id="divisor-lattice-number" value="60" required /></label>
+              <label>Divisor row limit<input id="divisor-lattice-limit" type="number" min="1" max="100000" value="10000" required /></label>
+              <label>Lattice cap<input id="divisor-lattice-cap" type="number" min="0" max="20000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Enumerate divisors</span><span>→</span></button>
+          </form>
+
+          <form id="smoothness-profile-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">SMOOTHNESS &amp; ROUGHNESS</p>
+            <h2>Bound the prime factors of n</h2>
+            <p>Report the exact least prime factor, largest prime factor, largest prime power, and the B-smooth, B-powersmooth, and R-rough verdicts with the smooth and rough parts.</p>
+            <div class="triple-controls">
+              <label>Integer n, |n| ≥ 2<input id="smoothness-number" value="720" required /></label>
+              <label>Smoothness bound B<input id="smoothness-bound" value="5" required /></label>
+              <label>Roughness bound R<input id="smoothness-rough" value="3" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Profile smoothness</span><span>→</span></button>
+          </form>
+
+          <form id="record-numbers-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DIVISOR RECORDS</p>
+            <h2>Highly composite and colossally abundant numbers</h2>
+            <p>Test n for record τ and record σ(n)/n, decide the superior-highly-composite and colossally-abundant properties from their exact ε-intervals, and list all four record sequences.</p>
+            <div class="triple-controls">
+              <label>Integer n<input id="record-numbers-number" value="60" required /></label>
+              <label>Sequence bound<input id="record-numbers-bound" value="10000" required /></label>
+              <label>Rows per family<input id="record-numbers-limit" type="number" min="1" max="10000" value="200" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze records</span><span>→</span></button>
+          </form>
+
+          <form id="weird-number-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ABUNDANCE CLASSES</p>
+            <h2>Abundant, perfect, multiperfect &amp; weird</h2>
+            <p>Classify n by its proper-divisor sum and decide semiperfection with an exact subset-sum over the proper divisors, returning a witness subset whenever one exists.</p>
+            <div class="triple-controls">
+              <label>Positive integer n<input id="weird-number-number" value="70" required /></label>
+              <label>Subset-sum divisor cap<input id="weird-number-cap" type="number" min="1" max="4096" value="512" required /></label>
+              <label>Witness bit budget<input id="weird-number-bits" type="number" min="0" max="2147483648" value="8000000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Classify abundance</span><span>→</span></button>
+          </form>
+
+          <form id="sociable-cycle-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ALIQUOT CYCLES</p>
+            <h2>Find amicable pairs and sociable chains</h2>
+            <p>Iterate s(n) = σ(n) − n over an interval and report every closed cycle. Trajectories that exceed the term bound or the length cap stay inconclusive.</p>
+            <div class="four-controls">
+              <label>From<input id="sociable-start" value="200" required /></label>
+              <label>Through<input id="sociable-end" value="300" required /></label>
+              <label>Maximum cycle length<input id="sociable-length" type="number" min="1" max="1000" value="12" required /></label>
+              <label>Result limit<input id="sociable-limit" type="number" min="1" max="100000" value="1000" required /></label>
+            </div>
+            <details>
+              <summary>Search bounds</summary>
+              <div class="controls-grid">
+                <label>Aliquot term bound<input id="sociable-term-bound" value="1000000000000" required /></label>
+                <label>Time limit (seconds)<input id="sociable-timeout" type="number" min="1" max="3600" value="300" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Search aliquot cycles</span><span>→</span></button>
+          </form>
+
+          <form id="cornacchia-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">BINARY QUADRATIC FORMS</p>
+            <h2>Solve x² + dy² = n by Cornacchia</h2>
+            <p>Solve r² ≡ −d for every square divisor of n, run the Euclidean descent with a full step trace, and cross-check the complete solution set against PARI's qfbsolve.</p>
+            <div class="triple-controls">
+              <label>Coefficient d ≥ 1<input id="cornacchia-d" value="1" required /></label>
+              <label>Target n ≥ 1<input id="cornacchia-n" value="101" required /></label>
+              <label>Trace rows<input id="cornacchia-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find representations</span><span>→</span></button>
+          </form>
+
+          <form id="certificate-verify-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INDEPENDENT PROOF CHECK</p>
+            <h2>Verify a primality certificate</h2>
+            <p>Validate a machine-readable PARI ECPP certificate independently of the result that created it.</p>
+            <label>PARI certificate vector<textarea id="certificate-data" rows="9" spellcheck="false" placeholder="Paste the Machine-readable PARI certificate block from a Numerisect report" required></textarea></label>
+            <button class="primary" type="submit"><span>Verify certificate</span><span>→</span></button>
+          </form>
+
+          <form id="prime-approximation-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-COUNTING ASYMPTOTICS</p>
+            <h2>Compare π(x) approximations</h2>
+            <p>Compare exact parallel primecount output with x/log(x), Li(x), and Riemann R(x), including signed and relative errors.</p>
+            <div class="controls-grid"><label>Decimal endpoint x ≤ 10³¹<input id="approximation-x" value="1000000000000000" required /></label><label>CPU threads<input id="approximation-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label></div>
+            <button class="primary" type="submit"><span>Compare approximations</span><span>→</span></button>
+          </form>
+
+          <form id="summatory-functions-form" class="panel utility-card">
+            <p class="eyebrow">SUMMATORY FUNCTIONS</p>
+            <h2>Calculate M(x), L(x), θ(x), ψ(x)</h2>
+            <p>Evaluate Mertens, summatory Liouville, and both Chebyshev functions natively over a bounded exact range.</p>
+            <label>Endpoint x ≤ 10,000,000<input id="summatory-x" value="100000" required /></label>
+            <button class="primary" type="submit"><span>Calculate summatory functions</span><span>→</span></button>
+          </form>
+
+          <form id="approximation-error-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">APPROXIMATION ERROR</p>
+            <h2>Chart π(x) approximation error</h2>
+            <p>Plot the absolute and relative error of x/log x, li(x), and R(x) against exact π(x) over a log-spaced grid. primecount supplies exact π(x) and R(x); PARI/GP supplies li(x) through eint1 and every error term.</p>
+            <div class="four-controls">
+              <label>Grid from 10^<input id="approximation-error-from" type="number" min="1" max="18" value="3" required /></label>
+              <label>Grid to 10^<input id="approximation-error-to" type="number" min="2" max="19" value="12" required /></label>
+              <label>Grid points<input id="approximation-error-points" type="number" min="2" max="24" value="10" required /></label>
+              <label>CPU threads<input id="approximation-error-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Chart approximation error</span><span>→</span></button>
+          </form>
+
+          <form id="pnt-convergence-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-NUMBER-THEOREM CONVERGENCE</p>
+            <h2>Track π(x)/(x/log x) and π(x)/li(x)</h2>
+            <p>Follow both prime-number-theorem ratios and the normalised error term across a log-spaced grid, flagging every sign change of π(x) − li(x) that the grid can see.</p>
+            <div class="four-controls">
+              <label>Grid from 10^<input id="pnt-convergence-from" type="number" min="1" max="18" value="3" required /></label>
+              <label>Grid to 10^<input id="pnt-convergence-to" type="number" min="2" max="19" value="12" required /></label>
+              <label>Grid points<input id="pnt-convergence-points" type="number" min="2" max="24" value="10" required /></label>
+              <label>CPU threads<input id="pnt-convergence-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run convergence grid</span><span>→</span></button>
+          </form>
+
+          <form id="nth-prime-bounds-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">EXPLICIT n-TH PRIME BOUNDS</p>
+            <h2>Check Rosser–Schoenfeld and Dusart bounds</h2>
+            <p>Evaluate six published upper and lower bounds for pₙ at high precision and compare each with the exact n-th prime from primecount. Every bound is reported with its own validity range.</p>
+            <div class="four-controls">
+              <label>Indices from 10^<input id="nth-prime-bounds-from" type="number" min="1" max="16" value="1" required /></label>
+              <label>Indices to 10^<input id="nth-prime-bounds-to" type="number" min="2" max="17" value="9" required /></label>
+              <label>Grid points<input id="nth-prime-bounds-points" type="number" min="2" max="24" value="9" required /></label>
+              <label>CPU threads<input id="nth-prime-bounds-threads" class="native-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compare n-th prime bounds</span><span>→</span></button>
+          </form>
+
+          <form id="prime-race-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME RACES AND CHEBYSHEV BIAS</p>
+            <h2>Race the reduced residue classes</h2>
+            <p>Count primes in every reduced residue class modulo q at a series of checkpoints, report the leader at each checkpoint, and normalise the bias by log x/√x.</p>
+            <div class="triple-controls">
+              <label>Modulus q ≤ 5,040<input id="prime-race-modulus" value="4" required /></label>
+              <label>Endpoint x ≤ 10¹⁰<input id="prime-race-endpoint" value="1000000" required /></label>
+              <label>Checkpoints<input id="prime-race-checkpoints" type="number" min="1" max="64" value="12" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run the prime race</span><span>→</span></button>
+          </form>
+
+          <form id="progression-deviation-form" class="panel utility-card">
+            <p class="eyebrow">PRIMES IN PROGRESSIONS</p>
+            <h2>Compare π(x; q, a) with li(x)/φ(q)</h2>
+            <p>Count primes in every reduced class modulo q and report the observed deviation from the expected li(x)/φ(q), in absolute, relative, and √x-normalised form.</p>
+            <div class="controls-grid">
+              <label>Modulus q ≤ 5,040<input id="progression-deviation-modulus" value="12" required /></label>
+              <label>Endpoint x ≤ 10¹⁰<input id="progression-deviation-endpoint" value="1000000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Measure progression deviation</span><span>→</span></button>
+          </form>
+
+          <form id="singular-series-form" class="panel utility-card">
+            <p class="eyebrow">HARDY–LITTLEWOOD SINGULAR SERIES</p>
+            <h2>Evaluate 𝔖 for a k-tuple pattern</h2>
+            <p>Check admissibility and evaluate the singular series as a truncated Euler product with a rigorous relative tail bound and an explicit enclosing interval.</p>
+            <div class="controls-grid">
+              <label>Pattern offsets (start at 0)<input id="singular-series-offsets" value="0, 2" required /></label>
+              <label>Euler-product cutoff<input id="singular-series-cutoff" type="number" min="100" max="100000000" value="1000000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Evaluate singular series</span><span>→</span></button>
+          </form>
+
+          <form id="tuple-prediction-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PREDICTED VERSUS OBSERVED CONSTELLATIONS</p>
+            <h2>Count twin primes and constellations</h2>
+            <p>Compare the Hardy–Littlewood prediction 𝔖·∫ dt/logᵏ t with an exact count. primesieve counts the twin, quadruplet, and sextuplet patterns below 2⁶⁴; PARI/GP counts every other pattern with one forprime pass.</p>
+            <div class="four-controls">
+              <label>Pattern offsets<input id="tuple-prediction-offsets" value="0, 2" required /></label>
+              <label>Range start<input id="tuple-prediction-start" value="2" required /></label>
+              <label>Range end ≤ 10¹¹<input id="tuple-prediction-end" value="1000000" required /></label>
+              <label>Euler-product cutoff<input id="tuple-prediction-cutoff" type="number" min="100" max="100000000" value="1000000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Predict and count</span><span>→</span></button>
+          </form>
+
+          <form id="bateman-horn-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">BATEMAN–HORN</p>
+            <h2>Predict prime values of polynomials</h2>
+            <p>Prove each polynomial irreducible, count ω(p) with polrootsmod, build the Bateman–Horn constant, and compare the prediction with an exact count over a bounded range. One polynomial per line, coefficients ascending.</p>
+            <label>Polynomials (ascending coefficients, one per line)<textarea id="bateman-horn-polynomials" rows="3" spellcheck="false" required>1, 0, 1</textarea></label>
+            <div class="triple-controls">
+              <label>Range start<input id="bateman-horn-start" value="1" required /></label>
+              <label>Range end (span ≤ 10⁶)<input id="bateman-horn-end" value="100000" required /></label>
+              <label>Euler-product cutoff<input id="bateman-horn-cutoff" type="number" min="3" max="1000000" value="100000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run Bateman–Horn</span><span>→</span></button>
+          </form>
+
+          <form id="maximal-gap-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">RECORD PRIME GAPS</p>
+            <h2>Search for maximal gaps</h2>
+            <p>Scan a bounded range for record gaps and report the merit g/log p, the Cramér–Shanks ratio g/log²p, the Granville 2e^−γ comparison, the Firoozbakht-implied bound, and agreement with the published maximal-gap table (A002386 / A005250).</p>
+            <div class="four-controls">
+              <label>Range start<input id="maximal-gap-start" value="2" required /></label>
+              <label>Range end ≤ 10¹³<input id="maximal-gap-end" value="10000000" required /></label>
+              <label>Record baseline<input id="maximal-gap-baseline" type="number" min="0" max="100000" value="0" required /></label>
+              <label>Scan cap (primes)<input id="maximal-gap-cap" type="number" min="100" max="10000000000" value="10000000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search record gaps</span><span>→</span></button>
+          </form>
+
+          <form id="short-interval-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">MAIER MATRIX</p>
+            <h2>Run a short-interval experiment</h2>
+            <p>Count the primes in each row interval [qk + 1, qk + y] and compare with the naive expectation y/log(qk). A primorial modulus reproduces Maier's construction, in which short intervals are systematically richer or poorer than the average.</p>
+            <div class="four-controls">
+              <label>Matrix modulus q<input id="short-interval-modulus" value="9699690" required /></label>
+              <label>First row k<input id="short-interval-row" value="1000" required /></label>
+              <label>Rows ≤ 512<input id="short-interval-rows" type="number" min="1" max="512" value="64" required /></label>
+              <label>Row length y<input id="short-interval-length" type="number" min="2" max="1000000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run the matrix experiment</span><span>→</span></button>
+          </form>
+
+          <form id="density-surface-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-DENSITY SURFACE</p>
+            <h2>Map density over position and residue</h2>
+            <p>Bin every prime in a range by block position and reduced residue class modulo q, then draw the normalised density as a heatmap. A value of 1 is the density predicted by the prime-number theorem for arithmetic progressions.</p>
+            <div class="four-controls">
+              <label>Range start<input id="density-surface-start" value="1000000" required /></label>
+              <label>Range end (span ≤ 10⁹)<input id="density-surface-end" value="2000000" required /></label>
+              <label>Blocks ≤ 64<input id="density-surface-blocks" type="number" min="1" max="64" value="32" required /></label>
+              <label>Modulus q ≤ 256<input id="density-surface-modulus" value="30" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Draw the density surface</span><span>→</span></button>
+          </form>
+
+          <form id="primality-lab-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIMALITY LABORATORY</p>
+            <h2>Compare primality tests</h2>
+            <p>Compare Fermat, Euler–Jacobi, strong Miller–Rabin, BPSW, and a selected rigorous PARI proof on one input.</p>
+            <div class="triple-controls">
+              <label>Integer n<input id="primality-lab-number" value="561" required /></label>
+              <label>Test base<input id="primality-lab-base" value="2" required /></label>
+              <label>Rigorous proof
+                <select id="primality-lab-proof"><option value="automatic">Automatic</option><option value="n_minus_1">N−1 / Pocklington–Lehmer</option><option value="aprcl">APR-CL</option><option value="ecpp">ECPP</option></select>
+              </label>
+            </div>
+            <button class="primary" type="submit"><span>Run comparison</span><span>→</span></button>
+          </form>
+
+          <form id="special-form-test-form" class="panel utility-card">
+            <p class="eyebrow">SPECIAL-FORM PROOFS</p>
+            <h2>Test Mersenne or Fermat numbers</h2>
+            <p>Use the necessary-and-sufficient Lucas–Lehmer or Pépin criterion without general factorization.</p>
+            <div class="controls-grid">
+              <label>Family<select id="special-form-kind"><option value="mersenne">Mersenne 2^p−1</option><option value="fermat">Fermat 2^(2^n)+1</option></select></label>
+              <label>Exponent p / index n<input id="special-form-parameter" value="31" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run special-form test</span><span>→</span></button>
+          </form>
+
+          <form id="primality-compare-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIMALITY LABORATORY</p>
+            <h2>Compare eight primality tests</h2>
+            <p>Run Fermat, Solovay–Strassen, Miller–Rabin, Lucas, strong Lucas, Frobenius, Baillie–PSW, APR-CL, and ECPP on one integer and keep probable results separate from proofs.</p>
+            <div class="controls-grid">
+              <label>Integer n<input id="primality-compare-number" value="3215031751" required /></label>
+              <label>Test bases (comma separated)<input id="primality-compare-bases" value="2, 3, 5, 7" required /></label>
+            </div>
+            <details>
+              <summary>Advanced settings</summary>
+              <div class="controls-grid advanced">
+                <label>Proof budget (seconds)<input id="primality-compare-budget" type="number" min="1" max="3600" value="30" required /></label>
+                <label>Engine time limit (seconds)<input id="primality-compare-timeout" type="number" min="1" max="3600" value="300" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Compare tests</span><span>→</span></button>
+          </form>
+
+          <form id="deterministic-witness-form" class="panel utility-card">
+            <p class="eyebrow">DETERMINISTIC MILLER–RABIN</p>
+            <h2>Apply a sufficient witness set</h2>
+            <p>Use the published sufficient base sets for bounded ranges, showing every squaring chain and the exact bound that makes the result a proof.</p>
+            <div class="controls-grid">
+              <label>Integer n<input id="deterministic-witness-number" value="3215031751" required /></label>
+              <label>Engine time limit (seconds)<input id="deterministic-witness-timeout" type="number" min="1" max="3600" value="300" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run witness set</span><span>→</span></button>
+          </form>
+
+          <form id="pocklington-proof-form" class="panel utility-card">
+            <p class="eyebrow">POCKLINGTON N−1 PROOF</p>
+            <h2>Prove primality from N − 1</h2>
+            <p>Factor N − 1 far enough for the Pocklington bound, find a witness for every prime divisor of the factored part, and emit a machine-readable certificate.</p>
+            <div class="triple-controls">
+              <label>Integer n<input id="pocklington-number" value="104729" required /></label>
+              <label>Factoring budget (seconds)<input id="pocklington-budget" type="number" min="1" max="3600" value="60" required /></label>
+              <label>Witness search limit<input id="pocklington-witness" type="number" min="2" max="100000" value="200" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run Pocklington proof</span><span>→</span></button>
+          </form>
+
+          <form id="pratt-certificate-form" class="panel utility-card">
+            <p class="eyebrow">PRATT CERTIFICATE TREE</p>
+            <h2>Build a recursive Pratt certificate</h2>
+            <p>Certify n from a primitive root and the full factorization of n − 1, then certify every factor recursively down to 2.</p>
+            <div class="triple-controls">
+              <label>Integer n<input id="pratt-number" value="104729" required /></label>
+              <label>Node limit<input id="pratt-nodes" type="number" min="1" max="100000" value="500" required /></label>
+              <label>Factoring budget (seconds)<input id="pratt-budget" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Build certificate tree</span><span>→</span></button>
+          </form>
+
+          <form id="primality-certificate-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INDEPENDENT PROOF CHECK</p>
+            <h2>Verify a Pocklington or Pratt certificate</h2>
+            <p>Re-derive every condition of a certificate from the certificate alone, without consulting the run that produced it.</p>
+            <label>Certificate format<select id="primality-certificate-kind"><option value="pocklington">Pocklington [N, F, [[p, e, a], …]]</option><option value="pratt">Pratt [[p, g, [[q, e], …]], …]</option></select></label>
+            <label>Certificate vector<textarea id="primality-certificate-data" rows="6" spellcheck="false" required>[104729,1007,[[53, 1, 3], [19, 1, 2]]]</textarea></label>
+            <button class="primary" type="submit"><span>Verify certificate</span><span>→</span></button>
+          </form>
+
+          <form id="proth-test-form" class="panel utility-card">
+            <p class="eyebrow">PROTH AND GENERALIZED PROTH</p>
+            <h2>Test k·bⁿ + 1</h2>
+            <p>Apply Proth's necessary-and-sufficient criterion for base 2, or the generalized N − 1 criterion for any other base, and cross-check against PARI isprime.</p>
+            <div class="four-controls">
+              <label>Multiplier k<input id="proth-k" value="5" required /></label>
+              <label>Exponent n<input id="proth-exponent" type="number" min="1" max="1000000" value="3" required /></label>
+              <label>Base b<input id="proth-base" type="number" min="2" max="1000000" value="2" required /></label>
+              <label>Witness search limit<input id="proth-witness" type="number" min="2" max="100000" value="200" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run Proth test</span><span>→</span></button>
+          </form>
+
+          <form id="proth-search-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GENERALIZED PROTH SEARCH</p>
+            <h2>Search k·bⁿ + 1 over an exponent range</h2>
+            <p>Filter candidates with BPSW natively, then settle each survivor with the Proth criterion or PARI isprime, counting expired budgets as inconclusive.</p>
+            <div class="five-controls">
+              <label>Multiplier k<input id="proth-search-k" value="5" required /></label>
+              <label>Base b<input id="proth-search-base" type="number" min="2" max="1000000" value="2" required /></label>
+              <label>Start exponent<input id="proth-search-start" type="number" min="1" max="100000" value="1" required /></label>
+              <label>End exponent<input id="proth-search-end" type="number" min="1" max="100000" value="200" required /></label>
+              <label>Result limit<input id="proth-search-limit" type="number" min="1" max="10000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search Proth primes</span><span>→</span></button>
+          </form>
+
+          <form id="lucas-sequence-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">LUCAS SEQUENCES AND N+1</p>
+            <h2>Run Lucas, Frobenius, and Morrison N+1 tests</h2>
+            <p>Select (P, Q) by Selfridge's method A or by hand, then apply the Lucas, strong Lucas, Frobenius, Lucas–Lehmer–Riesel, and Morrison N + 1 criteria.</p>
+            <div class="four-controls">
+              <label>Odd integer n<input id="lucas-sequence-number" value="8191" required /></label>
+              <label>Parameter selection<select id="lucas-sequence-selfridge"><option value="1">Selfridge method A</option><option value="0">User supplied (P, Q)</option></select></label>
+              <label>P<input id="lucas-sequence-p" type="number" min="-1000000" max="1000000" value="1" required /></label>
+              <label>Q<input id="lucas-sequence-q" type="number" min="-1000000" max="1000000" value="-1" required /></label>
+            </div>
+            <details>
+              <summary>Advanced settings</summary>
+              <div class="controls-grid advanced">
+                <label>Witness search limit<input id="lucas-sequence-witness" type="number" min="1" max="10000" value="40" required /></label>
+                <label>Factoring budget (seconds)<input id="lucas-sequence-budget" type="number" min="1" max="3600" value="60" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Run Lucas tests</span><span>→</span></button>
+          </form>
+
+          <form id="pseudoprime-taxonomy-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PROBABLE-PRIME TAXONOMY</p>
+            <h2>Classify pseudoprime families</h2>
+            <p>Separate Fermat, Euler–Jacobi, strong, Lucas, strong Lucas, Frobenius, and Baillie–PSW behaviour for one composite and the bases that fool it.</p>
+            <div class="four-controls">
+              <label>Odd integer n<input id="pseudoprime-number" value="2047" required /></label>
+              <label>Test bases (comma separated)<input id="pseudoprime-bases" value="2, 3" required /></label>
+              <label>Parameter selection<select id="pseudoprime-selfridge"><option value="1">Selfridge method A</option><option value="0">User supplied (P, Q)</option></select></label>
+              <label>P, Q<input id="pseudoprime-pq" value="1, -1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Classify pseudoprimes</span><span>→</span></button>
+          </form>
+
+          <form id="carmichael-analysis-form" class="panel utility-card">
+            <p class="eyebrow">CARMICHAEL ANALYZER</p>
+            <h2>Apply Korselt's criterion</h2>
+            <p>Factor n, test squarefreeness and (p − 1) | (n − 1) for every prime factor, and derive λ(n) and the exact Fermat-liar count.</p>
+            <div class="triple-controls">
+              <label>Integer n<input id="carmichael-number" value="561" required /></label>
+              <label>Fermat base scan limit<input id="carmichael-bases" type="number" min="2" max="10000000" value="10000" required /></label>
+              <label>Factoring budget (seconds)<input id="carmichael-budget" type="number" min="1" max="3600" value="60" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze Carmichael structure</span><span>→</span></button>
+          </form>
+
+          <form id="chernick-carmichael-form" class="panel utility-card">
+            <p class="eyebrow">CHERNICK CONSTRUCTION</p>
+            <h2>Generate Chernick Carmichael numbers</h2>
+            <p>Search k with 6k + 1, 12k + 1 and 18k + 1 simultaneously prime, and re-verify Korselt's criterion for every product.</p>
+            <div class="triple-controls">
+              <label>Start k<input id="chernick-start" type="number" min="1" max="100000000" value="1" required /></label>
+              <label>End k<input id="chernick-end" type="number" min="1" max="100000000" value="1000" required /></label>
+              <label>Result limit<input id="chernick-limit" type="number" min="1" max="10000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Construct Carmichael numbers</span><span>→</span></button>
+          </form>
+
+          <form id="repunit-search-form" class="panel utility-card">
+            <p class="eyebrow">GENERALIZED REPUNITS</p>
+            <h2>Search (bⁿ − 1)/(b − 1)</h2>
+            <p>Skip composite exponents natively, filter with BPSW, and prove every reported repunit prime with PARI isprime.</p>
+            <div class="four-controls">
+              <label>Base b<input id="repunit-base" type="number" min="2" max="1000000" value="10" required /></label>
+              <label>Start exponent<input id="repunit-start" type="number" min="1" max="100000" value="1" required /></label>
+              <label>End exponent<input id="repunit-end" type="number" min="1" max="100000" value="100" required /></label>
+              <label>Result limit<input id="repunit-limit" type="number" min="1" max="10000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search repunit primes</span><span>→</span></button>
+          </form>
+
+          <form id="sierpinski-riesel-form" class="panel utility-card">
+            <p class="eyebrow">SIERPIŃSKI AND RIESEL</p>
+            <h2>Search for a prime k·2ⁿ ± 1</h2>
+            <p>Find the first proven prime that removes k from the Sierpiński or Riesel candidates; an exhausted bound stays inconclusive.</p>
+            <div class="four-controls">
+              <label>Multiplier k<input id="sierpinski-k" value="78557" required /></label>
+              <label>Family<select id="sierpinski-kind"><option value="sierpinski">Sierpiński k·2ⁿ + 1</option><option value="riesel">Riesel k·2ⁿ − 1</option></select></label>
+              <label>Exponent bound<input id="sierpinski-max" type="number" min="1" max="100000" value="1000" required /></label>
+              <label>Proof budget (seconds)<input id="sierpinski-budget" type="number" min="1" max="3600" value="30" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search for a prime</span><span>→</span></button>
+          </form>
+
+          <form id="covering-set-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COVERING-SET PROOF</p>
+            <h2>Verify a Sierpiński/Riesel covering set</h2>
+            <p>Check exactly that every exponent class modulo the period contributes a fixed prime divisor, which proves k is a Sierpiński or Riesel number.</p>
+            <div class="four-controls">
+              <label>Multiplier k<input id="covering-k" value="78557" required /></label>
+              <label>Family<select id="covering-kind"><option value="sierpinski">Sierpiński k·2ⁿ + 1</option><option value="riesel">Riesel k·2ⁿ − 1</option></select></label>
+              <label>Period<input id="covering-period" type="number" min="1" max="1000" value="36" required /></label>
+              <label>Covering primes (empty uses 2^period − 1)<input id="covering-primes" value="3, 5, 7, 13, 19, 37, 73" /></label>
+            </div>
+            <button class="primary" type="submit"><span>Verify covering set</span><span>→</span></button>
+          </form>
+
+          <form id="bitwin-chain-form" class="panel utility-card">
+            <p class="eyebrow">BI-TWIN CHAINS</p>
+            <h2>Search bi-twin chains</h2>
+            <p>Find maximal chains whose members n·2ⁱ − 1 and n·2ⁱ + 1 are all proven prime.</p>
+            <div class="four-controls">
+              <label>Interval start<input id="bitwin-start" value="2" required /></label>
+              <label>Interval end<input id="bitwin-end" value="100000" required /></label>
+              <label>Minimum length<input id="bitwin-length" type="number" min="1" max="32" value="2" required /></label>
+              <label>Result limit<input id="bitwin-limit" type="number" min="1" max="10000" value="100" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search bi-twin chains</span><span>→</span></button>
+          </form>
+
+          <form id="prime-ladder-form" class="panel utility-card">
+            <p class="eyebrow">PRIME LADDERS</p>
+            <h2>Change one digit at a time</h2>
+            <p>Find a shortest path between two equal-width primes in which every intermediate value is a proven prime.</p>
+            <div class="triple-controls">
+              <label>From prime<input id="ladder-start" value="1373" required /></label>
+              <label>To prime<input id="ladder-end" value="8017" required /></label>
+              <label>Search depth<input id="ladder-steps" type="number" min="1" max="100" value="20" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Build prime ladder</span><span>→</span></button>
+          </form>
+
+          <form id="constrained-prime-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CONSTRAINED PRIME GENERATOR · EXPERIMENTAL</p>
+            <h2>Generate a proven prime to specification</h2>
+            <p>Construct an exact-bit-length prime with an optional residue condition, safe-prime or Gordon strong-prime structure, and a PARI certificate. Educational tool, not audited cryptographic software.</p>
+            <div class="four-controls">
+              <label>Bit length<input id="constrained-bits" type="number" min="8" max="1024" value="64" required /></label>
+              <label>Structure<select id="constrained-kind"><option value="any">Unconstrained</option><option value="safe">Safe prime p = 2q + 1</option><option value="strong">Gordon strong prime</option></select></label>
+              <label>Residue modulus<input id="constrained-modulus" value="1" required /></label>
+              <label>Required residue<input id="constrained-residue" value="0" required /></label>
+            </div>
+            <details>
+              <summary>Advanced settings</summary>
+              <div class="controls-grid advanced">
+                <label>Reproducible search seed (empty draws from the system CSPRNG)<input id="constrained-seed" value="" /></label>
+                <label>Candidate limit<input id="constrained-limit" type="number" min="1" max="10000000" value="100000" required /></label>
+                <label>Proof budget (seconds)<input id="constrained-budget" type="number" min="1" max="3600" value="60" required /></label>
+                <label class="inline-check">
+                  <input id="constrained-certificate" type="checkbox" checked />
+                  Emit a primality certificate
+                </label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Generate constrained prime</span><span>→</span></button>
+          </form>
+
+          <form id="lucas-lehmer-steps-form" class="panel utility-card">
+            <p class="eyebrow">PROOF VIEWER · LUCAS–LEHMER</p>
+            <h2>Show the Lucas–Lehmer iteration</h2>
+            <p>Materialize the residues s₀ = 4, sᵢ = sᵢ₋₁² − 2 modulo Mₚ that decide whether 2ᵖ − 1 is prime.</p>
+            <div class="triple-controls">
+              <label>Mersenne exponent p<input id="lucas-lehmer-exponent" type="number" min="2" max="100000" value="13" required /></label>
+              <label>Steps displayed<input id="lucas-lehmer-steps" type="number" min="0" max="10000" value="20" required /></label>
+              <label>Engine time limit (seconds)<input id="lucas-lehmer-timeout" type="number" min="1" max="3600" value="600" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Show iteration</span><span>→</span></button>
+          </form>
+
+          <form id="ecpp-steps-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PROOF VIEWER · ECPP</p>
+            <h2>Expand an ECPP certificate</h2>
+            <p>Show every Atkin–Morain descent step, its elliptic curve, point, group order, and discriminant, then re-validate the whole certificate.</p>
+            <div class="controls-grid">
+              <label>Integer n<input id="ecpp-number" value="10000000000000000000000000000000000000121" required /></label>
+              <label>Certificate budget (seconds)<input id="ecpp-budget" type="number" min="1" max="3600" value="120" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Expand certificate</span><span>→</span></button>
+          </form>
+
+          <form id="special-prime-family-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">SPECIAL PRIME FAMILIES</p>
+            <h2>Search structured prime families</h2>
+            <p>Construct candidates in eight classical families and retain only values rigorously proven prime by PARI/GP.</p>
+            <div class="five-controls">
+              <label>Family
+                <select id="special-family-kind">
+                  <option value="mersenne">Mersenne</option><option value="fermat">Fermat</option>
+                  <option value="cullen">Cullen</option><option value="woodall">Woodall</option>
+                  <option value="wagstaff">Wagstaff</option><option value="repunit">Decimal repunit</option>
+                  <option value="primorial">Primorial ± 1</option><option value="factorial">Factorial ± 1</option>
+                </select>
+              </label>
+              <label>Start index<input id="special-family-start" type="number" min="0" max="10000" value="1" required /></label>
+              <label>End index<input id="special-family-end" type="number" min="0" max="10000" value="31" required /></label>
+              <label>Result limit<input id="special-family-limit" type="number" min="1" max="100000" value="1000" required /></label>
+              <label>Time limit (seconds)<input id="special-family-timeout" type="number" min="1" max="3600" value="300" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search special family</span><span>→</span></button>
+          </form>
+
+          <form id="cunningham-chain-form" class="panel utility-card">
+            <p class="eyebrow">CUNNINGHAM CHAINS</p>
+            <h2>Verify a prime chain</h2>
+            <p>Follow pₖ₊₁ = 2pₖ + 1 or 2pₖ − 1, proving every term and stopping explicitly at the first composite.</p>
+            <div class="triple-controls">
+              <label>Starting prime<input id="cunningham-start" value="2" required /></label>
+              <label>Kind<select id="cunningham-kind"><option value="1">First kind (+1)</option><option value="2">Second kind (−1)</option></select></label>
+              <label>Requested length<input id="cunningham-length" type="number" min="1" max="100000" value="5" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Verify chain</span><span>→</span></button>
+          </form>
+
+          <form id="ntt-primes-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">TRANSFORM-FRIENDLY PRIMES</p>
+            <h2>Generate NTT primes</h2>
+            <p>Find proven primes p = k·2ᵐ + 1 of an exact bit length for native number-theoretic transforms.</p>
+            <div class="five-controls">
+              <label>Bit length<input id="ntt-bits" type="number" min="2" max="1000000" value="64" required /></label>
+              <label>Power m<input id="ntt-power" type="number" min="1" max="999999" value="20" required /></label>
+              <label>Prime count<input id="ntt-count" type="number" min="1" max="100000" value="10" required /></label>
+              <label>Candidate limit<input id="ntt-limit" type="number" min="1" max="10000000" value="1000000" required /></label>
+              <label>Time limit (seconds)<input id="ntt-timeout" type="number" min="1" max="3600" value="300" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Generate NTT primes</span><span>→</span></button>
+          </form>
+
+          <form id="tonelli-shanks-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">MODULAR SQUARE ROOTS</p>
+            <h2>Trace Tonelli–Shanks</h2>
+            <p>Compute roots of x² ≡ a (mod p), display the native algorithm state, and verify each result.</p>
+            <div class="triple-controls">
+              <label>Value a<input id="tonelli-value" value="10" required /></label>
+              <label>Proven prime p<input id="tonelli-prime" value="13" required /></label>
+              <label>Trace rows<input id="tonelli-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Calculate and trace</span><span>→</span></button>
+          </form>
+
+          <form id="hensel-roots-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">P-ADIC ROOT LIFTING</p>
+            <h2>Lift polynomial roots modulo pᵏ</h2>
+            <p>Enter integer coefficients from constant term upward and compute exact residues from PARI's p-adic roots.</p>
+            <div class="four-controls">
+              <label>Coefficients a₀, a₁, …<textarea id="hensel-coefficients" rows="3" required>-1, 0, 1</textarea></label>
+              <label>Prime p<input id="hensel-prime" value="3" required /></label>
+              <label>Exponent k<input id="hensel-exponent" type="number" min="1" max="100000" value="3" required /></label>
+              <label>Result limit<input id="hensel-limit" type="number" min="1" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Lift roots</span><span>→</span></button>
+          </form>
+
+          <form id="order-distribution-form" class="panel utility-card">
+            <p class="eyebrow">UNIT-GROUP STATISTICS</p>
+            <h2>Distribute multiplicative orders</h2>
+            <p>Enumerate every unit modulo n and count elements of each exact multiplicative order.</p>
+            <div class="controls-grid"><label>Modulus n ≤ 1,000,000<input id="order-modulus" value="100" required /></label><label>Row limit<input id="order-limit" type="number" min="1" max="100000" value="10000" required /></label></div>
+            <button class="primary" type="submit"><span>Analyze orders</span><span>→</span></button>
+          </form>
+
+          <form id="power-residues-form" class="panel utility-card">
+            <p class="eyebrow">FINITE-FIELD DISTRIBUTION</p>
+            <h2>Count kth-power residues</h2>
+            <p>Evaluate the complete map x ↦ xᵏ over 𝔽ₚ and count every residue's preimages.</p>
+            <div class="triple-controls"><label>Prime p ≤ 1,000,000<input id="residue-prime" value="101" required /></label><label>Exponent k<input id="residue-exponent" type="number" min="1" max="1000000" value="2" required /></label><label>Row limit<input id="residue-limit" type="number" min="1" max="100000" value="10000" required /></label></div>
+            <button class="primary" type="submit"><span>Analyze residues</span><span>→</span></button>
+          </form>
+
+          <form id="p-adic-valuation-form" class="panel utility-card">
+            <p class="eyebrow">P-ADIC STRUCTURE</p>
+            <h2>Calculate vₚ(n)</h2>
+            <p>Decompose a nonzero arbitrary-size integer into its exact p-power and coprime unit part.</p>
+            <div class="controls-grid"><label>Nonzero integer n<input id="valuation-number" value="360" required /></label><label>Proven prime p<input id="valuation-prime" value="3" required /></label></div>
+            <button class="primary" type="submit"><span>Calculate valuation</span><span>→</span></button>
+          </form>
+
+          <form id="cyclotomic-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CYCLOTOMIC POLYNOMIALS</p>
+            <h2>Construct Φₙ(x) and factor modulo p</h2>
+            <p>Build the exact cyclotomic polynomial and inspect its irreducible factorization over a selected finite field.</p>
+            <div class="controls-grid"><label>Index n<input id="cyclotomic-index" type="number" min="1" max="10000" value="5" required /></label><label>Proven prime p<input id="cyclotomic-prime" value="2" required /></label></div>
+            <button class="primary" type="submit"><span>Explore cyclotomic polynomial</span><span>→</span></button>
+          </form>
+
+          <form id="reciprocity-trace-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">QUADRATIC RECIPROCITY</p>
+            <h2>Trace the Jacobi symbol (a/n)</h2>
+            <p>Reduce (a/n) step by step with reciprocity, the supplementary law for 2, and modular reduction, then cross-check the sign against the native Kronecker symbol.</p>
+            <div class="triple-controls">
+              <label>Numerator a<input id="reciprocity-a" value="30" required /></label>
+              <label>Odd denominator n<input id="reciprocity-n" value="101" required /></label>
+              <label>Trace rows<input id="reciprocity-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Trace reciprocity</span><span>→</span></button>
+          </form>
+
+          <form id="congruence-solver-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COMPOSITE-MODULUS CONGRUENCES</p>
+            <h2>Solve P(x) ≡ 0 (mod m)</h2>
+            <p>Factor the modulus, solve modulo each prime, lift with Hensel's lemma including singular roots, and recombine every branch with the Chinese remainder theorem.</p>
+            <div class="triple-controls">
+              <label>Coefficients a₀, a₁, …<textarea id="congruence-coefficients" rows="3" required>1, 0, 1</textarea></label>
+              <label>Modulus m ≥ 2<input id="congruence-modulus" value="65" required /></label>
+              <label>Result limit<input id="congruence-limit" type="number" min="1" max="100000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Solve congruence</span><span>→</span></button>
+          </form>
+
+          <form id="dlog-lab-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DISCRETE LOGARITHMS</p>
+            <h2>Solve gˣ ≡ h (mod n) by a chosen method</h2>
+            <p>Run baby-step/giant-step, Pohlig–Hellman, Pollard rho, or PARI's native znlog under an explicit budget of group operations. An exhausted budget is inconclusive, never a proof of insolubility.</p>
+            <div class="four-controls">
+              <label>Target h<input id="dlog-target" value="5" required /></label>
+              <label>Base g<input id="dlog-base" value="2" required /></label>
+              <label>Modulus n<input id="dlog-modulus" value="101" required /></label>
+              <label>Algorithm<select id="dlog-algorithm"><option value="bsgs">Baby-step/giant-step</option><option value="pohlig_hellman">Pohlig–Hellman</option><option value="pollard_rho">Pollard rho</option><option value="native">PARI znlog</option></select></label>
+            </div>
+            <details>
+              <summary>Resource limits</summary>
+              <div class="controls-grid">
+                <label>Step budget<input id="dlog-steps" type="number" min="1" max="100000000" value="1000000" required /></label>
+                <label>Time limit (seconds)<input id="dlog-timeout" type="number" min="1" max="3600" value="60" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Solve discrete logarithm</span><span>→</span></button>
+          </form>
+
+          <form id="finite-field-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FINITE FIELDS</p>
+            <h2>Compute in 𝔽ₚ and 𝔽_{pᵐ}</h2>
+            <p>Build the field from a supplied irreducible reduction polynomial or from PARI's ffinit, then add, subtract, multiply, divide, exponentiate, and report orders, minimal polynomials, and Frobenius images.</p>
+            <div class="four-controls">
+              <label>Characteristic p<input id="finite-field-p" value="2" required /></label>
+              <label>Degree m<input id="finite-field-m" type="number" min="1" max="16" value="3" required /></label>
+              <label>Element a (ascending)<input id="finite-field-a" value="0, 1" required /></label>
+              <label>Element b (ascending)<input id="finite-field-b" value="1, 1" required /></label>
+            </div>
+            <details>
+              <summary>Reduction polynomial and exponent</summary>
+              <div class="controls-grid">
+                <label>Reduction polynomial coefficients (blank for ffinit)<input id="finite-field-modulus" value="" /></label>
+                <label>Exponent for a<input id="finite-field-exponent" type="number" min="-1000000" max="1000000" value="5" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Compute in the field</span><span>→</span></button>
+          </form>
+
+          <form id="character-symbol-form" class="panel utility-card">
+            <p class="eyebrow">CHARACTER SYMBOLS</p>
+            <h2>Legendre, Jacobi &amp; Kronecker</h2>
+            <p>Evaluate all applicable quadratic character symbols exactly and distinguish their domains.</p>
+            <div class="controls-grid">
+              <label>Numerator a<input id="symbol-a" value="5" required /></label>
+              <label>Denominator n<input id="symbol-n" value="11" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Evaluate symbols</span><span>→</span></button>
+          </form>
+
+          <form id="crt-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GENERALIZED CRT</p>
+            <h2>Solve a congruence system</h2>
+            <p>Solve compatible systems even when moduli are not pairwise coprime. Enter one residue and modulus per line.</p>
+            <div class="controls-grid">
+              <label>Residues<textarea id="crt-residues" rows="6" spellcheck="false" required>2
+5</textarea></label>
+              <label>Moduli<textarea id="crt-moduli" rows="6" spellcheck="false" required>6
+9</textarea></label>
+            </div>
+            <button class="primary" type="submit"><span>Solve CRT system</span><span>→</span></button>
+          </form>
+
+          <form id="modular-roots-form" class="panel utility-card">
+            <p class="eyebrow">POWER CONGRUENCES</p>
+            <h2>Solve xᵏ ≡ a (mod p)</h2>
+            <p>Enumerate all roots in a rigorously verified prime field using PARI finite-field arithmetic.</p>
+            <div class="triple-controls">
+              <label>Value a<input id="modroot-value" value="4" required /></label>
+              <label>Exponent k<input id="modroot-exponent" type="number" min="1" max="1000000" value="2" required /></label>
+              <label>Prime p<input id="modroot-prime" value="7" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Solve power congruence</span><span>→</span></button>
+          </form>
+
+          <form id="discrete-log-form" class="panel utility-card">
+            <p class="eyebrow">DISCRETE LOGARITHMS</p>
+            <h2>Solve gˣ ≡ a (mod n)</h2>
+            <p>Use PARI's native algorithm selection with the exact order of the generated subgroup.</p>
+            <div class="triple-controls">
+              <label>Target a<input id="dlog-target" value="5" required /></label>
+              <label>Base g<input id="dlog-base" value="2" required /></label>
+              <label>Modulus n<input id="dlog-modulus" value="101" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Calculate discrete log</span><span>→</span></button>
+          </form>
+
+          <form id="unit-group-form" class="panel utility-card">
+            <p class="eyebrow">MULTIPLICATIVE GROUPS</p>
+            <h2>Analyze (ℤ/nℤ)×</h2>
+            <p>Compute invariant factors, component generators, cyclicity, and bounded primitive-root enumeration.</p>
+            <div class="controls-grid">
+              <label>Modulus n<input id="unit-group-modulus" value="100" required /></label>
+              <label>Enumeration limit<input id="unit-group-limit" type="number" min="1" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze unit group</span><span>→</span></button>
+          </form>
+
+          <form id="polynomial-factor-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">POLYNOMIAL ARITHMETIC</p>
+            <h2>Factor over ℚ and 𝔽ₚ</h2>
+            <p>Enter integer coefficients from constant term upward; PARI factors the polynomial in both domains and finds finite-field roots.</p>
+            <div class="controls-grid">
+              <label>Coefficients a₀, a₁, …<textarea id="polynomial-coefficients" rows="4" spellcheck="false" required>-1, 0, 1</textarea></label>
+              <label>Prime modulus p<input id="polynomial-prime" value="5" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Factor polynomial</span><span>→</span></button>
+          </form>
+
+          <form id="extended-arithmetic-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ARITHMETIC FUNCTIONS</p>
+            <h2>Analyze divisors, kernels &amp; representations</h2>
+            <p>Compute σₖ, Jordan Jₖ, Dedekind ψ, Liouville, von Mangoldt, smoothness, squarefree structure, and quadratic representations.</p>
+            <div class="five-controls">
+              <label>Nonzero integer<input id="extended-number" value="360" required /></label>
+              <label>Exponent k<input id="extended-k" type="number" min="0" max="1000" value="2" required /></label>
+              <label>Smoothness B<input id="extended-bound" value="100" required /></label>
+              <label>Form d in x²+dy²<input id="extended-d" type="number" min="1" max="1000000" value="1" required /></label>
+              <label>Divisor preview<input id="extended-divisor-limit" type="number" min="0" max="100000" value="1000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run extended analysis</span><span>→</span></button>
+          </form>
+
+          <form id="divisor-classification-form" class="panel utility-card">
+            <p class="eyebrow">DIVISOR-SUM CLASSIFICATION</p>
+            <h2>Classify an integer by its divisors</h2>
+            <p>Determine deficiency, abundance, perfection, almost-perfection, multiperfection, and amicable pairing exactly.</p>
+            <label>Positive integer n<input id="divisor-classification-number" value="220" required /></label>
+            <button class="primary" type="submit"><span>Classify integer</span><span>→</span></button>
+          </form>
+
+          <form id="aliquot-sequence-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ALIQUOT DYNAMICS</p>
+            <h2>Follow an aliquot sequence</h2>
+            <p>Iterate proper-divisor sums with native factorization, exact termination detection, and repeated-value cycle detection.</p>
+            <div class="controls-grid"><label>Starting integer<input id="aliquot-number" value="12" required /></label><label>Maximum steps<input id="aliquot-steps" type="number" min="1" max="100000" value="100" required /></label></div>
+            <button class="primary" type="submit"><span>Follow sequence</span><span>→</span></button>
+          </form>
+
+          <form id="perfect-power-form" class="panel utility-card">
+            <p class="eyebrow">INTEGER DECOMPOSITION</p>
+            <h2>Detect a perfect power</h2>
+            <p>Find the maximal exponent k and exact base a such that n = aᵏ.</p>
+            <label>Integer n<input id="perfect-power-number" value="34012224" required /></label>
+            <button class="primary" type="submit"><span>Decompose perfect power</span><span>→</span></button>
+          </form>
+
+          <form id="factor-strategy-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FACTORIZATION ADVISER</p>
+            <h2>Analyze before factoring</h2>
+            <p>Run native perfect-power, probable-prime, special-form, and small-factor checks before selecting YAFU or CADO-NFS.</p>
+            <div class="controls-grid">
+              <label>Integer n<input id="factor-strategy-number" value="9762764972076045602745703475074502450747777777777611191" required /></label>
+              <label>Trial-division bound<input id="factor-strategy-bound" type="number" min="2" max="1000000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyze factor strategy</span><span>→</span></button>
+          </form>
+
+          <form id="eisenstein-prime-form" class="panel utility-card">
+            <p class="eyebrow">EISENSTEIN INTEGERS</p>
+            <h2>Check a + bω</h2>
+            <p>Apply exact norm and rational-axis criteria in the triangular integer lattice ℤ[ω].</p>
+            <div class="controls-grid">
+              <label>Coefficient a<input id="eisenstein-a" value="1" required /></label>
+              <label>Coefficient b<input id="eisenstein-b" value="-1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Check Eisenstein prime</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-decomposition-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME IDEALS</p>
+            <h2>Decompose a prime in ℚ(√d)</h2>
+            <p>Construct the maximal quadratic order and compute splitting, inertia, ramification, and prime-ideal norms.</p>
+            <div class="controls-grid">
+              <label>Nonsquare radicand d<input id="quadratic-radicand" value="5" required /></label>
+              <label>Rational prime p<input id="quadratic-prime" value="11" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Decompose prime ideal</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-ring-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">QUADRATIC INTEGER RINGS</p>
+            <h2>Norms, units, and primes in ℚ(√d)</h2>
+            <p>Compute the norm and trace of a + bω, decide whether it is a unit or a prime of the ring, report the fundamental unit, roots of unity, and class group, and split a rational prime with explicit generators.</p>
+            <div class="four-controls">
+              <label>Nonsquare radicand d<input id="quadratic-ring-d" value="-1" required /></label>
+              <label>Coefficient a<input id="quadratic-ring-a" value="1" required /></label>
+              <label>Coefficient b<input id="quadratic-ring-b" value="2" required /></label>
+              <label>Rational prime p<input id="quadratic-ring-prime" value="5" required /></label>
+            </div>
+            <details>
+              <summary>Certification budget</summary>
+              <div class="controls-grid">
+                <label>bnfcertify seconds<input id="quadratic-ring-certify" type="number" min="1" max="3600" value="10" required /></label>
+                <label>Time limit (seconds)<input id="quadratic-ring-timeout" type="number" min="1" max="3600" value="300" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Analyze quadratic ring</span><span>→</span></button>
+          </form>
+
+          <form id="number-field-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME-IDEAL DECOMPOSITION</p>
+            <h2>Split rational primes in a number field</h2>
+            <p>Build the maximal order of a monic irreducible polynomial and report splitting, inertia, ramification, ideal norms, an element's ideal factorization, and the class group.</p>
+            <div class="triple-controls">
+              <label>Defining polynomial coefficients a₀, a₁, …<textarea id="number-field-coefficients" rows="3" required>-1, -1, 0, 1</textarea></label>
+              <label>Rational primes<input id="number-field-primes" value="2, 3, 23" required /></label>
+              <label>Element coordinates (optional)<input id="number-field-element" value="1, 1" /></label>
+            </div>
+            <details>
+              <summary>Class-group budget</summary>
+              <div class="controls-grid">
+                <label>bnfinit seconds<input id="number-field-class" type="number" min="1" max="3600" value="10" required /></label>
+                <label>Time limit (seconds)<input id="number-field-timeout" type="number" min="1" max="3600" value="300" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Decompose primes</span><span>→</span></button>
+          </form>
+
+          <form id="chebotarev-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CHEBOTAREV DENSITY</p>
+            <h2>Measure Frobenius factorization patterns</h2>
+            <p>Factor a monic irreducible polynomial modulo every unramified prime below a bound and compare the observed cycle-type frequencies with the conjugacy-class densities of its Galois group.</p>
+            <div class="triple-controls">
+              <label>Polynomial coefficients a₀, a₁, …<textarea id="chebotarev-coefficients" rows="3" required>-1, -1, 0, 1</textarea></label>
+              <label>Prime bound<input id="chebotarev-bound" value="2000" required /></label>
+              <label>Group budget (seconds)<input id="chebotarev-group" type="number" min="1" max="3600" value="20" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run density experiment</span><span>→</span></button>
           </form>
             </section>
 
@@ -742,7 +1880,15 @@
       </div>
 
       <div id="zeta-view" class="tool-view hidden">
-        <section class="prime-grid">
+        <div class="tool-shell">
+          <aside class="panel tool-sidebar" aria-label="Zeta workspace navigation">
+            <header class="tool-sidebar-header"><p class="eyebrow">ZETA WORKSPACE</p><h2>Operations</h2><p>Rigorous FLINT/Arb tools</p></header>
+            <nav id="zeta-tool-navigation" class="tool-navigation" aria-label="Zeta operations"></nav>
+          </aside>
+          <section id="zeta-tool-page" class="tool-stage" aria-labelledby="zeta-page-title">
+            <div class="tool-mobile-nav"><label for="zeta-tool-select">Zeta operation</label><select id="zeta-tool-select"></select></div>
+            <header class="prime-page-intro"><div><p id="zeta-tool-section" class="eyebrow">RIGOROUS FUNCTIONS</p><h2 id="zeta-page-title">Evaluate ζ(s)</h2><p id="zeta-page-description">Certified FLINT/Arb ball arithmetic.</p></div><span id="zeta-page-count" class="tool-count"></span></header>
+        <section id="zeta-page-grid" class="prime-grid">
           <form id="zeta-evaluate-form" class="panel utility-card">
             <p class="eyebrow">RIGOROUS EVALUATION</p>
             <h2>Evaluate ζ(s)</h2>
@@ -811,6 +1957,201 @@
             </div>
             <button class="primary" type="submit"><span>Render heatmap</span><span>→</span></button>
           </form>
+
+          <form id="zeta-hardy-form" class="panel utility-card">
+            <p class="eyebrow">RIEMANN–SIEGEL Z</p><h2>Evaluate Hardy Z(t)</h2>
+            <p>Evaluate the real-valued critical-line function whose real zeros correspond to ζ zeros.</p>
+            <div class="controls-grid"><label>Ordinate t<input id="zeta-hardy-t" value="14.134725" required /></label><label>Precision<input id="zeta-hardy-precision" type="number" min="16" max="1000" value="50" required /></label></div>
+            <button class="primary" type="submit"><span>Evaluate Hardy Z</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-xi-eta-form" class="panel utility-card">
+            <p class="eyebrow">ANALYTIC CONTINUATION</p><h2>Evaluate ξ(s) or η(s)</h2>
+            <p>Evaluate the completed xi function or Dirichlet eta continuation with rigorous complex balls.</p>
+            <label>Function<select id="zeta-special-kind"><option value="xi">Completed xi ξ(s)</option><option value="eta">Dirichlet eta η(s)</option></select></label>
+            <div class="triple-controls"><label>σ<input id="zeta-special-sigma" value="0.5" required /></label><label>t<input id="zeta-special-t" value="14.134725" required /></label><label>Precision<input id="zeta-special-precision" type="number" min="16" max="1000" value="50" required /></label></div>
+            <button class="primary" type="submit"><span>Evaluate function</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-functional-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FUNCTIONAL EQUATION</p><h2>Verify ζ(s) symmetry</h2>
+            <p>Independently enclose both sides of the functional equation and test rigorous ball overlap.</p>
+            <div class="triple-controls"><label>σ<input id="zeta-functional-sigma" value="0.25" required /></label><label>t<input id="zeta-functional-t" value="12" required /></label><label>Precision<input id="zeta-functional-precision" type="number" min="16" max="1000" value="50" required /></label></div>
+            <button class="primary" type="submit"><span>Verify equation</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-stieltjes-form" class="panel utility-card">
+            <p class="eyebrow">LAURENT EXPANSION</p><h2>Calculate a Stieltjes constant</h2>
+            <p>Enclose γₙ from the Laurent expansion of ζ(s) around its pole at s=1.</p>
+            <div class="controls-grid"><label>Index n<input id="zeta-stieltjes-index" value="0" required /></label><label>Precision<input id="zeta-stieltjes-precision" type="number" min="16" max="1000" value="50" required /></label></div>
+            <button class="primary" type="submit"><span>Calculate γₙ</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-gram-form" class="panel utility-card">
+            <p class="eyebrow">GRAM GEOMETRY</p><h2>Calculate a Gram point</h2>
+            <p>Enclose gₙ defined by the Riemann–Siegel theta equation θ(gₙ)=πn.</p>
+            <div class="controls-grid"><label>Index n ≥ −1<input id="zeta-gram-index" value="0" required /></label><label>Precision<input id="zeta-gram-precision" type="number" min="16" max="1000" value="50" required /></label></div>
+            <button class="primary" type="submit"><span>Calculate Gram point</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-explicit-pi-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">EXPLICIT FORMULA</p><h2>Reconstruct π(x) from zeros</h2>
+            <p>Riemann's explicit formula with N certified zeros, compared against the exact π(x) from primecount.</p>
+            <div class="zeta-controls">
+              <label>Evaluation point x<input id="zeta-explicit-bound" value="100" required /></label>
+              <label>Certified zeros N<input id="zeta-explicit-zeros" type="number" min="1" max="5000" value="200" required /></label>
+              <label>Precision<input id="zeta-explicit-precision" type="number" min="16" max="1000" value="30" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-explicit-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run explicit formula</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-psi-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PRIME RECONSTRUCTION</p><h2>Rebuild Chebyshev ψ(x)</h2>
+            <p>Watch the jumps at prime powers emerge as more certified zeros enter the ψ(x) explicit formula.</p>
+            <div class="zeta-controls">
+              <label>Evaluation point x<input id="zeta-psi-bound" value="100" required /></label>
+              <label>Certified zeros N<input id="zeta-psi-zeros" type="number" min="1" max="5000" value="200" required /></label>
+              <label>Precision<input id="zeta-psi-precision" type="number" min="16" max="1000" value="30" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-psi-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Rebuild ψ(x)</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-riemann-siegel-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">RIEMANN–SIEGEL</p><h2>Analyse the Riemann–Siegel remainder</h2>
+            <p>Compare the main sum with K correction terms against the rigorous value, reporting the remainder per K.</p>
+            <div class="zeta-controls">
+              <label>σ<input id="zeta-rs-sigma" value="0.5" required /></label>
+              <label>t ≥ 10<input id="zeta-rs-t" value="1000" required /></label>
+              <label>Maximum K<input id="zeta-rs-terms" type="number" min="0" max="20" value="6" required /></label>
+              <label>Precision<input id="zeta-rs-precision" type="number" min="16" max="1000" value="30" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Analyse remainder</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-euler-product-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">EULER PRODUCT</p><h2>Compare the Euler product with ζ(s)</h2>
+            <p>Truncated products for Re(s)&gt;1 with a rigorous tail bound that diverges as Re(s) approaches 1.</p>
+            <div class="zeta-controls">
+              <label>σ &gt; 1<input id="zeta-euler-sigma" value="2" required /></label>
+              <label>t<input id="zeta-euler-t" value="0" required /></label>
+              <label>Primes<input id="zeta-euler-primes" type="number" min="1" max="200000" value="4096" required /></label>
+              <label>Precision<input id="zeta-euler-precision" type="number" min="16" max="1000" value="30" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-euler-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compare Euler product</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-spacing-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ZERO STATISTICS</p><h2>Histogram normalized zero spacings</h2>
+            <p>Unfold consecutive certified zeros with θ(t) and compare the gap distribution with the GUE Wigner surmise.</p>
+            <div class="zeta-controls">
+              <label>Starting index<input id="zeta-spacing-start" value="1" required /></label>
+              <label>Zeros<input id="zeta-spacing-count" type="number" min="2" max="20000" value="500" required /></label>
+              <label>Bins<input id="zeta-spacing-bins" type="number" min="4" max="200" value="30" required /></label>
+              <label>Precision<input id="zeta-spacing-precision" type="number" min="16" max="1000" value="25" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-spacing-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Build spacing histogram</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-pair-correlation-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PAIR CORRELATION</p><h2>Test the GUE pair correlation</h2>
+            <p>Bin normalized differences of certified zeros against Montgomery's 1 − (sin πu/πu)² prediction.</p>
+            <div class="zeta-controls">
+              <label>Starting index<input id="zeta-pair-start" value="1" required /></label>
+              <label>Zeros<input id="zeta-pair-count" type="number" min="2" max="20000" value="1000" required /></label>
+              <label>Bins<input id="zeta-pair-bins" type="number" min="4" max="400" value="60" required /></label>
+              <label>Window u<input id="zeta-pair-window" type="number" min="1" max="20" value="3" required /></label>
+              <label>Precision<input id="zeta-pair-precision" type="number" min="16" max="1000" value="25" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-pair-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compute pair correlation</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-gram-blocks-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GRAM'S LAW</p><h2>Find Gram blocks and exceptions</h2>
+            <p>Certify (−1)ⁿZ(gₙ)&gt;0 across an index range and list every exception and Gram block.</p>
+            <div class="zeta-controls">
+              <label>Starting index n ≥ −1<input id="zeta-blocks-start" value="120" required /></label>
+              <label>How many<input id="zeta-blocks-count" type="number" min="2" max="20000" value="200" required /></label>
+              <label>Precision<input id="zeta-blocks-precision" type="number" min="16" max="1000" value="30" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-blocks-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Scan Gram's law</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-backlund-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">COUNTING REMAINDER</p><h2>Enclose the remainder S(T)</h2>
+            <p>Certify S(T), θ(T) and the Turing zero count at the upper endpoint, with an exploratory S(T) trace.</p>
+            <div class="zeta-controls">
+              <label>From T<input id="zeta-backlund-lower" value="0" required /></label>
+              <label>Through T<input id="zeta-backlund-upper" value="1000" required /></label>
+              <label>Samples<input id="zeta-backlund-samples" type="number" min="1" max="20000" value="600" required /></label>
+              <label>Precision<input id="zeta-backlund-precision" type="number" min="16" max="1000" value="25" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-backlund-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Enclose S(T)</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-characters-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DIRICHLET CHARACTERS</p><h2>Enumerate characters mod q</h2>
+            <p>List every character modulo q with its Conrey label, conductor, parity and order.</p>
+            <div class="controls-grid">
+              <label>Modulus q<input id="zeta-characters-modulus" value="12" required /></label>
+              <label>Row limit<input id="zeta-characters-limit" type="number" min="1" max="100000" value="200" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>List characters</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-lfunction-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DIRICHLET L-FUNCTION</p><h2>Evaluate L(s, χ)</h2>
+            <p>Enclose L(s, χ) rigorously and cross-check it against an independent Hurwitz evaluation.</p>
+            <div class="zeta-controls">
+              <label>Modulus q<input id="zeta-lfunction-modulus" value="4" required /></label>
+              <label>Character m<input id="zeta-lfunction-number" value="3" required /></label>
+              <label>σ<input id="zeta-lfunction-sigma" value="1" required /></label>
+              <label>t<input id="zeta-lfunction-t" value="0" required /></label>
+              <label>Precision<input id="zeta-lfunction-precision" type="number" min="16" max="1000" value="50" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Evaluate L(s, χ)</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-lzeros-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">GRH EXPERIMENTS</p><h2>Search critical-line zeros of L(s, χ)</h2>
+            <p>Certify sign changes of Hardy's Z(t, χ) for real characters, or locate exploratory |L| minima for complex ones.</p>
+            <div class="zeta-controls">
+              <label>Modulus q<input id="zeta-lzeros-modulus" value="4" required /></label>
+              <label>Character m<input id="zeta-lzeros-number" value="3" required /></label>
+              <label>From t<input id="zeta-lzeros-lower" value="0.5" required /></label>
+              <label>Through t<input id="zeta-lzeros-upper" value="50" required /></label>
+              <label>Grid samples<input id="zeta-lzeros-samples" type="number" min="8" max="200000" value="1000" required /></label>
+              <label>Precision<input id="zeta-lzeros-precision" type="number" min="16" max="1000" value="25" required /></label>
+              <label>CPU threads<input class="zeta-threads" id="zeta-lzeros-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search critical line</span><span>→</span></button>
+          </form>
+
+          <form id="zeta-dedekind-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DEDEKIND ZETA · PARI/GP</p><h2>Analyse ζₖ(s) for a number field</h2>
+            <p>PARI/GP builds the field and its L-function; results use PARI floating-point precision, not Arb ball enclosures.</p>
+            <div class="zeta-controls">
+              <label>Field family
+                <select id="zeta-dedekind-family"><option value="quadratic">Quadratic ℚ(√d)</option><option value="cyclotomic">Cyclotomic ℚ(ζₙ)</option><option value="polynomial">Custom polynomial</option></select>
+              </label>
+              <label>Parameter d or n<input id="zeta-dedekind-parameter" value="-1" /></label>
+              <label>Polynomial in x<input id="zeta-dedekind-polynomial" value="x^3 - x - 1" /></label>
+              <label>σ (s ≠ 1)<input id="zeta-dedekind-sigma" value="2" required /></label>
+              <label>t<input id="zeta-dedekind-t" value="0" required /></label>
+              <label>Zero height<input id="zeta-dedekind-height" type="number" min="1" max="200" value="30" required /></label>
+              <label>Zero limit<input id="zeta-dedekind-limit" type="number" min="1" max="500" value="50" required /></label>
+              <label>PARI digits<input id="zeta-dedekind-precision" type="number" min="20" max="200" value="38" required /></label>
+              <label>Time limit (s)<input id="zeta-dedekind-timeout" type="number" min="1" max="3600" value="300" required /></label>
+            </div>
+            <label class="inline-check"><input id="zeta-dedekind-class" type="checkbox" checked /> Run bnfinit for the class-number-formula cross-check</label>
+            <button class="primary" type="submit"><span>Analyse ζₖ(s)</span><span>→</span></button>
+          </form>
         </section>
 
         <section id="zeta-result-panel" class="panel prime-result-panel hidden">
@@ -821,12 +2162,92 @@
           <p id="zeta-result-note" class="phase"></p>
           <div id="zeta-result-content" class="prime-results"></div>
         </section>
+          </section>
+        </div>
+      </div>
+
+      <div id="diagnostic-view" class="tool-view hidden">
+        <section class="panel diagnostic-panel">
+          <p class="eyebrow">LOCAL READINESS AUDIT</p>
+          <h2>System and engine diagnostics</h2>
+          <p>Inspect native-engine availability, immutable source revisions, build prerequisites, CPU capacity, memory, and CADO parameter coverage. The bundle is sanitized and never uploaded.</p>
+          <button id="run-diagnostics" class="primary" type="button"><span>Run local diagnostics</span><span>→</span></button>
+          <section id="diagnostic-result" class="prime-results hidden" aria-live="polite"></section>
+        </section>
+      </div>
+
+      <div id="workspace-view" class="tool-view hidden">
+        <section class="panel">
+          <p class="eyebrow">SAVED SESSIONS</p>
+          <h2>Workspaces</h2>
+          <p>Group jobs and saved reports under a name so a line of work can be reopened later. Deleting a workspace never deletes the jobs or reports it references.</p>
+          <form id="workspace-form" class="stacked-form">
+            <label for="workspace-name">Workspace name</label>
+            <input id="workspace-name" name="name" type="text" maxlength="120" required placeholder="Cunningham 2,1039- run" />
+            <label for="workspace-notes">Notes</label>
+            <textarea id="workspace-notes" name="notes" rows="3" maxlength="20000" placeholder="What this session was for"></textarea>
+            <label class="checkbox-row"><input id="workspace-include-jobs" type="checkbox" checked /> Attach the jobs currently listed</label>
+            <button class="primary" type="submit"><span>Save workspace</span><span>→</span></button>
+          </form>
+          <section id="workspace-result" class="prime-results hidden" aria-live="polite"></section>
+          <div id="workspace-list" class="workspace-list"></div>
+        </section>
+
+        <section class="panel">
+          <p class="eyebrow">SEARCHABLE HISTORY</p>
+          <h2>Find past work</h2>
+          <p>Search stored factorization jobs and saved reports. Matching runs entirely in the local database.</p>
+          <form id="history-search-form" class="stacked-form">
+            <label for="history-query">Search text</label>
+            <input id="history-query" name="q" type="text" maxlength="200" placeholder="expression, decimal input, or factor" />
+            <label for="history-status">Job status</label>
+            <select id="history-status" name="status">
+              <option value="">any status</option>
+              <option value="completed">completed</option>
+              <option value="running">running</option>
+              <option value="queued">queued</option>
+              <option value="paused">paused</option>
+              <option value="failed">failed</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+            <label for="history-engine">Engine</label>
+            <input id="history-engine" name="engine" type="text" maxlength="60" placeholder="yafu, cado, pari_trial" />
+            <button class="primary" type="submit"><span>Search</span><span>→</span></button>
+          </form>
+          <section id="history-search-result" class="prime-results hidden" aria-live="polite"></section>
+        </section>
+
+        <section class="panel">
+          <p class="eyebrow">LOCAL MEASUREMENTS</p>
+          <h2>Performance history</h2>
+          <p>Completed-job runtimes grouped by engine and decimal-digit bucket. These are measurements from this machine only; they depend on hardware, thread count, and the specific input.</p>
+          <button id="load-performance" class="primary" type="button"><span>Load performance history</span><span>→</span></button>
+          <canvas id="performance-canvas" class="workspace-canvas" width="900" height="320"></canvas>
+          <section id="performance-result" class="prime-results hidden" aria-live="polite"></section>
+        </section>
+
+        <section class="panel">
+          <p class="eyebrow">LOCAL ALERTS</p>
+          <h2>Job notifications</h2>
+          <p>Show a desktop notification when a factorization finishes. The browser asks for permission once, and nothing is sent anywhere.</p>
+          <label class="checkbox-row"><input id="notify-toggle" type="checkbox" /> Notify me when a job completes or fails</label>
+          <p id="notify-status" class="hint"></p>
+        </section>
+
+        <section class="panel">
+          <p class="eyebrow">CACHED RESULTS</p>
+          <h2>Result cache</h2>
+          <p>Synchronous results are cached by operation, parameters, and engine revision. Errors and inconclusive results are never cached.</p>
+          <button id="cache-stats" class="primary" type="button"><span>Show cache status</span><span>→</span></button>
+          <button id="cache-clear" type="button">Clear cache</button>
+          <section id="cache-result" class="prime-results hidden" aria-live="polite"></section>
+        </section>
       </div>
     </main>
 
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260905-workstation" defer></script>
+    <script src="/assets/app.js?v=20260907-libraries-first" defer></script>
   </body>
 </html>
