@@ -5,6 +5,23 @@ binary packages are published.
 
 ## Unreleased
 
+- Removed the length ceiling from the Pell solver and the continued-fraction expander.
+  Both quantities grow without bound — the fundamental Pell solution for `d = 1000099`
+  has 1,128 decimal digits and its fourth solution has 4,513, and convergent denominators
+  grow at least as fast as the Fibonacci numbers — and the Pell tool used to stop listing
+  at the first solution wider than the digit limit, which made a complete answer look like
+  an exhausted search. Every requested solution and convergent is now reported. PARI/GP
+  writes each one at full length to its own export file, named in the response as
+  `export_file`, and the JSON response carries a preview in which a long value is rendered
+  as its exact first twelve digits, its exact last twelve digits and its exact digit count.
+  A new `abbreviated` flag says whether any value was shortened for display; `truncated`
+  now means only what it says, that something was left out, and is no longer set by these
+  tools. Tests substitute every exported Pell pair back into `x² − dy² = 1` and every
+  exported convergent of `√2` into `pₙ² − 2qₙ² = ±1`, and check the abbreviation against
+  the exported value at both ends.
+- Filled in the missing endpoint descriptions for the quadratic-forms section of the API
+  reference, which shipped with an empty Purpose column for all eight routes.
+
 - Pointed the declared homepage at the documentation site. `pyproject.toml` and
   `CITATION.cff` both advertised `https://numerisect.com`, which serves a 404 from an
   unrelated document root, so the package metadata and the citation record sent readers

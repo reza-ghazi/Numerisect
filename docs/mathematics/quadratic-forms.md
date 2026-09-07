@@ -230,7 +230,11 @@ the partial quotients, the convergents from `contfracpnqn`, the preperiod and pe
 a palindromic-head flag (marked not applicable for surds other than \(\sqrt d\)), and
 the best rational approximation below a denominator bound from `bestappr`. A quotient
 limit too small to close the period reports the period as `inconclusive` with
-`complete: false` — it never reports a shorter period.
+`complete: false` — it never reports a shorter period. Because \(q_n\) grows at least
+as fast as the Fibonacci numbers, a convergent quickly outgrows anything a JSON response
+should carry: values wider than the requested preview are abbreviated with their exact
+first and last twelve digits and their exact digit count, and every convergent is written
+at full length to a separate export file.
 
 ## Pell's equation and the fundamental unit
 
@@ -277,6 +281,14 @@ most 100 of them.
 **In Numerisect.** *Pell's equation* (`POST /api/forms/pell`) — `quadunit`, `norm`,
 `quadregulator`, `quadgen`, `bestappr`, `issquare`. If `quadunit` exceeds its budget
 the report says so and claims no solution.
+
+The fundamental solution can be astronomically large before any power is taken. The
+classical illustration is \(d = 61\), whose least solution is
+\((1766319049,\ 226153980)\); a harder one is \(d = 1000099\), where \(x\) already has
+1,128 decimal digits. No solution is ever dropped for being long: values wider than the
+requested preview are abbreviated with their exact leading and trailing digits and their
+exact digit count, and every solution is written at full length to a separate export
+file, where each pair has been substituted back into \(x^2 - dy^2 = 1\).
 
 ## Representing integers by forms
 

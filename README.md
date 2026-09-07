@@ -72,9 +72,9 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20260907-libraries-first#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20260907-libraries-first#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20260907-libraries-first#diagnostics>.
+<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20260907-arbitrary-digits#diagnostics>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -383,6 +383,12 @@ adviser, algorithm traces, and batch certificates.
 See [Primality laboratory](docs/PRIMALITY_LAB.md) for the primality-test comparison
 laboratory, deterministic witness sets, Pocklington and Pratt certificates, the
 probable-prime taxonomy, and the constrained-prime generators.
+
+Pell solutions and continued-fraction convergents have no useful bound on their size —
+the fundamental solution for `d = 1000099` has 1,128 decimal digits — so neither tool
+truncates them. Values too wide for a JSON response are abbreviated on screen with their
+exact leading and trailing digits and exact digit count, and every value is written at
+full length to a separate export file named in the response.
 
 See [Quadratic forms and continued fractions](docs/FORMS_LAB.md) for binary quadratic
 form reduction and composition, class groups, Pell equations, and the connection between

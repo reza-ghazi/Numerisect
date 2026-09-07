@@ -5548,6 +5548,7 @@ class ContinuedFractionRequest(BaseModel):
     quotient_limit: int = Field(default=40, ge=1, le=100_000)
     convergent_limit: int = Field(default=40, ge=1, le=100_000)
     approximation_bound: str = Field(default="1000", min_length=1, max_length=1_000)
+    preview_digits: int = Field(default=2_000, ge=1, le=100_000)
     timeout_seconds: int = Field(default=60, ge=1, le=3600)
 
 
@@ -5662,6 +5663,10 @@ def calculate_form_representation(request: FormRepresentationRequest) -> dict:
 
 @app.post("/api/forms/continued-fraction")
 def calculate_continued_fraction(request: ContinuedFractionRequest) -> dict:
+    # PARI/GP writes every partial quotient and convergent at full length to its own
+    # file. Convergent denominators grow exponentially in the number of terms, so the
+    # JSON response carries a bounded preview and this file carries the real answer.
+    temporary_path, export_path = native_output_paths("continued-fraction-full")
     try:
         result = continued_fraction(
             request.mode,
@@ -5671,17 +5676,30 @@ def calculate_continued_fraction(request: ContinuedFractionRequest) -> dict:
             request.quotient_limit,
             request.convergent_limit,
             request.approximation_bound,
+            request.preview_digits,
+            temporary_path,
             request.timeout_seconds,
         )
+        finalize_native_output(temporary_path, export_path)
     except (ValueError, PrimeEngineError) as exc:
+        temporary_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return _save_manipulation_report(
+    except OSError as exc:
+        temporary_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    response = _save_manipulation_report(
         "continued-fraction", "Continued-fraction expansion", result
     )
+    response["export_file"] = export_path.name
+    return response
 
 
 @app.post("/api/forms/pell")
 def calculate_pell_solutions(request: PellRequest) -> dict:
+    # Pell solutions grow without bound: for d = 1000099 the fundamental solution
+    # already has 1,128 decimal digits. PARI/GP streams every solution at full length
+    # to its own file and the JSON response carries an abbreviated preview.
+    temporary_path, export_path = native_output_paths("pell-equation-full")
     try:
         result = pell_solutions(
             request.d,
@@ -5689,11 +5707,27 @@ def calculate_pell_solutions(request: PellRequest) -> dict:
             request.digit_limit,
             request.period_limit,
             request.unit_seconds,
+            temporary_path,
             request.timeout_seconds,
         )
+        # quadunit can exceed its budget, in which case no solution is claimed and
+        # nothing is written. That is an inconclusive result, not an engine failure.
+        if result.get("available"):
+            finalize_native_output(temporary_path, export_path)
+        else:
+            temporary_path.unlink(missing_ok=True)
     except (ValueError, PrimeEngineError) as exc:
+        temporary_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return _save_manipulation_report("pell-equation", "Pell equation solutions", result)
+    except OSError as exc:
+        temporary_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    response = _save_manipulation_report(
+        "pell-equation", "Pell equation solutions", result
+    )
+    if result.get("available"):
+        response["export_file"] = export_path.name
+    return response
 
 
 

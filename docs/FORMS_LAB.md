@@ -139,6 +139,48 @@ smooth relations far faster than the continued-fraction recursion can supply the
 Factor Lab routes those inputs to SIQS through YAFU. The tools on this page are
 exposition of where the idea came from, not a factoring path.
 
+## Arbitrary-length values
+
+Both tools produce numbers with no useful upper bound on their size, and neither truncates
+them.
+
+Convergent denominators grow at least as fast as the Fibonacci numbers, so `q_n` gains
+roughly `0.2` decimal digits per term: the 400th convergent of `√2` already has 153
+digits, and the 10,000th has around 3,800. Pell solutions are worse, because the
+fundamental solution itself can be enormous before any power is taken. For `d = 1000099`
+it has **1,128 decimal digits**, and the fourth solution has 4,513.
+
+A JSON response is the wrong place for a number of that size, so it is not sent there.
+Every request writes a second file containing every value at full length, named in the
+response as `export_file`:
+
+```text
+output/pell-equation-full-<id>.txt              every solution, complete
+output/continued-fraction-full-<id>.txt         every partial quotient and convergent, complete
+```
+
+The response itself carries a **preview**. Any value wider than the preview width is
+rendered as its exact first twelve digits, `..`, its exact last twelve digits, and its
+exact digit count:
+
+```text
+553314593048..802190088801 (4513 digits)
+```
+
+Three properties hold, and the test suite checks each of them against the exported file:
+
+* **Nothing is omitted.** Every requested solution and every requested convergent is
+  reported. Abbreviation changes how a value is displayed, never whether it is there. The
+  `truncated` flag stays `false`; a separate `abbreviated` flag says whether any value was
+  shortened for display.
+* **The abbreviation is exact.** The leading and trailing digits are the real ones and the
+  digit count is the real count, so a preview can never misstate a value's magnitude.
+* **The export is verified.** Every exported Pell pair is substituted back into
+  `x² − dy² = 1` and every exported convergent of `√2` into `pₙ² − 2qₙ² = ±1`.
+
+Preview width defaults to 2,000 digits and is settable per request. Raising it makes the
+response carry more; it never changes the exported file, which is always complete.
+
 ## Bounds, and what "inconclusive" means
 
 Every operation is bounded, and exceeding a bound is reported as inconclusive: a period
@@ -159,7 +201,9 @@ truncated. It never degrades into a wrong or silently shortened answer.
 | Class-order search | 1 to 100,000 exponentiations |
 | Partial quotients | 1 to 100,000 |
 | Convergents returned | 1 to 100,000 |
-| Pell solutions | 1 to 100, each capped at 100,000 decimal digits |
+| Pell solutions | 1 to 100, each at unlimited length |
+| Preview width per value | 1 to 100,000 decimal digits; wider values are abbreviated, never dropped |
+| Exported value length | unbounded |
 | `quadunit` budget | 1 to 3,600 seconds |
 
 Concretely: expanding `√13` with a quotient limit of 3 cannot close the period, so the
@@ -167,7 +211,9 @@ period reads `inconclusive` and `complete` is `false` — it does not report a s
 period. Enumerating the reduced forms of `−47` with a form limit of 2 returns a prefix
 with `Enumeration complete: no`. Walking the cycle of an indefinite form with too small a
 cycle limit reports the cycle length as `inconclusive`. If `quadunit` exceeds its budget
-the Pell report says so and claims no solution.
+the Pell report says so and claims no solution. Note that the preview width is **not** one
+of these bounds: exceeding it abbreviates a value in the response and never shortens the
+answer, which is why it sets `abbreviated` rather than `truncated`.
 
 ## Routes
 
@@ -179,7 +225,9 @@ POST /api/forms/class-group         class number, structure, generators, regulat
 POST /api/forms/reduced-forms       enumerate reduced forms; flag ambiguous and square forms
 POST /api/forms/represent           qfbsolve: represent an integer by the form
 POST /api/forms/continued-fraction  expansion, period, convergents, best approximation
+                                    plus export_file: every value at full length
 POST /api/forms/pell                fundamental solution and further solutions
+                                    plus export_file: every solution at full length
 ```
 
 Example:

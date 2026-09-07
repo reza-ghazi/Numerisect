@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20260907-libraries-first" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260907-libraries-first" />
+    <link rel="icon" href="/assets/favicon.svg?v=20260907-arbitrary-digits" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260907-arbitrary-digits" />
   </head>
   <body>
     <header class="topbar">
@@ -2090,7 +2090,7 @@
           <form id="continued-fraction-form" class="panel utility-card utility-wide">
             <p class="eyebrow">CONTINUED FRACTIONS</p>
             <h2>Expand a rational or a quadratic irrational</h2>
-            <p>Partial quotients, convergents, the preperiod and period of (p&#8202;+&#8202;√d)/q, the palindromic structure of the period of √d, and the best rational approximation below a denominator bound.</p>
+            <p>Partial quotients, convergents, the preperiod and period of (p&#8202;+&#8202;√d)/q, the palindromic structure of the period of √d, and the best rational approximation below a denominator bound. Convergent denominators grow exponentially, so values wider than the preview are abbreviated on screen and written to the saved report in full, at arbitrary length.</p>
             <div class="triple-controls">
               <label>Kind<select id="continued-fraction-mode"><option value="quadratic">Quadratic irrational (p + √d)/q</option><option value="rational">Rational p/q</option></select></label>
               <label>Numerator p<input id="continued-fraction-numerator" value="0" required /></label>
@@ -2103,6 +2103,7 @@
                 <label>Partial quotients<input id="continued-fraction-quotients" type="number" min="1" max="100000" value="40" required /></label>
                 <label>Convergents<input id="continued-fraction-convergents" type="number" min="1" max="100000" value="40" required /></label>
                 <label>bestappr denominator bound<input id="continued-fraction-bound" value="1000" required /></label>
+                  <label>Preview width per value (digits)<input id="continued-fraction-preview" type="number" min="1" max="100000" value="2000" required /></label>
                 <label>Time limit (seconds)<input id="continued-fraction-timeout" type="number" min="1" max="3600" value="60" required /></label>
               </div>
             </details>
@@ -2112,11 +2113,11 @@
           <form id="pell-equation-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PELL EQUATION</p>
             <h2>Solve x² − dy² = 1</h2>
-            <p>The fundamental solution from the fundamental unit of ℤ[√d], whether the negative Pell equation is solvable, the regulator, and further solutions as powers of the fundamental one.</p>
+            <p>The fundamental solution from the fundamental unit of ℤ[√d], whether the negative Pell equation is solvable, the regulator, and further solutions as powers of the fundamental one. Solutions grow without bound &mdash; for d&#8202;=&#8202;1000099 the fundamental solution already has 1,128 digits &mdash; so none is ever dropped: long values are abbreviated on screen and saved in full at arbitrary length.</p>
             <div class="triple-controls">
               <label>Radicand d<input id="pell-d" value="13" required /></label>
               <label>Solutions listed<input id="pell-count" type="number" min="1" max="100" value="3" required /></label>
-              <label>Digit limit per solution<input id="pell-digits" type="number" min="1" max="100000" value="2000" required /></label>
+              <label>Preview width per value (digits)<input id="pell-digits" type="number" min="1" max="100000" value="2000" required /></label>
             </div>
             <details>
               <summary>Engine budgets</summary>
@@ -2515,6 +2516,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260907-libraries-first" defer></script>
+    <script src="/assets/app.js?v=20260907-arbitrary-digits" defer></script>
   </body>
 </html>

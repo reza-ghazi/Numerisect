@@ -318,6 +318,20 @@ fl_represent(a, b, c, n, solution_cap) =
   print("DONE:", emitted);
 };
 
+\\ ---------------------------------------------------------------- arbitrary digits
+\\ Abbreviate a huge integer for the tagged preview.  The exported report always carries
+\\ the value in full; this only keeps a single JSON response from carrying a number with
+\\ millions of digits.  The leading and trailing twelve digits are exact, and the digit
+\\ count is exact, so the preview never misrepresents the magnitude.
+fl_abbrev(n, cap) =
+{
+  my(m = abs(n), len, sign);
+  len = #Str(m);
+  if(cap < 1 || len <= cap, return(Str(n)));
+  sign = if(n < 0, "-", "");
+  Str(sign, m \ 10^(len - 12), "..", strprintf("%012d", m % 10^12), " (", len, " digits)");
+};
+
 \\ ---------------------------------------------------------------- continued fractions
 \\ Exact expansion of the quadratic irrational (p + sqrt(d))/q.  Scaling by |q| makes the
 \\ state integral: (p + sqrt(d))/q = (p|q| + sqrt(d q^2))/(q|q|).  The state (P, Q) of the
@@ -373,10 +387,51 @@ fl_surd_crosscheck(p, q, d, quotients, count) =
 \\ mode 0: the rational p/q, expanded by PARI's contfrac.
 \\ mode 1: the quadratic irrational (p + sqrt(d))/q, expanded exactly by the recursion
 \\         above, unrolled through its period up to the cap, and cross-checked.
-fl_contfrac(mode, p, q, d, quotient_cap, convergent_cap, appr_bound, check_terms) =
+\\ Write every partial quotient and convergent at full length.  The tagged output is a
+\\ bounded preview; this file is the complete result, so a value with a million digits is
+\\ never forced through the JSON response.
+fl_write_contfrac(path, mode, p, q, d, quotients, matrix, shown, preperiod, period, approx, appr_bound) =
 {
-  my(quotients, preperiod = -1, period = -1, complete = 1, expansion, matrix, emitted,
-     shown, crosscheck = -1, palindromic = -1, approx, target, base, unrolled);
+  if(#path == 0, return(0));
+  my(handle = fileopen(path, "w"), n = #quotients);
+  filewrite(handle, "Numerisect · Continued-fraction expansion");
+  filewrite(handle, "=========================================");
+  filewrite(handle, "");
+  filewrite(handle, if(mode == 0,
+                       Str("Value: ", p, "/", q),
+                       Str("Value: (", p, " + sqrt(", d, "))/", q)));
+  filewrite(handle, Str("Kind: ", if(mode == 0, "rational", "quadratic irrational")));
+  filewrite(handle, Str("Partial quotients: ", n));
+  filewrite(handle, Str("Preperiod length: ", if(preperiod < 0, "inconclusive", preperiod)));
+  filewrite(handle, Str("Period length: ", if(period < 0, "inconclusive", period)));
+  filewrite(handle, Str("Convergents: ", shown));
+  filewrite(handle, Str("Best approximation with denominator <= ", appr_bound, ": ",
+                        numerator(approx), "/", denominator(approx)));
+  filewrite(handle, "");
+  filewrite(handle, "Partial quotients a_n, full precision");
+  filewrite(handle, "------------------------------------");
+  for(i = 1, n, filewrite(handle, Str(i - 1, ": ", quotients[i])));
+  if(shown > 0,
+    filewrite(handle, "");
+    filewrite(handle, "Convergents p_n / q_n, full precision");
+    filewrite(handle, "-------------------------------------");
+    for(i = 1, shown,
+      filewrite(handle, Str(i - 1, ": ", matrix[1, i], " / ", matrix[2, i])));
+  );
+  fileclose(handle);
+  1;
+};
+
+\\ mode 0: the rational p/q, expanded by PARI's contfrac.
+\\ mode 1: the quadratic irrational (p + sqrt(d))/q, expanded exactly by the recursion
+\\         above, unrolled through its period up to the cap, and cross-checked.
+\\ preview_digits bounds only what the tagged output carries; export_path receives every
+\\ value at full length.
+fl_contfrac(mode, p, q, d, quotient_cap, convergent_cap, appr_bound, check_terms, preview_digits, export_path) =
+{
+  my(quotients, preperiod = -1, period = -1, complete = 1, expansion, matrix = 0, emitted,
+     shown, crosscheck = -1, palindromic = -1, approx, target, base, unrolled,
+     abbreviated = 0);
   if(q == 0, error("The denominator must be nonzero"));
   print("MODE:", mode);
   if(mode == 0,
@@ -412,25 +467,37 @@ fl_contfrac(mode, p, q, d, quotient_cap, convergent_cap, appr_bound, check_terms
     target = (p + sqrt(d)) / q;
   );
   emitted = #quotients;
-  for(i = 1, emitted, print("QUOTIENT:", i - 1, "|", quotients[i]));
+  for(i = 1, emitted,
+    if(#Str(abs(quotients[i])) > preview_digits, abbreviated = 1);
+    print("QUOTIENT:", i - 1, "|", fl_abbrev(quotients[i], preview_digits)));
   print("QUOTIENTS:", emitted);
   print("PREPERIOD:", preperiod);
   print("PERIOD:", period);
   if(period > 0,
-    print("PERIOD_TERMS:", fl_join(vector(period, i, quotients[preperiod + i]))));
+    print("PERIOD_TERMS:", fl_join(vector(period, i,
+      fl_abbrev(quotients[preperiod + i], preview_digits)))));
   print("PALINDROMIC:", palindromic);
   print("CROSSCHECK:", crosscheck);
   shown = min(emitted, convergent_cap);
   if(shown > 0,
     matrix = contfracpnqn(vector(shown, i, quotients[i]), shown - 1);
-    for(i = 1, shown, print("CONVERGENT:", i - 1, "|", matrix[1, i], "|", matrix[2, i]));
+    for(i = 1, shown,
+      if(#Str(matrix[1, i]) > preview_digits || #Str(matrix[2, i]) > preview_digits,
+         abbreviated = 1);
+      print("CONVERGENT:", i - 1, "|", fl_abbrev(matrix[1, i], preview_digits), "|",
+            fl_abbrev(matrix[2, i], preview_digits));
+      print("CONVERGENT_DIGITS:", i - 1, "|", #Str(matrix[1, i]), "|", #Str(matrix[2, i]));
+    );
   );
   print("CONVERGENTS:", shown);
   if(mode == 0 && shown > 0 && shown == emitted,
     print("VERIFIED:", if(matrix[1, shown] / matrix[2, shown] == p / q, 1, 0)),
     print("VERIFIED:-1"));
   approx = bestappr(target, appr_bound);
-  print("BESTAPPR:", numerator(approx), "|", denominator(approx), "|", appr_bound);
+  print("BESTAPPR:", fl_abbrev(numerator(approx), preview_digits), "|",
+        fl_abbrev(denominator(approx), preview_digits), "|", appr_bound);
+  print("EXPORTED:", fl_write_contfrac(export_path, mode, p, q, d, quotients, matrix, shown, preperiod, period, approx, appr_bound));
+  print("ABBREVIATED:", abbreviated);
   print("COMPLETE:", complete);
   print("TRUNCATED:", if(complete, 0, 1));
   print("DONE:", emitted);
@@ -453,10 +520,10 @@ fl_pell_crosscheck(d, fx, fy, digit_limit) =
 \\ x^2 - d*y^2 = 1 is the square of the unit; when it is +1 the negative equation has no
 \\ solution.  Powers of the fundamental solution give every further solution.
 \\ quadregulator(4d) is the logarithm of the same unit.
-fl_pell(d, solution_count, digit_cap, period_cap, check_digits, unit_seconds) =
+fl_pell(d, solution_count, digit_cap, period_cap, check_digits, unit_seconds, export_path) =
 {
-  my(unit, nrm, x, y, fx, fy, current, step, emitted = 0, truncated = 0, expansion,
-     period = -1, w);
+  my(unit, nrm, x, y, fx, fy, current, step, emitted = 0, expansion, period = -1, w,
+     handle = 0, exported = 0, abbreviated = 0, sx, sy);
   if(d < 2, error("Pell's equation needs an integer d of at least 2"));
   if(issquare(d), error("Pell's equation is degenerate when d is a perfect square"));
   print("D:", d);
@@ -468,28 +535,70 @@ fl_pell(d, solution_count, digit_cap, period_cap, check_digits, unit_seconds) =
   print("REGULATOR:", quadregulator(4*d));
   x = component(unit, 2); y = component(unit, 3);
   nrm = norm(unit);
-  print("UNIT_X:", x); print("UNIT_Y:", y); print("UNIT_NORM:", nrm);
+  print("UNIT_X:", fl_abbrev(x, digit_cap)); print("UNIT_Y:", fl_abbrev(y, digit_cap));
+  print("UNIT_X_DIGITS:", #Str(abs(x))); print("UNIT_Y_DIGITS:", #Str(abs(y)));
+  print("UNIT_NORM:", nrm);
   print("NEGATIVE_SOLVABLE:", if(nrm == -1, 1, 0));
   w = quadgen(4*d);
   current = if(nrm == -1, unit^2, unit);
   fx = component(current, 2); fy = component(current, 3);
   if(fx^2 - d*fy^2 != 1, error("Internal Pell verification failed"));
-  print("FUND_X:", fx); print("FUND_Y:", fy);
+  print("FUND_X:", fl_abbrev(fx, digit_cap)); print("FUND_Y:", fl_abbrev(fy, digit_cap));
+  print("FUND_X_DIGITS:", #Str(abs(fx))); print("FUND_Y_DIGITS:", #Str(abs(fy)));
+  if(#Str(abs(fx)) > digit_cap || #Str(abs(fy)) > digit_cap, abbreviated = 1);
   expansion = fl_surd_expansion(0, 1, d, period_cap);
   period = expansion[3];
   print("CF_PERIOD:", period);
   print("CF_MATCH:", fl_pell_crosscheck(d, fx, fy, check_digits));
+  if(#export_path > 0,
+    handle = fileopen(export_path, "w");
+    exported = 1;
+    filewrite(handle, "Numerisect · Pell equation x^2 - d y^2 = 1");
+    filewrite(handle, "==========================================");
+    filewrite(handle, "");
+    filewrite(handle, Str("d = ", d));
+    filewrite(handle, Str("Regulator of Z[sqrt(d)]: ", quadregulator(4*d)));
+    filewrite(handle, Str("Norm of the fundamental unit: ", nrm));
+    filewrite(handle, Str("x^2 - d y^2 = -1 solvable: ", if(nrm == -1, "yes", "no")));
+    filewrite(handle, Str("Continued-fraction period of sqrt(d): ", if(period < 0, "inconclusive", period)));
+    filewrite(handle, Str("Solutions listed: ", solution_count));
+    filewrite(handle, "");
+    filewrite(handle, "Fundamental unit of Z[sqrt(d)], full precision");
+    filewrite(handle, "----------------------------------------------");
+    filewrite(handle, Str("x = ", x));
+    filewrite(handle, Str("y = ", y));
+    filewrite(handle, "");
+    filewrite(handle, "Fundamental solution of x^2 - d y^2 = 1, full precision");
+    filewrite(handle, "-------------------------------------------------------");
+    filewrite(handle, Str("x = ", fx));
+    filewrite(handle, Str("y = ", fy));
+    filewrite(handle, "");
+    filewrite(handle, "Successive solutions, full precision");
+    filewrite(handle, "------------------------------------");
+  );
   step = fx + fy*w;
   current = step;
   for(k = 1, solution_count,
-    my(sx = component(current, 2), sy = component(current, 3));
-    if(#Str(sx) > digit_cap || #Str(sy) > digit_cap, truncated = 1; break());
+    sx = component(current, 2); sy = component(current, 3);
+    \\ Every listed pair is substituted back into the equation before it is reported.
     if(sx^2 - d*sy^2 != 1, error("Internal Pell verification failed"));
-    print("SOLUTION:", k, "|", sx, "|", sy);
+    if(exported,
+      filewrite(handle, Str("k = ", k));
+      filewrite(handle, Str("x = ", sx));
+      filewrite(handle, Str("y = ", sy));
+      filewrite(handle, ""));
+    if(#Str(abs(sx)) > digit_cap || #Str(abs(sy)) > digit_cap, abbreviated = 1);
+    print("SOLUTION:", k, "|", fl_abbrev(sx, digit_cap), "|", fl_abbrev(sy, digit_cap));
+    print("SOLUTION_DIGITS:", k, "|", #Str(abs(sx)), "|", #Str(abs(sy)));
     emitted++;
     current = current * step;
   );
+  if(exported, fileclose(handle));
+  print("EXPORTED:", exported);
   print("VERIFIED:1");
-  print("TRUNCATED:", truncated);
+  print("ABBREVIATED:", abbreviated);
+  \\ Nothing is ever omitted now: every requested solution is emitted, abbreviated in the
+  \\ preview when it is long and written to the export in full.
+  print("TRUNCATED:0");
   print("DONE:", emitted);
 };

@@ -5,6 +5,9 @@ mathematics is performed by PARI/GP through ``numerisect/forms_lab.gp``; these t
 check that the orchestration layer bounds, parses and reports it faithfully.
 """
 
+import re
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -302,6 +305,57 @@ def test_continued_fraction_reports_an_unclosed_period_as_inconclusive():
     assert "inconclusive" in capped["note"]
 
 
+def test_continued_fraction_exports_convergents_at_full_precision(tmp_path):
+    """Convergent denominators grow exponentially, so the file must carry them, not JSON.
+
+    The convergents of sqrt(2) are the Pell numbers, and p_n^2 - 2*q_n^2 = (-1)^(n+1)
+    exactly. Each exported pair is checked against that identity here.
+    """
+
+    sys.set_int_max_str_digits(1_000_000)
+    destination = tmp_path / "cf.txt"
+    result = continued_fraction(
+        "quadratic", "0", "1", "2",
+        quotient_limit=400, convergent_limit=400,
+        preview_digits=20, export_path=destination, timeout=600,
+    )
+    assert result["abbreviated"] is True
+    assert len(result["rows"]) == 400
+
+    text = destination.read_text(encoding="utf-8")
+    pairs = re.findall(r"^(\d+): (\d+) / (\d+)$", text, re.M)
+    assert len(pairs) == 400
+    for index, numerator, denominator in pairs:
+        n, p_n, q_n = int(index), int(numerator), int(denominator)
+        assert p_n**2 - 2 * q_n**2 == (1 if n % 2 else -1)
+    # The 400th convergent is far past anything a JSON response should carry.
+    assert len(pairs[-1][1]) > 150
+
+
+def test_continued_fraction_preview_states_the_true_width(tmp_path):
+    destination = tmp_path / "cf.txt"
+    result = continued_fraction(
+        "quadratic", "0", "1", "2",
+        quotient_limit=200, convergent_limit=200,
+        preview_digits=15, export_path=destination, timeout=600,
+    )
+    sys.set_int_max_str_digits(1_000_000)
+    pairs = re.findall(r"^(\d+): (\d+) / (\d+)$", destination.read_text(encoding="utf-8"), re.M)
+    exact = pairs[-1][1]
+    preview = result["rows"][-1][1]
+    head, _, rest = preview.partition("..")
+    body, _, count = rest.partition(" ")
+    assert exact.startswith(head) and exact.endswith(body)
+    assert count == f"({len(exact)} digits)"
+    assert "decimal digits" in result["metrics"]["Widest convergent denominator"]
+
+
+def test_continued_fraction_without_an_export_writes_nothing(tmp_path):
+    result = continued_fraction("rational", "13", "7")
+    assert result["abbreviated"] is False
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_continued_fraction_rejects_invalid_input():
     with pytest.raises(PrimeEngineError):
         continued_fraction("quadratic", "0", "1", "16")  # a perfect square is rational
@@ -315,6 +369,10 @@ def test_continued_fraction_rejects_invalid_input():
         continued_fraction("quadratic", "0", "1", "13", quotient_limit=0)
     with pytest.raises(ValueError):
         continued_fraction("quadratic", "0", "1", "13", approximation_bound="0")
+    with pytest.raises(ValueError):
+        continued_fraction("quadratic", "0", "1", "13", preview_digits=0)
+    with pytest.raises(ValueError):
+        continued_fraction("quadratic", "0", "1", "13", preview_digits=100_001)
 
 
 # ------------------------------------------------------------------ Pell
@@ -354,11 +412,67 @@ def test_pell_negative_equation_is_unsolvable_for_d_equal_3():
     assert result["rows"][1][1:] == ["7", "4"]
 
 
-def test_pell_reports_an_exhausted_digit_limit_as_truncated():
+def test_pell_abbreviates_long_values_instead_of_dropping_them():
+    """A narrow preview must abbreviate, never omit.
+
+    This used to stop listing at the first solution wider than the digit limit, which
+    made a complete answer look like an exhausted search. Every requested solution is
+    now reported; only its rendering is shortened.
+    """
+
     capped = pell_solutions("13", solution_count=3, digit_limit=5)
-    assert capped["truncated"] is True
-    assert len(capped["rows"]) == 1
-    assert "digit limit" in capped["note"]
+    assert capped["truncated"] is False
+    assert capped["abbreviated"] is True
+    assert len(capped["rows"]) == 3
+    # (649, 180) fits in five digits; 842401 does not and is abbreviated with its width.
+    assert capped["rows"][0][1:] == ["649", "180"]
+    assert "(6 digits)" in capped["rows"][1][1]
+    assert "abbreviated" in capped["note"]
+
+
+def test_pell_exports_every_solution_at_full_precision(tmp_path):
+    """The saved report must carry values the response only abbreviates.
+
+    d = 1000099 is the standard demonstration that Pell solutions explode: the
+    fundamental solution has 1,128 decimal digits. Each exported pair is substituted
+    back into x^2 - d*y^2 = 1 here, independently of PARI/GP's own check.
+    """
+
+    sys.set_int_max_str_digits(1_000_000)
+    destination = tmp_path / "pell.txt"
+    result = pell_solutions(
+        "1000099", solution_count=3, digit_limit=40, export_path=destination, timeout=600
+    )
+    assert result["abbreviated"] is True
+    assert result["truncated"] is False
+    assert len(result["rows"]) == 3
+    assert "1,128 decimal digits" in result["metrics"]["Fundamental solution size"]
+
+    text = destination.read_text(encoding="utf-8")
+    pairs = re.findall(r"^k = (\d+)\nx = (\d+)\ny = (\d+)$", text, re.M)
+    assert len(pairs) == 3
+    for index, (k, x, y) in enumerate(pairs, start=1):
+        assert int(k) == index
+        assert int(x) ** 2 - 1000099 * int(y) ** 2 == 1
+    # The exported fundamental solution is the first listed solution.
+    assert len(pairs[0][1]) == 1128
+
+
+def test_pell_abbreviation_is_faithful_at_both_ends(tmp_path):
+    """An abbreviated preview must not misstate the value or its size."""
+
+    destination = tmp_path / "pell.txt"
+    result = pell_solutions(
+        "1000099", solution_count=1, digit_limit=40, export_path=destination, timeout=600
+    )
+    sys.set_int_max_str_digits(1_000_000)
+    exact = re.findall(r"^k = 1\nx = (\d+)$", destination.read_text(encoding="utf-8"), re.M)[0]
+    preview = result["rows"][0][1]
+    head, _, rest = preview.partition("..")
+    body, _, count = rest.partition(" ")
+    assert exact.startswith(head)
+    assert exact.endswith(body)
+    assert count == f"({len(exact)} digits)"
 
 
 def test_pell_rejects_invalid_input():
@@ -404,6 +518,9 @@ def test_forms_api_saves_reports(tmp_path, monkeypatch):
         ),
         ("pell", {"d": "13", "solution_count": 2}, "Fundamental solution x"),
     ]
+    # These two write a second file holding every value at full precision, because a
+    # convergent denominator or a Pell solution can be arbitrarily long.
+    exporting = {"continued-fraction", "pell"}
     for endpoint, payload, metric in cases:
         response = client.post(f"/api/forms/{endpoint}", json=payload)
         assert response.status_code == 200, (endpoint, response.text)
@@ -415,7 +532,13 @@ def test_forms_api_saves_reports(tmp_path, monkeypatch):
         download = client.get(f'/api/outputs/{result["output_file"]}')
         assert download.status_code == 200
         assert download.text == report
-    assert len(list(tmp_path.iterdir())) == len(cases)
+        if endpoint in exporting:
+            export = client.get(f'/api/outputs/{result["export_file"]}')
+            assert export.status_code == 200
+            assert "full precision" in export.text
+        else:
+            assert "export_file" not in result
+    assert len(list(tmp_path.iterdir())) == len(cases) + len(exporting)
 
 
 @pytest.mark.parametrize("endpoint,payload", [

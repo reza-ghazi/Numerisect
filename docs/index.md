@@ -71,7 +71,7 @@ library, and every page here says which.
 | **Prime structure** | A 56-class catalogue, reciprocal periods, special families, Cunningham chains, covering sets, constrained generation |
 | **Distribution** | Exact \(\pi(x)\) to \(10^{31}\), six independent counting algorithms compared, nth-prime bounds, prime races, maximal gaps, Hardy–Littlewood and Bateman–Horn predictions |
 | **Algebra** | Congruences over composite moduli, four discrete-logarithm algorithms, finite fields, number fields with prime-ideal decomposition, Chebotarev experiments |
-| **Quadratic forms** | Reduction, composition, class groups, Pell equations, continued fractions of quadratic irrationals |
+| **Quadratic forms** | Reduction, composition, class groups, Pell equations and continued fractions at unlimited digit length |
 | **Zeta and L-functions** | Rigorous \(\zeta(s)\) enclosures, certified critical-line zeros, Turing counts, Riemann–Siegel, pair correlation, Dirichlet L-functions, Dedekind zeta |
 | **Visualization** | Ulam, Sacks and polar spirals, Eisenstein lattices, modular wheels, residue heatmaps, sieve animations |
 

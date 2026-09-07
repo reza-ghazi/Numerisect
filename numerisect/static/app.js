@@ -673,6 +673,8 @@ function showPrimeResult(title, data, type, form) {
   let note = data.note || '';
   if (data.truncated) note += `${note ? ' ' : ''}Display/export stopped at the requested limit.${data.next_start ? ` Continue from ${data.next_start}.` : ''}`;
   if (data.output_file) note += `${note ? ' ' : ''}✓ Result saved automatically to output/${data.output_file}.`;
+  // Values too long for a JSON response are abbreviated on screen; this file has them whole.
+  if (data.export_file) note += `${note ? ' ' : ''}✓ Every value at full precision saved to output/${data.export_file}.`;
   const noteElement = $('#prime-result-note');
   noteElement.textContent = note;
   noteElement.classList.toggle('saved-output-note', Boolean(data.output_file));
@@ -2603,6 +2605,7 @@ $('#continued-fraction-form').addEventListener('submit', (event) => {
     quotient_limit: Number($('#continued-fraction-quotients').value),
     convergent_limit: Number($('#continued-fraction-convergents').value),
     approximation_bound: $('#continued-fraction-bound').value,
+    preview_digits: Number($('#continued-fraction-preview').value),
     timeout_seconds: Number($('#continued-fraction-timeout').value),
   }, (data) => data.complete ? 'Continued-fraction expansion' : 'Continued fraction (period inconclusive)', 'table');
 });

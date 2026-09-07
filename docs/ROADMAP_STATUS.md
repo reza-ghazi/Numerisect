@@ -162,6 +162,15 @@ and a binary quadratic forms and continued fractions workbench covering reductio
 composition, class groups, reduced-form enumeration, representation, exact expansions of
 quadratic irrationals, and Pell equations.
 
+**Refusing to truncate an answer.** Pell solutions and continued-fraction convergents grow
+without bound: the fundamental solution for `d = 1000099` has 1,128 decimal digits, and
+convergent denominators grow at least as fast as the Fibonacci numbers. Both tools once
+stopped at a digit ceiling, which made a complete answer indistinguishable from an
+exhausted search. They now report every requested value, streaming each one at full length
+to its own export file while the JSON response carries an exact abbreviation — true
+leading and trailing digits and a true digit count — so the size of a value is never
+misstated and no value is silently dropped.
+
 **Things no single engine can do.** Cross-engine verification computes the same quantity
 by every independent method available and reports whether they agree: pi(x) from
 primecount's six algorithms, primesieve's sieve and PARI's `primepi`; primality from

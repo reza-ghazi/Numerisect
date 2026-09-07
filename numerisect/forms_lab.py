@@ -97,6 +97,7 @@ degrades into a wrong or silently shortened answer.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -127,6 +128,10 @@ MAX_PELL_DIGITS = 100_000
 CROSSCHECK_TERMS = 40
 #: Largest solution, in decimal digits, still cross-checked against ``bestappr``.
 PELL_CHECK_DIGITS = 500
+#: Largest preview width, in decimal digits, a single JSON response may carry.
+MAX_PREVIEW_DIGITS = 100_000
+#: Values longer than this are abbreviated in the response; the saved report is complete.
+DEFAULT_PREVIEW_DIGITS = 2_000
 
 _MODES = {"rational": 0, "quadratic": 1}
 
@@ -774,6 +779,8 @@ def continued_fraction(
     quotient_limit: int = 40,
     convergent_limit: int = 40,
     approximation_bound: str = "1000",
+    preview_digits: int = DEFAULT_PREVIEW_DIGITS,
+    export_path: Path | None = None,
     timeout: int = 60,
 ) -> dict:
     """Expand a rational or a quadratic irrational as a continued fraction.
@@ -794,6 +801,13 @@ def continued_fraction(
         quotient_limit: Maximum partial quotients to materialize (1–100,000).
         convergent_limit: Maximum convergents to materialize (1–100,000).
         approximation_bound: Decimal denominator bound handed to ``bestappr``.
+        preview_digits: Values longer than this many decimal digits are abbreviated in
+            the returned report as ``<first 12>..<last 12> (n digits)`` (1–100,000).  The
+            abbreviation is exact at both ends and states the true digit count, and it
+            never affects what is written to ``export_path``.
+        export_path: When given, PARI/GP writes every partial quotient and every
+            convergent to this file at full length, so a convergent with millions of
+            digits never passes through the JSON response.
         timeout: Engine time limit in seconds.
 
     Returns:
@@ -819,9 +833,12 @@ def continued_fraction(
         raise ValueError(f"Quotient limit must be between 1 and {MAX_QUOTIENTS:,}")
     if not 1 <= convergent_limit <= MAX_CONVERGENTS:
         raise ValueError(f"Convergent limit must be between 1 and {MAX_CONVERGENTS:,}")
+    if not 1 <= preview_digits <= MAX_PREVIEW_DIGITS:
+        raise ValueError(f"Preview width must be between 1 and {MAX_PREVIEW_DIGITS:,} digits")
+    destination = json.dumps(str(export_path) if export_path is not None else "")
     lines = _execute(
         f"fl_contfrac({_MODES[mode]},{top},{bottom},{root},{quotient_limit},"
-        f"{convergent_limit},{bound},{CROSSCHECK_TERMS})",
+        f"{convergent_limit},{bound},{CROSSCHECK_TERMS},{preview_digits},{destination})",
         timeout,
     )
     quotients = _records(lines, "QUOTIENT", 2)
@@ -834,7 +851,14 @@ def continued_fraction(
     if _one(lines, "VERIFIED") == 0:
         raise PrimeEngineError("PARI/GP could not verify the rational convergents")
     convergents = _records(lines, "CONVERGENT", 3)
+    widths = _records(lines, "CONVERGENT_DIGITS", 3)
+    if len(widths) != len(convergents):
+        raise PrimeEngineError("PARI/GP returned an inconsistent convergent width count")
     approximation = _records(lines, "BESTAPPR", 3)[0]
+    if _one(lines, "EXPORTED") != (1 if export_path is not None else 0):
+        raise PrimeEngineError("PARI/GP did not write the full-precision expansion")
+    abbreviated = _one(lines, "ABBREVIATED") == 1
+    widest = max((int(row[2]) for row in widths), default=0)
     complete = _one(lines, "COMPLETE") == 1
     period = _one(lines, "PERIOD")
     preperiod = _one(lines, "PREPERIOD")
@@ -869,6 +893,8 @@ def continued_fraction(
             "—" if mode == "rational" else _three_way(_one(lines, "CROSSCHECK"))
         ),
         "Convergents listed": str(len(convergents)),
+        "Widest convergent denominator": f"{widest:,} decimal digits",
+        "Values abbreviated in this response": _yes(abbreviated),
         f"Best approximation with denominator ≤ {approximation[2]}": (
             f"{approximation[0]}/{approximation[1]}"
         ),
@@ -877,6 +903,7 @@ def continued_fraction(
     return {
         "mode": mode,
         "complete": complete,
+        "abbreviated": abbreviated,
         "metrics": metrics,
         "columns": ["n", "p_n", "q_n", "a_n", "Segment"],
         "rows": rows,
@@ -898,7 +925,14 @@ def continued_fraction(
             "factoring path."
         )
         + ("" if complete else " The period was not closed within the quotient limit, so it "
-           "is inconclusive."),
+           "is inconclusive.")
+        + (
+            f" Values longer than {preview_digits:,} digits are abbreviated above as "
+            "first and last twelve digits with an exact digit count; the saved report "
+            "carries every partial quotient and convergent at full length."
+            if abbreviated
+            else ""
+        ),
     }
 
 
@@ -909,6 +943,7 @@ def pell_solutions(
     digit_limit: int = 2_000,
     period_limit: int = 100_000,
     unit_seconds: int = 30,
+    export_path: Path | None = None,
     timeout: int = 120,
 ) -> dict:
     """Solve Pell's equation ``x^2 - d y^2 = 1`` and list further solutions.
@@ -923,11 +958,17 @@ def pell_solutions(
     Args:
         d: Decimal integer at least 2 and not a perfect square.
         solution_count: How many successive solutions to list (1–100).
-        digit_limit: Largest solution, in decimal digits, that is materialized
-            (1–100,000).
+        digit_limit: Values longer than this many decimal digits are abbreviated in the
+            returned report as ``<first 12>..<last 12> (n digits)`` (1–100,000).  No
+            solution is ever omitted, and the abbreviation never affects ``export_path``.
         period_limit: Cap on the continued-fraction period searched for the cross-check
             (1–100,000).
         unit_seconds: Budget for ``quadunit`` (1–3,600 seconds).
+        export_path: When given, PARI/GP writes the fundamental unit, the fundamental
+            solution and every listed solution to this file at full length.  Pell
+            solutions grow without bound — for ``d = 1000099`` the fundamental solution
+            already has 1,128 decimal digits and the fourth has 4,513 — so the complete
+            values are streamed to the file rather than through the JSON response.
         timeout: Engine time limit in seconds.
 
     Returns:
@@ -947,9 +988,10 @@ def pell_solutions(
         raise ValueError(f"Period limit must be between 1 and {MAX_QUOTIENTS:,}")
     if not 1 <= unit_seconds <= 3600:
         raise ValueError("The fundamental-unit budget must be between 1 and 3,600 seconds")
+    destination = json.dumps(str(export_path) if export_path is not None else "")
     lines = _execute(
         f"fl_pell({value},{solution_count},{digit_limit},{period_limit},"
-        f"{PELL_CHECK_DIGITS},{unit_seconds})",
+        f"{PELL_CHECK_DIGITS},{unit_seconds},{destination})",
         timeout,
     )
     rows = _records(lines, "SOLUTION", 3)
@@ -979,29 +1021,40 @@ def pell_solutions(
         raise PrimeEngineError(
             "The fundamental unit disagreed with the continued-fraction convergent"
         )
+    if _one(lines, "EXPORTED") != (1 if export_path is not None else 0):
+        raise PrimeEngineError("PARI/GP did not write the full-precision Pell solutions")
+    abbreviated = _one(lines, "ABBREVIATED") == 1
     negative = _one(lines, "NEGATIVE_SOLVABLE") == 1
     unit_norm = _one(lines, "UNIT_NORM")
+    unit_x = _text(lines, "UNIT_X") or "—"
+    unit_y = _text(lines, "UNIT_Y") or "—"
+    fund_x = _text(lines, "FUND_X") or "—"
+    fund_y = _text(lines, "FUND_Y") or "—"
     metrics = {
         "d": str(value),
         "Regulator of Z[√d]": _text(lines, "REGULATOR") or "—",
-        "Fundamental unit x + y√d": f"{_one(lines, 'UNIT_X')} + {_one(lines, 'UNIT_Y')}√{value}",
+        "Fundamental unit x + y√d": f"{unit_x} + {unit_y}√{value}",
         "Norm of the fundamental unit": str(unit_norm),
         "x² − dy² = −1 solvable": _yes(negative),
-        "Fundamental solution x": str(_one(lines, "FUND_X")),
-        "Fundamental solution y": str(_one(lines, "FUND_Y")),
+        "Fundamental solution x": fund_x,
+        "Fundamental solution y": fund_y,
+        "Fundamental solution size": (
+            f"x has {_one(lines, 'FUND_X_DIGITS'):,} decimal digits, "
+            f"y has {_one(lines, 'FUND_Y_DIGITS'):,}"
+        ),
         "Continued-fraction period of √d": _count(_one(lines, "CF_PERIOD")),
         "Matches the convergent at the end of the period": _three_way(
             _one(lines, "CF_MATCH")
         ),
         "Solutions listed": str(len(rows)),
+        "Values abbreviated in this response": _yes(abbreviated),
     }
     if negative:
-        metrics["Negative Pell solution"] = (
-            f"{_one(lines, 'UNIT_X')}² − {value}·{_one(lines, 'UNIT_Y')}² = −1"
-        )
+        metrics["Negative Pell solution"] = f"{unit_x}² − {value}·{unit_y}² = −1"
     return {
         "available": True,
         "negative_solvable": negative,
+        "abbreviated": abbreviated,
         "metrics": metrics,
         "columns": ["k", "x", "y"],
         "rows": rows,
@@ -1015,9 +1068,16 @@ def pell_solutions(
             "√d at the end of its period, which is the classical link between Pell's "
             "equation and continued fractions."
             + (
-                ""
-                if _one(lines, "TRUNCATED") == 0
-                else " Later solutions exceeded the digit limit and were not materialized."
+                f" Values longer than {digit_limit:,} digits are abbreviated above as "
+                "first and last twelve digits with an exact digit count. No solution is "
+                "omitted"
+                + (
+                    "; the saved report carries every value at full length."
+                    if export_path is not None
+                    else "."
+                )
+                if abbreviated
+                else ""
             )
         ),
     }

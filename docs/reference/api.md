@@ -150,14 +150,14 @@ in-process. See the [command-line reference](cli.md).
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/forms/class-group` |  |
-| `POST` | `/api/forms/compose` |  |
-| `POST` | `/api/forms/continued-fraction` |  |
-| `POST` | `/api/forms/pell` |  |
-| `POST` | `/api/forms/prime-form` |  |
-| `POST` | `/api/forms/reduce` |  |
-| `POST` | `/api/forms/reduced-forms` |  |
-| `POST` | `/api/forms/represent` |  |
+| `POST` | `/api/forms/class-group` | Class number, group structure, generators and regulator for a discriminant. |
+| `POST` | `/api/forms/compose` | Gaussian composition and powers, with and without reduction; principality and order. |
+| `POST` | `/api/forms/continued-fraction` | Expand a rational or a quadratic irrational; partial quotients, convergents, preperiod and period. Values wider than `preview_digits` are abbreviated in the response and written in full to `export_file`. |
+| `POST` | `/api/forms/pell` | Solve `x² − dy² = 1` from the fundamental unit and list further solutions. Values wider than `digit_limit` are abbreviated in the response and written in full to `export_file`. |
+| `POST` | `/api/forms/prime-form` | `qfbprimeform` for each requested prime. |
+| `POST` | `/api/forms/reduce` | Reduce a binary quadratic form, trace the steps, give the SL(2, ℤ) matrix. |
+| `POST` | `/api/forms/reduced-forms` | Enumerate the reduced forms of a discriminant; flag ambiguous and square forms. |
+| `POST` | `/api/forms/represent` | Represent an integer by a form with `qfbsolve`. |
 
 ### Performance history
 
