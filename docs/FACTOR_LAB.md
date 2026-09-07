@@ -56,6 +56,20 @@ SQUFOF is also selectable as the `squfof` job backend. Both parts of the split a
 labelled prime or composite by PARI/GP's `isprime`; the C helper never labels primality
 itself.
 
+### Where SQUFOF comes from
+
+SQUFOF is a statement about binary quadratic forms: it walks the principal cycle of
+forms of discriminant `4kN` looking for an **ambiguous** form, one with `a | b` or
+`a = c`, whose class is its own inverse. The leading coefficient of such a form in the
+principal cycle exposes a factor of `N`.
+
+[The forms laboratory](FORMS_LAB.md) shows that cycle directly. Enumerating the reduced
+forms of `D = 7268 = 4 · 1817` gives a principal cycle of 28 forms containing
+`Qfb(23, 46, −56)`; `23` divides `46`, and `23` is exactly the factor of
+`1817 = 23 × 79` the C helper extracts. That page also covers the continued fractions
+behind CFRAC, which Numerisect deliberately does not implement as a factoring method
+because SIQS supersedes it at every size.
+
 ## Strategy adviser and decision tree
 
 PARI/GP tests the input for primality, strips factors below 10^6 by bounded trial

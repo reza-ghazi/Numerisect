@@ -381,6 +381,10 @@ See [Primality laboratory](docs/PRIMALITY_LAB.md) for the primality-test compari
 laboratory, deterministic witness sets, Pocklington and Pratt certificates, the
 probable-prime taxonomy, and the constrained-prime generators.
 
+See [Quadratic forms and continued fractions](docs/FORMS_LAB.md) for binary quadratic
+form reduction and composition, class groups, Pell equations, and the connection between
+the principal cycle of forms and SQUFOF.
+
 See [Algebra laboratory](docs/ALGEBRA_LAB.md) for reciprocity traces, congruences over
 composite moduli, discrete-logarithm algorithm comparison, finite fields, record-number
 families, quadratic rings, general number fields, and Chebotarev experiments.
@@ -388,6 +392,17 @@ families, quadratic rings, general number fields, and Chebotarev experiments.
 See [Visualization and education](docs/VISUAL_LAB.md) for the prime spirals, Eisenstein
 lattice, modular wheels, residue heatmaps, gap timelines, the prime race, the four sieve
 animations, and the complexity dashboard.
+
+See [Analytic prime distribution](docs/DISTRIBUTION_LAB.md) for approximation-error
+charts, nth-prime bounds, prime races, singular series, Bateman-Horn predictions and
+maximal-gap verification.
+
+See [Zeta and L-functions](docs/ZETA_LAB.md) for explicit-formula prime counting,
+Riemann-Siegel remainder analysis, pair correlation, Gram blocks, Dirichlet L-functions
+and Dedekind zeta.
+
+See [Independent verification](docs/VERIFICATION.md) for cross-engine agreement
+checks, the engine self-test, and prime enumeration above primesieve's 2^64 ceiling.
 
 See [Distributed CADO-NFS](docs/DISTRIBUTED.md) for distributed sieving, the trust
 model it inherits from CADO, and the configurations Numerisect refuses.
@@ -514,6 +529,9 @@ POST /api/algebra/weird-numbers
 POST /api/batch/import
 POST /api/catalogues/factors
 POST /api/catalogues/oeis
+POST /api/counting/algorithm-comparison
+POST /api/counting/nth-prime-inverses
+POST /api/counting/phi
 POST /api/diagnostics
 POST /api/distributed/factor
 POST /api/distributed/preview
@@ -534,6 +552,14 @@ POST /api/factor-lab/squfof
 POST /api/factor-lab/strategy
 POST /api/factor-lab/trace
 POST /api/factor-lab/tune
+POST /api/forms/class-group
+POST /api/forms/compose
+POST /api/forms/continued-fraction
+POST /api/forms/pell
+POST /api/forms/prime-form
+POST /api/forms/reduce
+POST /api/forms/reduced-forms
+POST /api/forms/represent
 POST /api/jobs
 POST /api/jobs/batch
 POST /api/jobs/batch-export
@@ -628,10 +654,17 @@ POST /api/primes/random-range
 POST /api/primes/range
 POST /api/primes/reciprocal
 POST /api/primes/reptend
+POST /api/primes/sieve-interval
 POST /api/primes/special-numbers
 POST /api/primes/tuples
 POST /api/primes/verify-certificate
 POST /api/setup/install
+POST /api/structure/factorint-strategies
+POST /api/structure/lenstra-divisors
+POST /api/structure/predicates
+POST /api/verify/primality
+POST /api/verify/prime-count
+POST /api/verify/self-test
 POST /api/visual/complexity
 POST /api/visual/eisenstein-lattice
 POST /api/visual/gap-timeline
@@ -702,6 +735,7 @@ placement, saved-report notices, diagnostics, and cache-busted assets.
 | [Prime manipulation](docs/PRIME_MANIPULATION.md) | Batches, relative-index navigation, residue classes, and modular arithmetic |
 | [Riemann zeta](docs/RIEMANN_ZETA.md) | FLINT/Arb computations, threads, and certification boundaries |
 | [Advanced number theory](docs/ADVANCED_NUMBER_THEORY.md) | Modular, polynomial, special-prime, analytic, divisor, and algebraic workbenches |
+| [Prime counting and integer structure](docs/COUNTING_LAB.md) | Six-algorithm π(x) cross-check, Legendre's phi, inverse approximations, PARI structure predicates, and factorint strategy masks |
 | [Roadmap status](docs/ROADMAP_STATUS.md) | Implemented, partial, and deliberately deferred items from the 150-item proposal |
 
 ## Security notes

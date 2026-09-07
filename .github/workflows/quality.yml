@@ -74,4 +74,4 @@ jobs:
           python -m zipfile --list dist/numerisect-*.whl
           python -m venv /tmp/numerisect-wheel-smoke
           /tmp/numerisect-wheel-smoke/bin/pip install dist/numerisect-*.whl
-          /tmp/numerisect-wheel-smoke/bin/python -c "from numerisect.config import NATIVE_DIR, STATIC_DIR; from numerisect.installer import load_engine_manifest; assert (STATIC_DIR / 'index.html').is_file(); assert (STATIC_DIR / 'app.js').is_file(); assert (NATIVE_DIR / 'numerisect_zeta.c').is_file(); assert (NATIVE_DIR / 'numerisect_squfof.c').is_file(); assert len(list(STATIC_DIR.parent.glob('*.gp'))) >= 11; assert len(load_engine_manifest()) == 8"
+          /tmp/numerisect-wheel-smoke/bin/python -c "from numerisect.config import NATIVE_DIR, STATIC_DIR; from numerisect.installer import load_engine_manifest; assert (STATIC_DIR / 'index.html').is_file(); assert (STATIC_DIR / 'app.js').is_file(); assert (NATIVE_DIR / 'numerisect_zeta.c').is_file(); assert (NATIVE_DIR / 'numerisect_squfof.c').is_file(); assert (NATIVE_DIR / 'numerisect_bigsieve.c').is_file(); assert len(list(STATIC_DIR.parent.glob('*.gp'))) >= 11; assert len(load_engine_manifest()) == 8"

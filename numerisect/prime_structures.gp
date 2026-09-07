@@ -503,6 +503,20 @@ ps_integer_profile(n, divisor_limit) =
   print("PROFILE_LAMBDA:", ps_carmichael_lambda_from_factor(f));
   print("PROFILE_MOBIUS:", moebius(value));
   print("PROFILE_RADICAL:", radical);
+  \\ Structure predicates supplied directly by PARI library routines:
+  \\ isprimepower returns the exponent k of |n| = p^k (0 when |n| is not a
+  \\ prime power), ispowerful reports that every prime valuation is at least 2,
+  \\ istotient reports that |n| = eulerphi(m) is solvable and returns a witness
+  \\ m, and isfundamental tests the signed n as a discriminant.
+  my(primepower_base, totient_witness, primepower_exponent, totient_solvable);
+  primepower_exponent = isprimepower(value, &primepower_base);
+  totient_solvable = istotient(value, &totient_witness);
+  print("PROFILE_PRIMEPOWER:", primepower_exponent);
+  print("PROFILE_PRIMEPOWER_BASE:", if(primepower_exponent, primepower_base, 0));
+  print("PROFILE_POWERFUL:", ispowerful(value));
+  print("PROFILE_TOTIENT_SOLVABLE:", totient_solvable);
+  print("PROFILE_TOTIENT_WITNESS:", if(totient_solvable, totient_witness, 0));
+  print("PROFILE_FUNDAMENTAL:", isfundamental(n));
   print("PROFILE_CLASS:", classification);
   fordiv (value, d,
     if (shown >= divisor_limit, break());

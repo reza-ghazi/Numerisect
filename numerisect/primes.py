@@ -819,6 +819,12 @@ def integer_arithmetic_profile(number: int, divisor_limit: int = 1_000) -> dict[
             "PROFILE_LAMBDA",
             "PROFILE_MOBIUS",
             "PROFILE_RADICAL",
+            "PROFILE_PRIMEPOWER",
+            "PROFILE_PRIMEPOWER_BASE",
+            "PROFILE_POWERFUL",
+            "PROFILE_TOTIENT_SOLVABLE",
+            "PROFILE_TOTIENT_WITNESS",
+            "PROFILE_FUNDAMENTAL",
             "PROFILE_DIVISORS_SHOWN",
         )
     }
@@ -850,6 +856,15 @@ def integer_arithmetic_profile(number: int, divisor_limit: int = 1_000) -> dict[
         "carmichael": str(integer_tags["PROFILE_LAMBDA"][0]),
         "mobius": str(integer_tags["PROFILE_MOBIUS"][0]),
         "radical": str(integer_tags["PROFILE_RADICAL"][0]),
+        # Structure predicates from PARI isprimepower, ispowerful, istotient
+        # and isfundamental; see prime_structures.gp, ps_integer_profile.
+        "prime_power_exponent": str(integer_tags["PROFILE_PRIMEPOWER"][0]),
+        "prime_power_base": str(integer_tags["PROFILE_PRIMEPOWER_BASE"][0]),
+        "is_prime_power": integer_tags["PROFILE_PRIMEPOWER"][0] != 0,
+        "is_powerful": integer_tags["PROFILE_POWERFUL"][0] == 1,
+        "is_totient": integer_tags["PROFILE_TOTIENT_SOLVABLE"][0] == 1,
+        "totient_witness": str(integer_tags["PROFILE_TOTIENT_WITNESS"][0]),
+        "is_fundamental_discriminant": integer_tags["PROFILE_FUNDAMENTAL"][0] == 1,
         "divisor_class": classes[0],
         "factors": factors,
         "divisors": [str(value) for value in divisors],

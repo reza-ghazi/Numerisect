@@ -17,8 +17,8 @@ def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     )[0]
     categorized_forms = re.findall(r"'([^']+-form)'", page_catalogue)
 
-    assert len(html_forms) == len(set(html_forms)) == 116
-    assert len(categorized_forms) == len(set(categorized_forms)) == 116
+    assert len(html_forms) == len(set(html_forms)) == 133
+    assert len(categorized_forms) == len(set(categorized_forms)) == 133
     assert set(categorized_forms) == set(html_forms)
 
 

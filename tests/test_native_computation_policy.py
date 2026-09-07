@@ -33,6 +33,7 @@ MATHEMATICAL_MODULES = [
     "primality_lab.py",
     "algebra_lab.py",
     "visual_lab.py",
+    "forms_lab.py",
 ]
 
 # Modules that legitimately contain no engine call: transport, formatting, storage.
@@ -239,3 +240,94 @@ def test_c_helpers_document_why_they_exist():
             phrase in head
             for phrase in ("no installed library", "no library", "flint", "arb", "gmp")
         ), f"{path.name} does not state which library it uses or why it exists"
+
+
+# --- Minimum supported Python -----------------------------------------------------------
+
+
+def _nested_same_quote_fstrings(source: str, path: Path) -> list[str]:
+    """Find f-strings whose expression reuses the enclosing quote character.
+
+    That is PEP 701 syntax, valid from Python 3.12 and a SyntaxError on 3.11.
+    ``ast`` cannot detect it after the fact because the tree is identical either
+    way, and ``compile(..., _feature_version=11)`` does not gate it, so the check
+    works on the source text of each f-string.
+    """
+
+    findings: list[str] = []
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return findings
+    lines = source.splitlines()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        for value in node.values:
+            if not isinstance(value, ast.FormattedValue):
+                continue
+            # A nested JoinedStr inside the expression is the hazard; check whether
+            # the two use the same delimiter in the source.
+            for inner in ast.walk(value):
+                if inner is value or not isinstance(inner, ast.JoinedStr):
+                    continue
+                start = getattr(node, "lineno", None)
+                if not start or start > len(lines):
+                    continue
+                text = lines[start - 1]
+                if 'f"' in text and text.count('f"') > 1:
+                    findings.append(f"{path.name}:{start}: nested f-string reusing a quote")
+                elif "f'" in text and text.count("f'") > 1:
+                    findings.append(f"{path.name}:{start}: nested f-string reusing a quote")
+    return findings
+
+
+def test_every_source_parses_on_the_minimum_supported_python():
+    """No file may use syntax newer than the version pyproject.toml promises.
+
+    CI runs 3.11 through 3.14, but a developer on a newer interpreter sees every
+    file parse and every test pass while 3.11 fails in CI.
+
+    Two checks run here. If an interpreter matching the declared minimum is
+    installed, every source is compiled with it, which is authoritative. Otherwise
+    the sources are parsed with an explicit feature version, and PEP 701 f-strings
+    are looked for separately because feature_version does not gate them.
+    """
+
+    import shutil
+    import subprocess
+    import tomllib
+
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    requires = config["project"]["requires-python"]
+    minimum = requires.lstrip(">=~^ ").split(",")[0].strip()
+    major, minor = (int(part) for part in minimum.split(".")[:2])
+    assert major == 3, "only Python 3 is supported"
+
+    sources = sorted(ROOT.glob("numerisect/**/*.py")) + sorted(ROOT.glob("tests/*.py"))
+    interpreter = shutil.which(f"python{minimum}")
+    if interpreter:
+        result = subprocess.run(
+            [interpreter, "-m", "py_compile", *[str(path) for path in sources]],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"These files do not compile on Python {minimum}: {result.stderr[:2000]}"
+        )
+        return
+
+    offenders: list[str] = []
+    for path in sources:
+        source = path.read_text(encoding="utf-8")
+        try:
+            compile(
+                source, str(path), "exec",
+                flags=ast.PyCF_ONLY_AST, dont_inherit=True, _feature_version=minor,
+            )
+        except SyntaxError as exc:
+            offenders.append(f"{path.relative_to(ROOT)}:{exc.lineno}: {exc.msg}")
+        offenders.extend(_nested_same_quote_fstrings(source, path))
+    assert not offenders, (
+        f"These use syntax newer than Python {minimum}, which pyproject.toml promises "
+        f"and CI tests. Note that `ruff check .` also catches this; run it. {offenders}"
+    )

@@ -520,6 +520,37 @@
             <button class="primary" type="submit"><span>Count primes</span><span>→</span></button>
           </form>
 
+          <form id="verify-count-form" class="panel utility-card">
+            <p class="eyebrow">INDEPENDENT AGREEMENT</p>
+            <h2>Cross-check &pi;(x)</h2>
+            <p>Computes &pi;(x) with primecount's six independent algorithms, primesieve's sieve, and PARI's own counter, then reports whether they agree. Agreement across independent implementations is evidence no single algorithm can give. A disagreement means one engine is faulty, and Numerisect will not choose between them.</p>
+            <label>Bound x<input id="verify-count-x" type="text" spellcheck="false" placeholder="10^10" required /></label>
+            <label>Threads<input id="verify-count-threads" type="number" min="1" max="256" value="4" /></label>
+            <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
+          </form>
+
+          <form id="verify-primality-form" class="panel utility-card">
+            <p class="eyebrow">INDEPENDENT AGREEMENT</p>
+            <h2>Cross-check primality</h2>
+            <p>Decides primality with PARI's proof, PARI's Baillie-PSW test, and an independent GMP implementation, then compares them. A disagreement between a proof and a probabilistic test would mean a broken engine build.</p>
+            <label>Integer expression<input id="verify-primality-n" type="text" spellcheck="false" placeholder="2^89-1" required /></label>
+            <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
+          </form>
+
+          <form id="sieve-interval-form" class="panel utility-card">
+            <p class="eyebrow">ANY MAGNITUDE</p>
+            <h2>Primes in a large interval</h2>
+            <p>Enumerates primes in an interval of any size with this project's GMP and OpenMP sieve. primesieve refuses inputs at or above 2<sup>64</sup> and PARI is single-threaded there. At or above 2<sup>64</sup> results are probable primes from Baillie-PSW, not proofs, and are labelled as such.</p>
+            <label>Interval start<input id="sieve-start" type="text" spellcheck="false" placeholder="10^30" required /></label>
+            <div class="controls-grid">
+              <label>Length, half-open<input id="sieve-length" type="number" min="1" max="100000000" value="100000" /></label>
+              <label>Threads<input id="sieve-threads" type="number" min="1" max="1024" value="8" /></label>
+              <label>Presieve bound<input id="sieve-bound" type="number" min="100" max="100000000" value="1000000" /></label>
+              <label>Extra Miller-Rabin rounds<input id="sieve-rounds" type="number" min="0" max="64" value="0" /></label>
+            </div>
+            <div class="actions"><button class="primary" type="submit"><span>Enumerate</span><span>&rarr;</span></button></div>
+          </form>
+
           <form id="prime-gaps-form" class="panel utility-card utility-wide">
             <p class="eyebrow">GAP ANALYZER</p>
             <h2>Measure consecutive prime gaps</h2>
@@ -1243,6 +1274,90 @@
             <button class="primary" type="submit"><span>Draw the density surface</span><span>→</span></button>
           </form>
 
+          <form id="counting-comparison-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">ALGORITHM CROSS-CHECK</p>
+            <h2>Count π(x) with independent algorithms</h2>
+            <p>primecount ships six independent prime-counting algorithms, and PARI/GP <code>primepi</code> is a seventh implementation that shares no code with them. Running several on one x turns agreement into a correctness check that no single algorithm can give for itself. Any disagreement is reported prominently and never reconciled. Legendre, Meissel and Lehmer are capped at x ≤ 10¹⁶; PARI <code>primepi</code> joins only while x ≤ 10¹¹.</p>
+            <div class="four-controls">
+              <label>x ≤ 10³¹<input id="counting-comparison-x" value="10000000000" required /></label>
+              <label>primecount threads<input id="counting-comparison-threads" type="number" min="1" max="256" value="1" required /></label>
+              <label class="inline-check"><input id="counting-comparison-double" type="checkbox" checked /> Add --double-check (alternative alpha tuning)</label>
+              <label class="inline-check"><input id="counting-comparison-pari" type="checkbox" checked /> Add PARI/GP primepi as a seventh source</label>
+            </div>
+            <div class="four-controls">
+              <label class="inline-check"><input id="counting-comparison-legendre" type="checkbox" checked /> Legendre's formula</label>
+              <label class="inline-check"><input id="counting-comparison-meissel" type="checkbox" checked /> Meissel's formula</label>
+              <label class="inline-check"><input id="counting-comparison-lehmer" type="checkbox" checked /> Lehmer's formula</label>
+              <label class="inline-check"><input id="counting-comparison-lmo" type="checkbox" checked /> Lagarias–Miller–Odlyzko</label>
+              <label class="inline-check"><input id="counting-comparison-deleglise-rivat" type="checkbox" checked /> Deléglise–Rivat</label>
+              <label class="inline-check"><input id="counting-comparison-gourdon" type="checkbox" checked /> Gourdon</label>
+            </div>
+            <p class="hint">Elapsed times are single measurements of one run on this machine. They are not a benchmark of the algorithms.</p>
+            <button class="primary" type="submit"><span>Cross-check π(x)</span><span>→</span></button>
+          </form>
+
+          <form id="counting-phi-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">LEGENDRE PARTIAL SIEVE</p>
+            <h2>Evaluate Legendre's phi(x, a)</h2>
+            <p>φ(x, a) counts the integers in [1, x] divisible by none of the first a primes — the partial sieve inside Legendre's, Meissel's and Lehmer's formulas. PARI adds the a-th prime and the Legendre product, and while x &lt; p<sub>a+1</sub>² it verifies the exact identity π(x) = φ(x, a) + a − 1 against <code>primepi</code>.</p>
+            <div class="triple-controls">
+              <label>x ≤ 10¹⁸<input id="counting-phi-x" value="1000000" required /></label>
+              <label>a ≤ 100,000<input id="counting-phi-a" type="number" min="0" max="100000" value="10" required /></label>
+              <label>primecount threads<input id="counting-phi-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Evaluate phi(x, a)</span><span>→</span></button>
+          </form>
+
+          <form id="counting-inverse-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INVERSE APPROXIMATIONS</p>
+            <h2>Compare Li⁻¹(n) and R⁻¹(n) with the n-th prime</h2>
+            <p>Both inverse approximations estimate the n-th prime: Li⁻¹ inverts the Eulerian logarithmic integral and R⁻¹ inverts the Riemann R function. primecount computes the exact n-th prime and both estimates; PARI computes every signed and relative error at 60-digit precision.</p>
+            <div class="controls-grid">
+              <label>n ≤ 10¹⁶<input id="counting-inverse-n" value="1000000" required /></label>
+              <label>primecount threads<input id="counting-inverse-threads" type="number" min="1" max="256" value="1" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compare the approximations</span><span>→</span></button>
+          </form>
+
+          <form id="integer-structure-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">INTEGER STRUCTURE</p>
+            <h2>Test the PARI structure predicates</h2>
+            <p>Run <code>isprimepower</code> (which returns the exponent k of n = pᵏ), <code>ispseudoprimepower</code>, <code>ispowerful</code>, <code>istotient</code> (which returns a witness m with φ(m) = n), <code>isfundamental</code> and <code>ispolygonal</code> on one integer. Every verdict, and every witness, comes from the PARI routine named beside it.</p>
+            <div class="controls-grid">
+              <label>Integer or expression<input id="integer-structure-number" value="1024" required /></label>
+              <label>Polygonal side count s ≥ 3<input id="integer-structure-sides" type="number" min="3" max="1000000" value="3" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Run the predicates</span><span>→</span></button>
+          </form>
+
+          <form id="lenstra-divisors-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">DIVISORS IN A RESIDUE CLASS</p>
+            <h2>Search divisors with Lenstra's algorithm</h2>
+            <p>PARI's <code>divisorslenstra</code> finds every divisor d of N with d ≡ r (mod s) without factoring N. The algorithm is correct only when gcd(r, s) = 1 and s³ &gt; N, and the engine refuses any other request rather than returning a silently incomplete list.</p>
+            <div class="triple-controls">
+              <label>N (integer or expression)<input id="lenstra-divisors-number" value="1000" required /></label>
+              <label>Residue r<input id="lenstra-divisors-residue" value="3" required /></label>
+              <label>Modulus s (s³ &gt; N)<input id="lenstra-divisors-modulus" value="11" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search the residue class</span><span>→</span></button>
+          </form>
+
+          <form id="factorint-strategy-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FACTORINT STRATEGY MASKS</p>
+            <h2>Compare PARI factoring strategies</h2>
+            <p>The second argument of <code>factorint</code> is a bitmask of methods to <em>avoid</em>: 1 avoids MPQS, 2 avoids the first-stage ECM, 4 avoids Pollard–Brent rho and Shanks SQUFOF, 8 skips the final ECM. Running one input under several masks is a PARI-side comparison of factoring methods; PARI's <code>gettime</code> measures each run and <code>isprime</code> audits every returned base, which is what exposes what mask 8 gave up.</p>
+            <div class="four-controls">
+              <label>n (integer or expression)<input id="factorint-strategy-number" value="1000036000099" required /></label>
+              <label class="inline-check"><input id="factorint-strategy-flag-0" type="checkbox" checked /> 0 · full default strategy</label>
+              <label class="inline-check"><input id="factorint-strategy-flag-1" type="checkbox" checked /> 1 · avoid MPQS</label>
+              <label class="inline-check"><input id="factorint-strategy-flag-2" type="checkbox" checked /> 2 · avoid first-stage ECM</label>
+              <label class="inline-check"><input id="factorint-strategy-flag-4" type="checkbox" checked /> 4 · avoid rho and SQUFOF</label>
+              <label class="inline-check"><input id="factorint-strategy-flag-8" type="checkbox" checked /> 8 · skip final ECM</label>
+            </div>
+            <p class="hint">PARI implements Shanks SQUFOF inside factorint but exposes no standalone entry point for it, so mask 4 is the only handle on it. Elapsed times are single local measurements, not a benchmark.</p>
+            <button class="primary" type="submit"><span>Race the strategies</span><span>→</span></button>
+          </form>
+
           <form id="primality-lab-form" class="panel utility-card utility-wide">
             <p class="eyebrow">PRIMALITY LABORATORY</p>
             <h2>Compare primality tests</h2>
@@ -1885,6 +2000,133 @@
             </div>
             <button class="primary" type="submit"><span>Run density experiment</span><span>→</span></button>
           </form>
+
+          <form id="quadratic-form-reduce-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FORM REDUCTION</p>
+            <h2>Reduce a binary quadratic form</h2>
+            <p>Reduce ax² + bxy + cy², trace the reduction one step at a time, and show the SL(2,&#8202;ℤ) matrix that performs it. Definite (D &lt; 0) and indefinite (D &gt; 0) forms are reported separately: only the definite case has a unique reduced form.</p>
+            <div class="triple-controls">
+              <label>Coefficient a<input id="quadratic-form-reduce-a" value="10" required /></label>
+              <label>Coefficient b<input id="quadratic-form-reduce-b" value="7" required /></label>
+              <label>Coefficient c<input id="quadratic-form-reduce-c" value="3" required /></label>
+            </div>
+            <details>
+              <summary>Trace and cycle limits</summary>
+              <div class="controls-grid">
+                <label>Reduction steps traced<input id="quadratic-form-reduce-steps" type="number" min="0" max="100000" value="40" required /></label>
+                <label>Cycle limit (indefinite)<input id="quadratic-form-reduce-cycle" type="number" min="1" max="1000000" value="10000" required /></label>
+                <label>Time limit (seconds)<input id="quadratic-form-reduce-timeout" type="number" min="1" max="3600" value="60" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Reduce the form</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-form-compose-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">FORM COMPOSITION</p>
+            <h2>Compose and exponentiate forms</h2>
+            <p>Gaussian composition of two forms of the same discriminant, with and without reduction, plus a power of the left form. Reports whether each result is principal and the order of the left class.</p>
+            <div class="triple-controls">
+              <label>Left form a, b, c<input id="quadratic-form-compose-left" value="2, 1, 3" required /></label>
+              <label>Right form a, b, c<input id="quadratic-form-compose-right" value="2, 1, 3" required /></label>
+              <label>Exponent<input id="quadratic-form-compose-exponent" type="number" min="-1000000" max="1000000" value="3" required /></label>
+            </div>
+            <details>
+              <summary>Search limits</summary>
+              <div class="controls-grid">
+                <label>Class-order search<input id="quadratic-form-compose-order" type="number" min="1" max="100000" value="1000" required /></label>
+                <label>Principal-cycle limit<input id="quadratic-form-compose-cycle" type="number" min="1" max="1000000" value="10000" required /></label>
+                <label>Time limit (seconds)<input id="quadratic-form-compose-timeout" type="number" min="1" max="3600" value="60" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Compose the forms</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-form-primeform-form" class="panel utility-card">
+            <p class="eyebrow">PRIME FORMS</p>
+            <h2>Prime forms of a discriminant</h2>
+            <p>Find the form with leading coefficient p for each prime, when one exists. A prime form exists exactly when D is a square modulo 4p.</p>
+            <div class="controls-grid">
+              <label>Discriminant D<input id="quadratic-form-primeform-disc" value="-23" required /></label>
+              <label>Primes<input id="quadratic-form-primeform-primes" value="2, 3, 5, 7, 13" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Find prime forms</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-form-class-group-form" class="panel utility-card">
+            <p class="eyebrow">FORM CLASS GROUP</p>
+            <h2>Class number and class-group structure</h2>
+            <p>Class number, cyclic structure, generating forms, the Hurwitz class number for D &lt; 0, and the regulator for D &gt; 0. Two independent class-number routines are compared.</p>
+            <div class="controls-grid">
+              <label>Discriminant D<input id="quadratic-form-class-group-disc" value="-23" required /></label>
+              <label>Generators listed<input id="quadratic-form-class-group-generators" type="number" min="1" max="64" value="16" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compute the class group</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-form-enumerate-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">REDUCED FORMS</p>
+            <h2>Enumerate the reduced forms of a discriminant</h2>
+            <p>One reduced form per class when D &lt; 0, and the full cycle of each class when D &gt; 0. Ambiguous forms are flagged: for D = 4kN these are exactly what SQUFOF hunts for in the principal cycle.</p>
+            <div class="triple-controls">
+              <label>Discriminant D<input id="quadratic-form-enumerate-disc" value="-47" required /></label>
+              <label>Forms listed<input id="quadratic-form-enumerate-limit" type="number" min="1" max="100000" value="200" required /></label>
+              <label>Cycle limit<input id="quadratic-form-enumerate-cycle" type="number" min="1" max="1000000" value="10000" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Enumerate reduced forms</span><span>→</span></button>
+          </form>
+
+          <form id="quadratic-form-represent-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">REPRESENTATION</p>
+            <h2>Represent an integer by a form</h2>
+            <p>Solve ax² + bxy + cy² = n in integers. Solutions are listed up to the automorphism group of the form, which is infinite when D &gt; 0.</p>
+            <div class="triple-controls">
+              <label>Form a, b, c<input id="quadratic-form-represent-form-coefficients" value="1, 0, 3" required /></label>
+              <label>Integer n<input id="quadratic-form-represent-number" value="1729" required /></label>
+              <label>Solutions listed<input id="quadratic-form-represent-limit" type="number" min="1" max="100000" value="50" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Represent the integer</span><span>→</span></button>
+          </form>
+
+          <form id="continued-fraction-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">CONTINUED FRACTIONS</p>
+            <h2>Expand a rational or a quadratic irrational</h2>
+            <p>Partial quotients, convergents, the preperiod and period of (p&#8202;+&#8202;√d)/q, the palindromic structure of the period of √d, and the best rational approximation below a denominator bound.</p>
+            <div class="triple-controls">
+              <label>Kind<select id="continued-fraction-mode"><option value="quadratic">Quadratic irrational (p + √d)/q</option><option value="rational">Rational p/q</option></select></label>
+              <label>Numerator p<input id="continued-fraction-numerator" value="0" required /></label>
+              <label>Denominator q<input id="continued-fraction-denominator" value="1" required /></label>
+            </div>
+            <details>
+              <summary>Radicand and limits</summary>
+              <div class="controls-grid">
+                <label>Radicand d<input id="continued-fraction-radicand" value="13" required /></label>
+                <label>Partial quotients<input id="continued-fraction-quotients" type="number" min="1" max="100000" value="40" required /></label>
+                <label>Convergents<input id="continued-fraction-convergents" type="number" min="1" max="100000" value="40" required /></label>
+                <label>bestappr denominator bound<input id="continued-fraction-bound" value="1000" required /></label>
+                <label>Time limit (seconds)<input id="continued-fraction-timeout" type="number" min="1" max="3600" value="60" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Expand the continued fraction</span><span>→</span></button>
+          </form>
+
+          <form id="pell-equation-form" class="panel utility-card utility-wide">
+            <p class="eyebrow">PELL EQUATION</p>
+            <h2>Solve x² − dy² = 1</h2>
+            <p>The fundamental solution from the fundamental unit of ℤ[√d], whether the negative Pell equation is solvable, the regulator, and further solutions as powers of the fundamental one.</p>
+            <div class="triple-controls">
+              <label>Radicand d<input id="pell-d" value="13" required /></label>
+              <label>Solutions listed<input id="pell-count" type="number" min="1" max="100" value="3" required /></label>
+              <label>Digit limit per solution<input id="pell-digits" type="number" min="1" max="100000" value="2000" required /></label>
+            </div>
+            <details>
+              <summary>Engine budgets</summary>
+              <div class="controls-grid">
+                <label>quadunit budget (seconds)<input id="pell-unit-seconds" type="number" min="1" max="3600" value="30" required /></label>
+                <label>Time limit (seconds)<input id="pell-timeout" type="number" min="1" max="3600" value="120" required /></label>
+              </div>
+            </details>
+            <button class="primary" type="submit"><span>Solve Pell’s equation</span><span>→</span></button>
+          </form>
             </section>
 
             <section id="prime-result-panel" class="panel prime-result-panel hidden" aria-live="polite">
@@ -2195,6 +2437,8 @@
           <h2>System and engine diagnostics</h2>
           <p>Inspect native-engine availability, immutable source revisions, build prerequisites, CPU capacity, memory, and CADO parameter coverage. The bundle is sanitized and never uploaded.</p>
           <button id="run-diagnostics" class="primary" type="button"><span>Run local diagnostics</span><span>→</span></button>
+          <button id="run-self-test" class="primary" type="button"><span>Run engine self-test</span><span>&rarr;</span></button>
+          <p class="hint">Asks each installed engine questions with published answers, so a miscompiled or mismatched build shows up here rather than in a result you trust.</p>
           <section id="diagnostic-result" class="prime-results hidden" aria-live="polite"></section>
         </section>
       </div>

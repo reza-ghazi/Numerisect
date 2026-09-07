@@ -208,6 +208,12 @@ from .security import (
     request_has_valid_token,
     request_origin_is_safe,
 )
+from .verification import (
+    cross_check_primality,
+    cross_check_prime_count,
+    self_test,
+    sieve_interval,
+)
 from .visual_lab import (
     complexity_dashboard,
     eisenstein_lattice,
@@ -2301,6 +2307,15 @@ def create_integer_profile(request: IntegerProfileRequest) -> dict[str, object]:
         f"{item['prime']}^{item['exponent']}" if item["exponent"] != "1" else item["prime"]
         for item in factors
     ) or "1"
+    # PARI structure predicates, rendered before the report is assembled so the
+    # f-strings below stay valid on Python 3.11 (no nested same-quote f-strings).
+    prime_power_summary = (
+        f"{result['prime_power_base']}^{result['prime_power_exponent']}"
+        if result["is_prime_power"] else "no"
+    )
+    totient_summary = (
+        f"yes, phi({result['totient_witness']}) = n" if result["is_totient"] else "no"
+    )
     lines = [
         f"Integer: {result['number']}",
         f"Factorization of |n|: {factorization}",
@@ -2315,6 +2330,10 @@ def create_integer_profile(request: IntegerProfileRequest) -> dict[str, object]:
         f"λ(n): {result['carmichael']}",
         f"μ(n): {result['mobius']}",
         f"rad(n): {result['radical']}",
+        f"Prime power (PARI isprimepower): {prime_power_summary}",
+        f"Powerful (PARI ispowerful): {'yes' if result['is_powerful'] else 'no'}",
+        f"Totient value (PARI istotient): {totient_summary}",
+        f"Fundamental discriminant (PARI isfundamental): {'yes' if result['is_fundamental_discriminant'] else 'no'}",
         f"Divisor class: {result['divisor_class']}",
         "",
         "Divisor preview",
@@ -3511,6 +3530,154 @@ def calculate_density_surface(request: DensitySurfaceRequest) -> dict:
     return _save_distribution_report("density-surface", "Prime-density surface", result)
 
 
+# ---------------------------------------------------------------------------
+# Prime-counting algorithm comparison and integer-structure predicates.
+# Kept as one contiguous block -- import, request models, report writer and
+# routes together -- so the feature can be reviewed and moved as a unit.
+# Computation attribution: numerisect/counting_lab.py and counting_lab.gp,
+# documented in docs/COUNTING_LAB.md. Nothing below computes mathematics.
+# ---------------------------------------------------------------------------
+from .counting_lab import (  # noqa: E402
+    counting_algorithm_comparison,
+    factorint_strategies,
+    integer_structure,
+    legendre_phi,
+    lenstra_divisors,
+    nth_prime_inverses,
+)
+
+CountingAlgorithm = Literal[
+    "legendre", "meissel", "lehmer", "lmo", "deleglise-rivat", "gourdon"
+]
+
+
+class CountingComparisonRequest(BaseModel):
+    x: str = Field(default="10000000000", min_length=1, max_length=200)
+    algorithms: list[CountingAlgorithm] = Field(
+        default=["legendre", "meissel", "lehmer", "lmo", "deleglise-rivat", "gourdon"],
+        min_length=1, max_length=6,
+    )
+    double_check: bool = True
+    include_pari: bool = True
+    threads: int = Field(default=1, ge=1, le=256)
+    timeout_seconds: int = Field(default=900, ge=1, le=3600)
+
+
+class LegendrePhiRequest(BaseModel):
+    x: str = Field(default="1000000", min_length=1, max_length=19)
+    a: int = Field(default=10, ge=0, le=100_000)
+    threads: int = Field(default=1, ge=1, le=256)
+    timeout_seconds: int = Field(default=900, ge=1, le=3600)
+
+
+class NthPrimeInverseRequest(BaseModel):
+    n: str = Field(default="1000000", min_length=1, max_length=17)
+    threads: int = Field(default=1, ge=1, le=256)
+    timeout_seconds: int = Field(default=900, ge=1, le=3600)
+
+
+class IntegerStructureRequest(BaseModel):
+    expression: str = Field(default="1024", min_length=1, max_length=2000)
+    sides: int = Field(default=3, ge=3, le=1_000_000)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+class LenstraDivisorRequest(BaseModel):
+    expression: str = Field(default="1000", min_length=1, max_length=2000)
+    residue: str = Field(default="3", min_length=1, max_length=120)
+    modulus: str = Field(default="11", min_length=1, max_length=120)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+class FactorintStrategyRequest(BaseModel):
+    expression: str = Field(default="1000036000099", min_length=1, max_length=200)
+    flags: list[int] = Field(default=[0, 1, 2, 4, 8], min_length=1, max_length=16)
+    timeout_seconds: int = Field(default=900, ge=1, le=3600)
+
+
+def _save_counting_report(kind: str, heading: str, result: dict) -> dict:
+    """Persist a counting-laboratory report, including its extra sections."""
+    lines = [result["note"], ""]
+    lines.extend(f"{key}: {value}" for key, value in result.get("metrics", {}).items())
+    lines.extend(["", " | ".join(result["columns"])])
+    lines.extend(" | ".join(row) for row in result["rows"])
+    for section in result.get("sections", []):
+        lines.extend(["", section["title"], " | ".join(section["columns"])])
+        lines.extend(" | ".join(row) for row in section["rows"])
+    path = save_prime_output(kind, heading, lines)
+    return {**result, "output_file": path.name, "engine": "primecount + PARI/GP"}
+
+
+@app.post("/api/counting/algorithm-comparison")
+def compare_counting_algorithms(request: CountingComparisonRequest) -> dict:
+    try:
+        result = counting_algorithm_comparison(
+            request.x, request.algorithms, request.double_check,
+            request.include_pari, request.threads, request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report(
+        "counting-comparison", "Prime-counting algorithm comparison", result
+    )
+
+
+@app.post("/api/counting/phi")
+def calculate_legendre_phi(request: LegendrePhiRequest) -> dict:
+    try:
+        result = legendre_phi(request.x, request.a, request.threads, request.timeout_seconds)
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report("legendre-phi", "Legendre partial sieve phi(x, a)", result)
+
+
+@app.post("/api/counting/nth-prime-inverses")
+def calculate_nth_prime_inverses(request: NthPrimeInverseRequest) -> dict:
+    try:
+        result = nth_prime_inverses(request.n, request.threads, request.timeout_seconds)
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report(
+        "nth-prime-inverses", "Inverse approximations to the n-th prime", result
+    )
+
+
+@app.post("/api/structure/predicates")
+def calculate_integer_structure(request: IntegerStructureRequest) -> dict:
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+        result = integer_structure(number, request.sides, request.timeout_seconds)
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report("integer-structure", "Integer-structure predicates", result)
+
+
+@app.post("/api/structure/lenstra-divisors")
+def calculate_lenstra_divisors(request: LenstraDivisorRequest) -> dict:
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+        residue = evaluate_arbitrary_integer(request.residue)
+        modulus = evaluate_arbitrary_integer(request.modulus)
+        result = lenstra_divisors(number, residue, modulus, request.timeout_seconds)
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report(
+        "lenstra-divisors", "Divisors in a residue class (Lenstra)", result
+    )
+
+
+@app.post("/api/structure/factorint-strategies")
+def calculate_factorint_strategies(request: FactorintStrategyRequest) -> dict:
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+        result = factorint_strategies(number, request.flags, request.timeout_seconds)
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_counting_report(
+        "factorint-strategies", "PARI factorint strategy comparison", result
+    )
+
+
 @app.post("/api/number-theory/eisenstein")
 def calculate_eisenstein_prime(request: EisensteinPrimeRequest) -> dict:
     try:
@@ -4682,6 +4849,144 @@ class DistributedFactorRequest(BaseModel):
     confirm_network: bool = False
 
 
+# --- Independent cross-engine verification, self-tests, and large-interval sieving ----
+# These do what no single engine can do for itself: compare independent
+# implementations, check engines against published constants, and enumerate primes
+# above primesieve's 2^64 ceiling.
+
+
+class CrossCheckCountRequest(BaseModel):
+    expression: str = Field(..., min_length=1, max_length=200)
+    threads: int = Field(1, ge=1, le=256)
+    timeout_seconds: int = Field(600, ge=1, le=3600)
+
+
+class CrossCheckPrimalityRequest(BaseModel):
+    expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
+    timeout_seconds: int = Field(300, ge=1, le=3600)
+
+
+class SelfTestRequest(BaseModel):
+    engines: list[str] | None = Field(None, max_length=16)
+    timeout_seconds: int = Field(300, ge=1, le=3600)
+
+
+class SieveIntervalRequest(BaseModel):
+    start: str = Field(..., min_length=1, max_length=400)
+    length: int = Field(..., ge=1, le=100_000_000)
+    small_prime_bound: int = Field(1_000_000, ge=100, le=100_000_000)
+    threads: int = Field(1, ge=1, le=1024)
+    extra_rounds: int = Field(0, ge=0, le=64)
+    preview: int = Field(1000, ge=1, le=100_000)
+    timeout_seconds: int = Field(900, ge=1, le=3600)
+
+
+@app.post("/api/verify/prime-count")
+def verify_prime_count(request: CrossCheckCountRequest) -> dict:
+    """Compute pi(x) with every independent method available and compare them."""
+
+    try:
+        bound = evaluate_arbitrary_integer(request.expression)
+    except ExpressionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        result = cross_check_prime_count(bound, request.threads, request.timeout_seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [result["note"], "", "Engine | Value | Seconds"]
+    lines.extend(
+        f"{row['engine']} | {row['value'] or row.get('error', '')} | {row['seconds']}"
+        for row in result["sources"]
+    )
+    path = save_prime_output("verify-count", "Independent pi(x) cross-check", lines)
+    return {**result, "output_file": path.name}
+
+
+@app.post("/api/verify/primality")
+def verify_primality(request: CrossCheckPrimalityRequest) -> dict:
+    """Decide primality with independent implementations and compare them."""
+
+    try:
+        number = evaluate_arbitrary_integer(request.expression)
+    except ExpressionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        result = cross_check_primality(number, request.timeout_seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [result["note"], "", "Engine | Prime | Proof"]
+    lines.extend(
+        f"{row['engine']} | {row['prime']} | {'proof' if row['proof'] else 'probable'}"
+        for row in result["sources"]
+    )
+    path = save_prime_output("verify-primality", "Independent primality cross-check", lines)
+    return {**result, "output_file": path.name}
+
+
+@app.post("/api/verify/self-test")
+def verify_engines(request: SelfTestRequest) -> dict:
+    """Ask each installed engine questions with published answers."""
+
+    try:
+        result = self_test(request.engines, request.timeout_seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    lines = [result["note"], "", "Engine | Question | Status | Expected | Actual | Source"]
+    lines.extend(
+        f"{row['engine']} | {row['question']} | {row['status']} | {row['expected']} | "
+        f"{row['actual']} | {row['cites']}"
+        for row in result["results"]
+    )
+    path = save_prime_output("engine-self-test", "Engine self-test", lines)
+    return {**result, "output_file": path.name}
+
+
+@app.post("/api/primes/sieve-interval")
+def sieve_large_interval(request: SieveIntervalRequest) -> dict:
+    """Enumerate primes in an interval of any magnitude.
+
+    Uses the project's own GMP and OpenMP sieve, because primesieve refuses inputs
+    at or above 2**64 and PARI's forprime is single-threaded and much slower there.
+    """
+
+    try:
+        start = evaluate_arbitrary_integer(request.start)
+    except ExpressionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        result = sieve_interval(
+            start, request.length, request.small_prime_bound, request.threads,
+            request.extra_rounds, request.timeout_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [
+        result["note"], "",
+        f"Interval: [{result['start']}, {result['start']} + {result['length']})",
+        f"Presieve bound: {result['small_prime_bound']}",
+        f"Candidates after presieve: {result['candidates']}",
+        f"Primes found: {result['count']} ({result['status']})",
+        "",
+    ]
+    lines.extend(result["primes"])
+    path = save_prime_output("sieve-interval", "Large-interval prime enumeration", lines)
+    # The report holds every prime; the response is capped so a huge run does not
+    # travel through JSON and the browser.
+    shown = result["primes"][: request.preview]
+    return {
+        **result,
+        "primes": shown,
+        "preview_truncated": len(shown) < result["count"],
+        "output_file": path.name,
+    }
+
+
 @app.get("/api/distributed/trust-model")
 def distributed_trust_model() -> dict:
     """Describe how distributed CADO authenticates clients, and what it does not."""
@@ -5162,6 +5467,233 @@ def calculate_chebotarev_density(request: ChebotarevRequest) -> dict:
     return _save_manipulation_report(
         "chebotarev-density", "Chebotarev density experiment", result
     )
+
+
+# ---------------------------------------------------------------------------
+# Binary quadratic forms, class groups, continued fractions and Pell equations.
+# Kept as one contiguous block -- import, request models and routes together --
+# so the feature can be reviewed and moved as a unit.
+# Computation attribution: numerisect/forms_lab.py and forms_lab.gp, documented
+# in docs/FORMS_LAB.md. Nothing below computes mathematics.
+# ---------------------------------------------------------------------------
+from .forms_lab import (  # noqa: E402
+    class_group,
+    compose_forms,
+    continued_fraction,
+    pell_solutions,
+    prime_forms,
+    reduce_form,
+    reduced_forms,
+    represent_integer,
+)
+
+ContinuedFractionMode = Literal["rational", "quadratic"]
+
+
+class FormReductionRequest(BaseModel):
+    a: str = Field(default="10", min_length=1, max_length=1_000)
+    b: str = Field(default="7", min_length=1, max_length=1_000)
+    c: str = Field(default="3", min_length=1, max_length=1_000)
+    step_limit: int = Field(default=40, ge=0, le=100_000)
+    cycle_limit: int = Field(default=10_000, ge=1, le=1_000_000)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
+class FormCompositionRequest(BaseModel):
+    a1: str = Field(default="2", min_length=1, max_length=1_000)
+    b1: str = Field(default="1", min_length=1, max_length=1_000)
+    c1: str = Field(default="3", min_length=1, max_length=1_000)
+    a2: str = Field(default="2", min_length=1, max_length=1_000)
+    b2: str = Field(default="1", min_length=1, max_length=1_000)
+    c2: str = Field(default="3", min_length=1, max_length=1_000)
+    exponent: int = Field(default=3, ge=-1_000_000, le=1_000_000)
+    order_limit: int = Field(default=1_000, ge=1, le=100_000)
+    cycle_limit: int = Field(default=10_000, ge=1, le=1_000_000)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
+class PrimeFormRequest(BaseModel):
+    discriminant: str = Field(default="-23", min_length=1, max_length=64)
+    primes: list[str] = Field(default=["2", "3", "5", "7"], min_length=1, max_length=64)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
+class ClassGroupRequest(BaseModel):
+    discriminant: str = Field(default="-23", min_length=1, max_length=64)
+    generator_limit: int = Field(default=16, ge=1, le=64)
+    timeout_seconds: int = Field(default=120, ge=1, le=3600)
+
+
+class ReducedFormsRequest(BaseModel):
+    discriminant: str = Field(default="-23", min_length=1, max_length=64)
+    form_limit: int = Field(default=200, ge=1, le=100_000)
+    cycle_limit: int = Field(default=10_000, ge=1, le=1_000_000)
+    timeout_seconds: int = Field(default=120, ge=1, le=3600)
+
+
+class FormRepresentationRequest(BaseModel):
+    a: str = Field(default="1", min_length=1, max_length=1_000)
+    b: str = Field(default="0", min_length=1, max_length=1_000)
+    c: str = Field(default="3", min_length=1, max_length=1_000)
+    number: str = Field(default="1729", min_length=1, max_length=1_000)
+    solution_limit: int = Field(default=50, ge=1, le=100_000)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
+class ContinuedFractionRequest(BaseModel):
+    mode: ContinuedFractionMode = "quadratic"
+    numerator: str = Field(default="0", min_length=1, max_length=1_000)
+    denominator: str = Field(default="1", min_length=1, max_length=1_000)
+    radicand: str = Field(default="13", min_length=1, max_length=1_000)
+    quotient_limit: int = Field(default=40, ge=1, le=100_000)
+    convergent_limit: int = Field(default=40, ge=1, le=100_000)
+    approximation_bound: str = Field(default="1000", min_length=1, max_length=1_000)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
+class PellRequest(BaseModel):
+    d: str = Field(default="13", min_length=1, max_length=200)
+    solution_count: int = Field(default=3, ge=1, le=100)
+    digit_limit: int = Field(default=2_000, ge=1, le=100_000)
+    period_limit: int = Field(default=100_000, ge=1, le=100_000)
+    unit_seconds: int = Field(default=30, ge=1, le=3600)
+    timeout_seconds: int = Field(default=120, ge=1, le=3600)
+
+
+@app.post("/api/forms/reduce")
+def calculate_form_reduction(request: FormReductionRequest) -> dict:
+    try:
+        result = reduce_form(
+            request.a,
+            request.b,
+            request.c,
+            request.step_limit,
+            request.cycle_limit,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "form-reduction", "Binary quadratic form reduction", result
+    )
+
+
+@app.post("/api/forms/compose")
+def calculate_form_composition(request: FormCompositionRequest) -> dict:
+    try:
+        result = compose_forms(
+            request.a1,
+            request.b1,
+            request.c1,
+            request.a2,
+            request.b2,
+            request.c2,
+            request.exponent,
+            request.order_limit,
+            request.cycle_limit,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "form-composition", "Binary quadratic form composition", result
+    )
+
+
+@app.post("/api/forms/prime-form")
+def calculate_prime_forms(request: PrimeFormRequest) -> dict:
+    try:
+        result = prime_forms(
+            request.discriminant, request.primes, request.timeout_seconds
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "prime-forms", "Prime forms of a discriminant", result
+    )
+
+
+@app.post("/api/forms/class-group")
+def calculate_form_class_group(request: ClassGroupRequest) -> dict:
+    try:
+        result = class_group(
+            request.discriminant, request.generator_limit, request.timeout_seconds
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "form-class-group", "Form class number and class group", result
+    )
+
+
+@app.post("/api/forms/reduced-forms")
+def calculate_reduced_forms(request: ReducedFormsRequest) -> dict:
+    try:
+        result = reduced_forms(
+            request.discriminant,
+            request.form_limit,
+            request.cycle_limit,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "reduced-forms", "Reduced forms of a discriminant", result
+    )
+
+
+@app.post("/api/forms/represent")
+def calculate_form_representation(request: FormRepresentationRequest) -> dict:
+    try:
+        result = represent_integer(
+            request.a,
+            request.b,
+            request.c,
+            request.number,
+            request.solution_limit,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "form-representation", "Representation by a binary quadratic form", result
+    )
+
+
+@app.post("/api/forms/continued-fraction")
+def calculate_continued_fraction(request: ContinuedFractionRequest) -> dict:
+    try:
+        result = continued_fraction(
+            request.mode,
+            request.numerator,
+            request.denominator,
+            request.radicand,
+            request.quotient_limit,
+            request.convergent_limit,
+            request.approximation_bound,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "continued-fraction", "Continued-fraction expansion", result
+    )
+
+
+@app.post("/api/forms/pell")
+def calculate_pell_solutions(request: PellRequest) -> dict:
+    try:
+        result = pell_solutions(
+            request.d,
+            request.solution_count,
+            request.digit_limit,
+            request.period_limit,
+            request.unit_seconds,
+            request.timeout_seconds,
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report("pell-equation", "Pell equation solutions", result)
 
 
 

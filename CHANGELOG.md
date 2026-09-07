@@ -5,6 +5,35 @@ binary packages are published.
 
 ## Unreleased
 
+- Added a prime-counting algorithm comparison. `POST /api/counting/algorithm-comparison`
+  runs primecount's six algorithms, its alternative-tuning double-check, and PARI's
+  `primepi` as independent sources and reports whether they agree. Added Legendre's
+  phi(x,a) with the identity check, the two nth-prime inverse approximations, the integer
+  predicates `isprimepower`, `ispowerful`, `istotient`, `isfundamental` and `ispolygonal`,
+  Lenstra's divisors-in-a-residue-class with its hypotheses enforced, and PARI's
+  `factorint` strategy flags as a factoring-method comparison.
+- Added a binary quadratic forms and continued fractions workbench: reduction,
+  composition and exponentiation of forms, prime forms, class groups and reduced-form
+  enumeration, representation of integers, the exact continued-fraction expansion of
+  quadratic irrationals with period detection, and Pell equations. Documents the concrete
+  link to SQUFOF: discriminant 7268 gives a 28-form principal cycle containing the
+  ambiguous form Qfb(23, 46, -56), and 23 divides 1817.
+- Added independent cross-engine verification. `POST /api/verify/prime-count` computes
+  pi(x) with primecount's six algorithms (Legendre, Meissel, Lehmer, Lagarias-Miller-
+  Odlyzko, Deleglise-Rivat, Gourdon), primesieve's sieve and PARI's `primepi`, then
+  reports whether they agree. `POST /api/verify/primality` does the same with PARI's
+  proof, PARI's Baillie-PSW test and GMP's independent implementation. On disagreement
+  Numerisect reports every value and refuses to choose, because a majority of
+  implementations sharing a bug is exactly what a vote would hide.
+- Added an engine self-test. `POST /api/verify/self-test` asks each installed engine
+  questions whose answers are published constants, so a miscompiled or mismatched build
+  shows up before its output is trusted. Every expected value carries a citation.
+- Added `numerisect-bigsieve`, a GMP and OpenMP segmented sieve for intervals of any
+  magnitude. primesieve refuses inputs at or above 2^64 and PARI's `forprime` is
+  single-threaded there; over a 10^6-wide window near 10^30 this helper takes 40 ms on
+  24 threads against PARI's 916 ms on one, and both find 14496 primes. Results at or
+  above 2^64 are labelled probable primes from Baillie-PSW, never proofs.
+
 - Added distributed CADO-NFS sieving (roadmap item 18). Numerisect validates CADO's own
   server and client parameters and adds no networking of its own. Configurations CADO
   would accept but that are unsafe are refused: an absent whitelist, `0.0.0.0/0`, broad
