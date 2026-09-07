@@ -175,5 +175,6 @@ nav:
       - about/faq.md
       - about/roadmap.md
       - about/contributing.md
+      - about/how-this-was-built.md
       - about/changelog.md
       - about/publishing.md
