@@ -4,6 +4,8 @@ import pathlib
 import subprocess
 
 import pytest
+
+from conftest import requires
 from fastapi.testclient import TestClient
 
 from numerisect import jobs as jobs_module
@@ -416,6 +418,7 @@ def test_reconciliation_rejects_empty_candidates():
         reconcile_factors(100, [])
 
 
+@requires("ecm")
 def test_ecm_campaign_runs_and_produces_a_consistent_decomposition(tmp_path, monkeypatch):
     job_root = tmp_path / "jobs"
     output_root = tmp_path / "output"
@@ -446,6 +449,7 @@ def test_ecm_campaign_runs_and_produces_a_consistent_decomposition(tmp_path, mon
         manager.shutdown()
 
 
+@requires("ecm")
 def test_ecm_campaign_parameters_are_persisted(tmp_path, monkeypatch):
     monkeypatch.setattr(jobs_module, "JOBS_DIR", tmp_path)
     database = Database(tmp_path / "jobs.sqlite3")

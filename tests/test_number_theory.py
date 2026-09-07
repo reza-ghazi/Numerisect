@@ -1,3 +1,4 @@
+from conftest import requires
 import pytest
 
 from numerisect.number_theory import (
@@ -106,6 +107,7 @@ def test_invalid_native_workbench_inputs_are_rejected():
         factor_polynomial(["1", "0"], "5")
 
 
+@requires("primecount")
 def test_prime_approximations_and_summatory_functions():
     comparison = prime_approximation_comparison("1000000", 2)
     assert comparison["metrics"]["Exact π(x)"] == "78498"

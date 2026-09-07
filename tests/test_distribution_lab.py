@@ -1,3 +1,4 @@
+from conftest import requires
 import pytest
 from fastapi.testclient import TestClient
 
@@ -34,6 +35,7 @@ def test_module_names_the_engine_behind_every_feature():
 
 # ---------------------------------------------------------------- item 76 ---
 
+@requires("primecount")
 def test_approximation_error_reproduces_known_prime_counts():
     result = approximation_error(3, 6, 4, 1)
     # pi(10^3) = 168, pi(10^6) = 78498; li(10^6) = 78627.5491594621819...
@@ -333,6 +335,7 @@ def test_density_surface_rejects_invalid_input(arguments):
 
 # --------------------------------------------------------------------- API ---
 
+@requires("primecount")
 def test_distribution_routes_save_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(outputs, "OUTPUT_DIR", tmp_path)
     client = local_client()
