@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Pointed the declared homepage at the documentation site. `pyproject.toml` and
+  `CITATION.cff` both advertised `https://numerisect.com`, which serves a 404 from an
+  unrelated document root, so the package metadata and the citation record sent readers
+  to a dead page. The apex is not part of the project's hosting.
+
 - Fixed every Material icon on the documentation site, which rendered as literal text
   such as `:octicons-arrow-right-24: Installation` on all 35 occurrences across 15 pages.
   Material's icon shortcodes are emoji shortcodes underneath, and `pymdownx.emoji` was
