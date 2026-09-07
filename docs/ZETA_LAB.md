@@ -21,7 +21,7 @@ JavaScript formats text and maps numbers to canvas coordinates.
 
 | Operation | Route | Engine routine that computes the result |
 |---|---|---|
-| Reconstruct π(x) from zeros | `POST /api/zeta/explicit-prime-count` | `acb_dirichlet_hardy_z_zeros` (zeros), `acb_hypgeom_ei` (`li(x^ρ)`), `arb_hypgeom_li` (principal term), `n_moebius_mu` (Möbius weights), `primecount` (exact π(x)) |
+| Riemann's explicit formula: π(x) from the zeros | `POST /api/zeta/explicit-prime-count` | `acb_dirichlet_hardy_z_zeros` (zeros), `acb_hypgeom_ei` (`li(x^ρ)`), `arb_hypgeom_li` (principal term), `n_moebius_mu` (Möbius weights), `primecount` (exact π(x)) |
 | Rebuild Chebyshev ψ(x) | `POST /api/zeta/chebyshev-psi` | `acb_dirichlet_hardy_z_zeros`, `acb_exp`/`acb_div` for `x^ρ/ρ`, FLINT `n_primes_t` sieve plus `arb_log_ui` for the exact ψ(x) |
 | Riemann–Siegel remainder | `POST /api/zeta/riemann-siegel` | `acb_dirichlet_zeta_rs`, `acb_dirichlet_zeta_rs_bound`, `acb_dirichlet_zeta` |
 | Euler-product comparison | `POST /api/zeta/euler-product` | `acb_pow` over FLINT's `n_primes_t` sieve, `acb_dirichlet_zeta`, `_acb_dirichlet_euler_product_real_ui` |
@@ -30,7 +30,7 @@ JavaScript formats text and maps numbers to canvas coordinates.
 | Gram blocks and exceptions | `POST /api/zeta/gram-blocks` | `acb_dirichlet_gram_point`, `acb_dirichlet_hardy_z` |
 | Zero-counting remainder S(T) | `POST /api/zeta/backlund-s` | `acb_dirichlet_backlund_s`, `acb_dirichlet_backlund_s_bound`, `acb_dirichlet_zeta_nzeros`, `acb_dirichlet_hardy_theta` |
 | Dirichlet character table | `POST /api/zeta/characters` | `dirichlet_group_init`, `dirichlet_char_next`, `dirichlet_conductor_char`, `dirichlet_parity_char`, `dirichlet_order_char` |
-| Evaluate L(s, χ) | `POST /api/zeta/l-function` | `acb_dirichlet_l`, `acb_dirichlet_l_hurwitz`, `acb_dirichlet_root_number`, `acb_dirichlet_gauss_sum` |
+| Dirichlet L-functions L(s, χ) | `POST /api/zeta/l-function` | `acb_dirichlet_l`, `acb_dirichlet_l_hurwitz`, `acb_dirichlet_root_number`, `acb_dirichlet_gauss_sum` |
 | Critical-line zeros of L(s, χ) | `POST /api/zeta/l-zeros` | `acb_dirichlet_hardy_z`, `acb_dirichlet_hardy_theta`, `acb_dirichlet_l` |
 | Dedekind zeta of a number field | `POST /api/zeta/dedekind` | PARI/GP `nfinit`, `polcyclo`, `lfuncreate`, `lfuncheckfeq`, `lfun`, `lfunrootres`, `lfunzeros`, `bnfinit` |
 

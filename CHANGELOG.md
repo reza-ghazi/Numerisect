@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+- Corrected the three places in the documentation that still named a renamed tool page:
+  the reciprocals guide called the full-reptend page by its old heading, and two rows of
+  the zeta routine table used operation names the interface no longer shows.
+
 - Renamed 33 tool headings so the navigation shows what each tool is called, not only
   what it does. The sidebar button and the tool picker both display a tool's heading, and
   headings such as "Solve x² − dy² = 1", "Analyze witness bases" and "Apply Korselt's

@@ -37,7 +37,7 @@ as `output/<generated-filename>.txt` as well as the download button.
 
 Composite inputs are rejected after a rigorous PARI/GP `isprime` test.
 
-The **Find maximal decimal periods** page (`/#primes/reptend-prime`), in the
+The **Full-reptend primes and maximal decimal periods** page (`/#primes/reptend-prime`), in the
 same **Prime structures** navigation group, searches an interval for
 full-reptend primes. It rigorously proves each candidate prime and requires the
 exact order `ord_p(10)=p-1`; this replaces the prototype's repeated modular
