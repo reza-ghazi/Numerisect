@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Added GitHub Actions compatibility coverage for Linux ARM64, Ubuntu 24.04 under
+  Windows WSL, and macOS on ARM64 and Intel. Each platform checks installer detection,
+  runs the native-backed test suite, performs a versioned user-local installation, and
+  smoke-tests the installed CLI.
+
 - Audited the public documentation against the 0.6.0 application after making
   `numerisect.com` the entry point. Added a capability index and a mathematical
   prime-structures chapter covering tuples versus Ω-based k-primes, base-dependent

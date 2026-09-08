@@ -100,9 +100,9 @@ versioned user-local copy outside the checkout:
 ./install.sh
 ```
 
-The application installer has been exercised on Fedora Linux x86-64. Windows
-WSL and macOS paths are implemented and expected to work, but have not yet been
-verified by the Numerisect project. Before any system-package command, the
+The application installer has been exercised on Fedora Linux x86-64. GitHub Actions also
+checks Ubuntu on x86-64 and ARM64, Ubuntu 24.04 under Windows WSL, and macOS on ARM64 and
+Intel. Native Windows outside WSL remains unsupported. Before any system-package command, the
 helper displays the package manager, exact packages, and administrative-access
 requirement, then asks for confirmation. It creates a release-specific Python
 environment and a stable launcher under

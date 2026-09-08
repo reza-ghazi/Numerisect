@@ -7,16 +7,20 @@ for installing a checked-out source revision into a user-owned directory.
 
 ## Verified and expected hosts
 
-The current application, source installer, and complete native test suite have
-been exercised on Fedora Linux x86-64. The installer contains paths for
-Debian/Ubuntu (including WSL), Arch Linux, and macOS with Homebrew, but the
-Numerisect project has not yet completed clean-host verification on those
-systems. Treat them as expected compatibility, not a tested guarantee.
+The current application, source installer, and complete native test suite are exercised
+on Fedora Linux x86-64 and by GitHub Actions on Ubuntu Linux x86-64 and ARM64, Ubuntu
+24.04 x86-64 under Windows WSL, and macOS on ARM64 and Intel. The installer also contains
+a package-manager path for Arch Linux, but the project has not completed clean-host
+verification there.
 
 The application installer accepts Linux/WSL and macOS on x86-64 or ARM64.
 However, the automated YAFU and Msieve source recipes currently reject ARM64;
 those two recipes are verified only for x86-64 Linux/WSL. Native Windows
 outside WSL is unsupported.
+
+The cross-platform workflow checks prerequisite detection, runs the complete native test
+suite, installs a versioned user-local copy, and smoke-tests its installed CLI on every
+supported CI host.
 
 ## Dependency groups
 
