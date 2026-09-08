@@ -14,7 +14,7 @@ programs below, and each page of this documentation names the routine responsibl
 | **GMP-ECM** | The elliptic-curve method as a standalone campaign engine, with resumable stage-one residues. | GPL |
 | **CADO-NFS** | The number field sieve for large residual composites, including distributed sieving. | LGPL |
 | **primesieve** | Multithreaded, cache-aware prime enumeration and k-tuplet counting over 64-bit intervals. | BSD |
-| **primecount** | Exact \(\pi(x)\) to \(10^{31}\) and indexed primes to \(10^{29}\), via six independent algorithms. | BSD |
+| **primecount** | Exact \(\pi(x)\) to \(10^{31}\) and indexed primes to \(10^{29}\), with six mathematically distinct algorithm modes in one codebase. | BSD |
 
 Engine sources are pinned to immutable upstream commits recorded in
 `numerisect/engine_manifest.toml`. Nothing is downloaded or built until you confirm it.

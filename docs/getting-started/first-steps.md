@@ -40,9 +40,9 @@ than trusting.
 Independent agreement is stronger evidence than any single answer. Try **Cross-check
 π(x)** with `10^10`.
 
-Eight independent implementations run: primecount's six algorithms spanning Legendre in
-the 1830s to Gourdon in 2001, primesieve's direct sieve, and PARI's own counter. All
-should return 455052511.
+Eight method outputs run: six mathematically distinct algorithms in primecount, plus
+primesieve's direct sieve and PARI's own counter. These represent three independent
+engine implementations, and all should return 455052511.
 
 If they ever disagree, Numerisect reports every value and refuses to pick a winner. A
 majority of implementations sharing a bug is exactly what a vote would hide.

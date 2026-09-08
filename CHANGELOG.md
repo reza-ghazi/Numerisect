@@ -5,6 +5,19 @@ binary packages are published.
 
 ## Unreleased
 
+- Audited the public documentation against the 0.6.0 application after making
+  `numerisect.com` the entry point. Added a capability index and a mathematical
+  prime-structures chapter covering tuples versus Ω-based k-primes, base-dependent
+  digital classes, reciprocal periods, Gaussian and Eisenstein primes, perfect numbers,
+  and Mersenne divisor congruences. Corrected the API total from 208 to 212, removed stale
+  special-form and manual GGNFS instructions, and surfaced the RSA, Mersenne, siever,
+  workflow and distributed-network capabilities on the home page. Also corrected two
+  mathematical-strength claims: six primecount modes are distinct algorithms in one
+  codebase rather than six independent implementations, and the Mersenne mod-8 filter
+  removes one half—not three quarters—of the `q = 2kp + 1` progression. The specialized
+  Mersenne search now rejects the exceptional `p = 2` case explicitly instead of running
+  a progression theorem that only applies to odd prime exponents.
+
 - Updated the pinned GitHub Actions to `actions/checkout` 7.0.1 and
   `actions/setup-python` 7.0.0, and widened the tested compatibility ranges through
   FastAPI 0.141, Starlette 1.x and mypy 2.x. The test client now uses Starlette's

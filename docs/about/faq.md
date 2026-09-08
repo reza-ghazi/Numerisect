@@ -21,10 +21,12 @@ Because the search hit its bound before settling the question. For some classes,
 Mills, Wilson or Fortunate primes, "inconclusive" is the only honest answer any feasible
 computation can give. Treating it as "no" would be a false claim.
 
-### Eight algorithms agree on π(x). How confident should I be?
+### Eight methods agree on π(x). How confident should I be?
 
-Quite confident. They are independent implementations of genuinely different methods, so
-agreement is meaningful evidence rather than one program repeating itself.
+Quite confident, with one important qualification. Six outputs are distinct algorithms
+inside primecount; primesieve and PARI/GP supply two separate codebases. Agreement across
+all three implementations is meaningful evidence, while the six primecount modes are not
+six independent votes.
 
 If they ever disagree, Numerisect reports every value and refuses to pick a winner. A
 majority of implementations sharing a bug is exactly what a vote would hide.

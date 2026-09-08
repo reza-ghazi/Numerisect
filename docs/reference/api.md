@@ -30,7 +30,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (208)
+## Routes (212)
 
 ### Engine adapters
 
@@ -87,7 +87,7 @@ in-process. See the [command-line reference](cli.md).
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/counting/algorithm-comparison` | Count π(x) with independent algorithms. primecount ships six independent prime-counting algorithms, and PARI/GP primepi is a seventh implementation that shares no code with them. |
+| `POST` | `/api/counting/algorithm-comparison` | Count π(x) with distinct algorithms. primecount supplies six mathematically distinct algorithms in one codebase; PARI/GP primepi adds an independent engine implementation. |
 | `POST` | `/api/counting/nth-prime-inverses` | Compare Li⁻¹(n) and R⁻¹(n) with the n-th prime. Both inverse approximations estimate the n-th prime: Li⁻¹ inverts the Eulerian logarithmic integral and R⁻¹ inverts the Riemann R function. |
 | `POST` | `/api/counting/phi` | Evaluate Legendre's phi(x, a). φ(x, a) counts the integers in [1, x] divisible by none of the first a primes — the partial sieve inside Legendre's, Meissel's and Lehmer's formulas. |
 
@@ -141,7 +141,7 @@ in-process. See the [command-line reference](cli.md).
 |---|---|---|
 | `POST` | `/api/factor-lab/certificates` | Generate and independently verify a primality certificate per prime factor. |
 | `POST` | `/api/factor-lab/special-form` | Detect special algebraic forms, algebraic factors, and SNFS suitability. |
-| `POST` | `/api/factor-lab/mersenne-factors` | Trial-factor M_p = 2^p − 1 over the progression q = 2kp + 1 without ever constructing M_p, so exponents in the millions are workable. |
+| `POST` | `/api/factor-lab/mersenne-factors` | Trial-factor M_p = 2^p − 1 for odd prime p over q = 2kp + 1 without constructing M_p; M_2 = 3 is the documented trivial exception. |
 | `GET` | `/api/factor-lab/sievers` | Report the GGNFS lattice sievers found, whether each runs on this CPU, and which directory YAFU will be given for number field sieve work. |
 | `GET` | `/api/factor-lab/rsa-catalogue` | List the RSA Factoring Challenge numbers with their sizes and published status. |
 | `POST` | `/api/factor-lab/rsa-challenge` | Identify an RSA challenge number, re-verify its published factors in PARI/GP, and estimate the number field sieve effort on this machine. |
@@ -336,7 +336,7 @@ in-process. See the [command-line reference](cli.md).
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/verify/primality` | Decide primality with independent implementations and compare them. |
-| `POST` | `/api/verify/prime-count` | Compute pi(x) with every independent method available and compare them. |
+| `POST` | `/api/verify/prime-count` | Compare every available pi(x) method across as many as three engine implementations. |
 | `POST` | `/api/verify/self-test` | Ask each installed engine questions with published answers. |
 
 ### Visualization
@@ -388,4 +388,3 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/zeta/xi-eta` | Evaluate ξ(s) or η(s). Evaluate the completed xi function or Dirichlet eta continuation with rigorous complex balls. |
 | `POST` | `/api/zeta/zero-spacing` | Normalized nearest-neighbour spacing histogram of certified zeros. |
 | `POST` | `/api/zeta/zeros` | Isolate consecutive critical-line zeros. Return rigorous intervals for consecutive Hardy Z zeros, starting at any positive index. |
-

@@ -25,6 +25,24 @@ def test_every_documented_endpoint_states_its_purpose():
     assert not blank, f"endpoints documented with no purpose: {blank}"
 
 
+def test_api_reference_matches_the_running_application_exactly():
+    """The route total and table must not lag behind newly added operations."""
+
+    from numerisect.main import app
+
+    actual = {
+        (method, route.path)
+        for route in app.routes
+        for method in (getattr(route, "methods", None) or set())
+        if method in {"GET", "POST", "DELETE"} and route.path.startswith("/api/")
+    }
+    documented = set(re.findall(
+        r"^\| `(GET|POST|DELETE)` \| `([^`]+)` \|", API_REFERENCE, re.M
+    ))
+    assert documented == actual
+    assert f"## Routes ({len(actual)})" in API_REFERENCE
+
+
 def test_api_reference_table_rows_are_well_formed():
     """An unescaped pipe silently splits a row into extra columns.
 
@@ -44,6 +62,26 @@ def test_api_reference_uses_the_names_the_interface_shows():
 
     for name in ("Pell", "Carmichael", "Goldbach", "Chebotarev", "Pocklington"):
         assert name in API_REFERENCE, f"the API reference never mentions {name}"
+
+
+def test_prime_counting_content_distinguishes_methods_from_implementations():
+    """Six primecount modes are not six independent codebases or votes."""
+
+    verification = (ROOT / "docs" / "VERIFICATION.md").read_text(encoding="utf-8")
+    compact = re.sub(r"\s+", " ", verification)
+    assert "eight method outputs across three engine implementations" in compact
+    assert "six outputs from one codebase are not six independent votes" in verification
+    assert "Count π(x) with distinct algorithms" in INDEX
+
+
+def test_mersenne_documentation_counts_the_mod_8_filter_correctly():
+    mersenne = (ROOT / "docs" / "MERSENNE.md").read_text(encoding="utf-8")
+    structures = (ROOT / "docs" / "mathematics" / "prime-structures.md").read_text(
+        encoding="utf-8"
+    )
+    assert "one half of that progression" in mersenne
+    assert "one half of the" in structures
+    assert "three quarters" not in mersenne
 
 
 def _form_headings() -> dict[str, str]:

@@ -102,11 +102,11 @@ def _last_integer(text: str) -> str | None:
 def cross_check_prime_count(x: int, threads: int = 1, timeout: int = 600) -> dict[str, Any]:
     """Compute pi(x) with every available independent method and compare.
 
-    primecount's six algorithms are genuinely different: Legendre, Meissel, Lehmer,
-    Lagarias-Miller-Odlyzko, Deleglise-Rivat and Gourdon. primesieve counts by
-    sieving, and PARI's primepi is a further implementation. Agreement among them
-    is independent evidence; a disagreement is a fault in one of the engines and is
-    reported as such.
+    primecount's six algorithm modes are mathematically different: Legendre, Meissel,
+    Lehmer, Lagarias-Miller-Odlyzko, Deleglise-Rivat and Gourdon. They share one
+    codebase. primesieve counts by sieving, and PARI's primepi is a third engine
+    implementation. Agreement across the engines is independent evidence; a
+    disagreement is reported rather than resolved.
 
     Args:
         x: Upper bound.
@@ -187,18 +187,27 @@ def cross_check_prime_count(x: int, threads: int = 1, timeout: int = 600) -> dic
         raise PrimeEngineError("No engine was able to compute pi(x)")
     distinct = sorted({source["value"] for source in answered})
     agree = len(distinct) == 1
+    implementations = len({
+        "primecount" if str(source["engine"]).startswith("primecount ")
+        else "primesieve" if str(source["engine"]).startswith("primesieve ")
+        else "PARI/GP"
+        for source in answered
+    })
     return {
         "input": str(x),
         "value": distinct[0] if agree else None,
         "sources": sources,
         "engines_answering": len(answered),
+        "method_outputs_answering": len(answered),
+        "engine_implementations_answering": implementations,
         "agree": agree,
         "distinct_values": distinct,
         "disagreements": [] if agree else [
             {"engine": source["engine"], "value": source["value"]} for source in answered
         ],
         "note": (
-            f"{len(answered)} independent implementations agree on pi({x})."
+            f"{len(answered)} method outputs from {implementations} independent engine "
+            f"implementations agree on pi({x})."
             if agree else
             "THESE ENGINES DISAGREE. One of them is faulty. Numerisect does not choose "
             "between them; treat every value here as unreliable until the cause is found."

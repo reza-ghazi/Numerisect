@@ -4,7 +4,7 @@
 \\ routine.  Nothing here reimplements a routine that PARI or primecount already
 \\ exposes:
 \\
-\\   primepi              seventh independent pi(x) source in the algorithm
+\\   primepi              additional engine-independent pi(x) method in the
 \\                        comparison, and the Legendre-identity check on phi(x,a)
 \\   prime, forprime      the a-th prime and the Legendre product over the first
 \\                        a primes
@@ -21,7 +21,8 @@
 \\   Set, gcd, sqrt, log  agreement analysis and reporting arithmetic
 \\
 \\ The counts compared by cl_count_agreement are produced by the primecount
-\\ engine (six independent algorithms) and by primepi; Python launches those
+\\ engine (six mathematically distinct algorithm modes in one codebase) and by
+\\ primepi; Python launches those
 \\ subprocesses and passes the already-computed integers in.  Python and
 \\ JavaScript never evaluate any of these quantities themselves.
 \\
@@ -35,7 +36,7 @@ cl_number(value, digits) =
 
 \\ ---------------------------------------------------------------------------
 \\ PARI's own exact prime counter, timed by PARI's gettime.  This is the
-\\ seventh, engine-independent source in the algorithm comparison: primepi
+\\ engine-independent implementation in the algorithm comparison: primepi
 \\ shares no code with primecount.  Python restricts it to x where it remains
 \\ practical (see counting_lab.py, PARI_PRIMEPI_LIMIT).
 \\ ---------------------------------------------------------------------------
@@ -55,10 +56,10 @@ cl_primepi(x) =
 \\ ---------------------------------------------------------------------------
 \\ Agreement analysis for independently computed values of pi(x).
 \\
-\\ The point of the comparison is that six primecount algorithms and PARI's
-\\ primepi are independent implementations of different formulas.  A single
-\\ algorithm cannot check itself; a disagreement between any two of them is a
-\\ defect in an engine, in this machine, or in the request, and must be
+\\ The point of the comparison is that primecount's six modes implement distinct
+\\ formulas, while PARI's primepi also crosses a codebase boundary. A single
+\\ method cannot check itself; a disagreement between any two outputs exposes a
+\\ defect in a method, an engine build, this machine, or the request, and must be
 \\ reported rather than resolved.  This routine therefore never picks a
 \\ "winner": it publishes every distinct value with its multiplicity and the
 \\ signed difference of every source from the first-listed reference.

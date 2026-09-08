@@ -10,8 +10,8 @@ Numerisect has enough engines to ask the same question several ways.
 
 ### pi(x)
 
-`POST /api/verify/prime-count` computes pi(x) with eight independent sources where all
-are installed:
+`POST /api/verify/prime-count` computes pi(x) through eight method outputs when all
+engines are installed:
 
 | Source | Method |
 |---|---|
@@ -24,11 +24,15 @@ are installed:
 | primesieve `--count` | direct sieving |
 | PARI/GP `primepi` | a separate implementation, used up to 10^12 |
 
-All eight agreeing on pi(10^8) = 5761455 is meaningful evidence. **A disagreement means
-one engine is faulty, and Numerisect will not pick a winner**: it reports every value,
-marks the result unreliable, and tells you to run the self-test. It never takes a majority
-vote, because a majority of implementations sharing a bug is exactly the case a vote
-would hide.
+The first six rows are mathematically distinct algorithms but share the primecount
+codebase. The last two come from separate implementations. Thus the comparison has eight
+method outputs across three engine implementations—not eight independent codebases.
+
+All eight agreeing on pi(10^8) = 5761455 is meaningful evidence, especially agreement
+across primecount, primesieve and PARI/GP. **A disagreement means at least one method or
+build is faulty, and Numerisect will not pick a winner**: it reports every value, marks
+the result unreliable, and tells you to run the self-test. It never takes a majority vote,
+because six outputs from one codebase are not six independent votes.
 
 Timings are reported per source. They are local measurements on one machine with one
 thread count and one set of builds, not a benchmark of the algorithms.

@@ -3,7 +3,7 @@
 Computation attribution.  No mathematical quantity is evaluated in this module;
 every number it returns was produced by an engine:
 
-* the six independent prime-counting algorithms come from the **primecount**
+* six mathematically distinct prime-counting algorithms come from the **primecount**
   engine, one process each: ``primecount x --legendre``, ``--meissel``,
   ``--lehmer``, ``--lmo``, ``--deleglise-rivat`` and ``--gourdon``.  The
   recomputation with alternative alpha tuning is ``primecount x --double-check``.
@@ -14,7 +14,7 @@ every number it returns was produced by an engine:
 * elapsed times are primecount's own ``--time`` measurement and PARI's own
   ``gettime`` timer.  They are single local measurements on one machine, not a
   benchmark of the algorithms.
-* the seventh, engine-independent ``pi(x)`` is **PARI/GP** ``primepi``, used
+* the additional engine-independent ``pi(x)`` is **PARI/GP** ``primepi``, used
   while ``x <= PARI_PRIMEPI_LIMIT`` (10^11, about six seconds on the
   development machine).
 * every remaining quantity is computed by ``numerisect/counting_lab.gp`` inside
@@ -214,14 +214,14 @@ def counting_algorithm_comparison(
     threads: int = 1,
     timeout: int = 900,
 ) -> dict:
-    """Count pi(x) with several independent algorithms and report any disagreement.
+    """Count pi(x) with distinct algorithms and report any disagreement.
 
     Each selected primecount algorithm runs in its own process, PARI's
-    ``primepi`` is added as a seventh independent source while
+    ``primepi`` adds an independent engine implementation while
     ``x <= PARI_PRIMEPI_LIMIT``, and ``numerisect/counting_lab.gp`` performs the
-    agreement analysis.  Agreement across independent implementations of
-    different formulas is a correctness check no single algorithm can provide,
-    so a disagreement is reported prominently and never reconciled here.
+    agreement analysis. Agreement across distinct formulas and, when available,
+    separate engine codebases is a check no single run can provide, so a
+    disagreement is reported prominently and never reconciled here.
 
     Args:
         x: Decimal upper bound for pi(x).
@@ -299,10 +299,13 @@ def counting_algorithm_comparison(
     # tuning. It is a self-consistency check on one implementation, not a seventh
     # independent one, so it is counted separately rather than inflating the
     # independence claim.
-    independent = len(counts) - (1 if double_check else 0)
+    distinct_methods = len(counts) - (1 if double_check else 0)
+    engine_implementations = 1 + int(include_pari and pari_in_range)
     metrics = {
         "x": str(value),
-        "Independent implementations compared": str(independent),
+        "Distinct counting methods compared": str(distinct_methods),
+        "Independent engine implementations": str(engine_implementations),
+        "Independent implementations compared": str(engine_implementations),
         "Self-consistency reruns (alternative tuning)": "1" if double_check else "0",
         "Total sources compared": str(len(counts)),
         "Distinct values returned": str(_one(analysis, "DISTINCT")),
@@ -317,10 +320,10 @@ def counting_algorithm_comparison(
         ),
     }
     note = (
-        "Six primecount algorithms are independent implementations of different "
-        "prime-counting formulas, and PARI/GP primepi shares no code with any of them. "
-        "Agreement between them is a correctness check that no single algorithm can give "
-        "for itself. PARI/GP performed the agreement analysis; this application never "
+        "The six primecount modes implement mathematically distinct prime-counting "
+        "formulas inside one codebase; PARI/GP primepi is a separate implementation. "
+        "Agreement checks different methods, and including PARI crosses an engine "
+        "boundary. PARI/GP performed the agreement analysis; this application never "
         "reconciles a disagreement. "
         + _LOCAL_TIMING_NOTE
     )

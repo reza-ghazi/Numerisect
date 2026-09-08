@@ -392,8 +392,9 @@ truncates them. Values too wide for a JSON response are abbreviated on screen wi
 exact leading and trailing digits and exact digit count, and every value is written at
 full length to a separate export file named in the response.
 
-Mersenne numbers have their own route: trial factoring over q = 2kp + 1 never builds
-M_p, so it reaches exponents in the millions where no general method can. See
+Mersenne numbers have their own route: for odd prime p, trial factoring over q = 2kp + 1
+never builds M_p, so it reaches exponents in the millions far beyond a practical
+general-purpose factorization attempt. M_2 = 3 is the trivial exception. See
 [Mersenne numbers](docs/MERSENNE.md).
 
 YAFU's number field sieve needs the GGNFS lattice sievers, which Numerisect
@@ -488,7 +489,7 @@ The placeholder `output/.gitkeep` keeps the output directory in a fresh clone.
 | `NUMERISECT_MAX_PARALLEL_JOBS` | `1` | Simultaneous CPU-heavy factorization workers |
 | `NUMERISECT_MAX_EXPRESSION_CHARACTERS` | `100000` | Expression input length limit |
 | `NUMERISECT_MAX_RESULT_DIGITS` | `100000` | Evaluated integer size limit |
-| `NUMERISECT_GGNFS_DIR` | unset | Directory holding the GGNFS lattice sievers, needed for NFS and for engine tuning |
+| `NUMERISECT_GGNFS_DIR` | unset | Optional override for the automatically discovered GGNFS lattice-siever directory |
 
 ## HTTP API
 
@@ -747,18 +748,20 @@ placement, saved-report notices, diagnostics, and cache-busted assets.
 
 | Guide | Scope |
 | --- | --- |
+| [Capability index](docs/capabilities.md) | Current workspaces, tools, engines, guarantees, limits, and out-of-scope work |
 | [Installation and versioning](docs/INSTALLATION.md) | Verified hosts, prerequisites, source installation, and pinned engine builds |
 | [Factorization workspace](docs/FACTORIZATION.md) | Routing, manual algorithms, trees, partial jobs, batches, verification, and manifests |
 | [Localhost security](docs/SECURITY_MODEL.md) | Host, origin, per-launch token, command-line access, and data locality |
 | [Prime classification](docs/PRIME_CLASSIFICATION.md) | 56 classes and inconclusive-result semantics |
 | [Prime reciprocals](docs/PRIME_RECIPROCALS.md) | Exact periods and complete streamed decimal reports |
 | [Prime structures](docs/PRIME_STRUCTURES.md) | Structural searches, sequences, and witness analysis |
+| [Prime-structure mathematics](docs/mathematics/prime-structures.md) | Tuples and Ω-based k-primes, digital classes, reciprocal periods, algebraic primes, perfect numbers, and Mersenne divisors |
 | [Prime exploration](docs/PRIME_EXPLORATION.md) | Gap statistics, primorials, Goldbach, and notebook problems |
 | [Arithmetic and distribution](docs/ARITHMETIC_AND_DISTRIBUTION.md) | Arithmetic profiles, distributions, and source audit |
 | [Prime manipulation](docs/PRIME_MANIPULATION.md) | Batches, relative-index navigation, residue classes, and modular arithmetic |
 | [Riemann zeta](docs/RIEMANN_ZETA.md) | FLINT/Arb computations, threads, and certification boundaries |
 | [Advanced number theory](docs/ADVANCED_NUMBER_THEORY.md) | Modular, polynomial, special-prime, analytic, divisor, and algebraic workbenches |
-| [Prime counting and integer structure](docs/COUNTING_LAB.md) | Six-algorithm π(x) cross-check, Legendre's phi, inverse approximations, PARI structure predicates, and factorint strategy masks |
+| [Prime counting and integer structure](docs/COUNTING_LAB.md) | Six distinct primecount algorithms with a separate PARI implementation, Legendre's phi, inverse approximations, structure predicates, and factorint strategy masks |
 | [Roadmap status](docs/ROADMAP_STATUS.md) | Implemented, partial, and deliberately deferred items from the 150-item proposal |
 
 ## Security notes

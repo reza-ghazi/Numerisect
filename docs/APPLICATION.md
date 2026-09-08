@@ -193,7 +193,7 @@ divisibility or primality decision is made in Python.
 | Request timeout | 15 s | `NUMERISECT_NETWORK_TIMEOUT` |
 | OEIS endpoint | `https://oeis.org/search` | `NUMERISECT_OEIS_URL` |
 | Factor catalogue endpoint | unset | `NUMERISECT_CATALOGUE_URL` |
-| GGNFS siever directory | unset | `NUMERISECT_GGNFS_DIR` |
+| GGNFS siever-directory override | unset; automatic discovery is used | `NUMERISECT_GGNFS_DIR` |
 
 ## Client examples and notebooks
 

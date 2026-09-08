@@ -340,7 +340,7 @@ fl_reconcile(n, candidates) =
 };
 
 \\ --- Mersenne trial factoring ----------------------------------------------------
-\\ Every prime factor q of M_p = 2^p - 1, for p prime, satisfies two classical
+\\ Every prime factor q of M_p = 2^p - 1, for odd prime p, satisfies two classical
 \\ congruences:
 \\
 \\   q = 2kp + 1        (Euler / Fermat: the order of 2 modulo q is exactly p)
@@ -360,7 +360,7 @@ fl_reconcile(n, candidates) =
 fl_mersenne_factors(p, k_limit, seconds) =
 {
   my(found = 0, truncated = 0, q, r, k, deadline);
-  if(p < 2, error("The Mersenne exponent must be at least 2"));
+  if(p < 3, error("Mersenne progression factoring needs an odd prime exponent p >= 3; M_2 = 3 is the trivial exception"));
   if(!isprime(p), error("M_p can only be factored this way for a prime exponent p"));
   print("EXPONENT:", p);
   print("K_LIMIT:", k_limit);
@@ -370,7 +370,7 @@ fl_mersenne_factors(p, k_limit, seconds) =
     my(hits = List(), qq);
     for(k = 1, k_limit,
       qq = 2 * k * p + 1;
-      \\ q = +/-1 mod 8 is necessary; it discards three quarters of the progression.
+      \\ q = +/-1 mod 8 is necessary; it discards half of the progression.
       if(qq % 8 == 1 || qq % 8 == 7,
         if(ispseudoprime(qq),
           if(Mod(2, qq)^p == 1,

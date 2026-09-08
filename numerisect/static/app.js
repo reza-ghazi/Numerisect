@@ -2048,7 +2048,7 @@ $('#counting-comparison-form').addEventListener('submit', (event) => {
     threads: Number($('#counting-comparison-threads').value),
   }, (data) => (data.disagreement
     ? `DISAGREEMENT · ${data.distinct_values} distinct values across ${data.rows.length} sources`
-    : `${data.rows.length} independent sources agree on π(x) = ${data.consensus}`), 'table');
+    : `${data.rows.length} method outputs agree on π(x) = ${data.consensus}`), 'table');
 });
 
 $('#counting-phi-form').addEventListener('submit', (event) => {
@@ -3736,7 +3736,7 @@ if ($('#verify-count-form')) {
         }),
       });
       renderAgreement($('#verify-count-form'),
-        `pi(${data.input}) from ${data.engines_answering} independent implementations`,
+        `pi(${data.input}) from ${data.method_outputs_answering || data.engines_answering} method outputs across ${data.engine_implementations_answering || 'available'} engine implementations`,
         data.sources.map((r) => [r.engine, r.value ?? (r.error || 'no answer'), r.seconds]),
         data);
     } catch (error) {

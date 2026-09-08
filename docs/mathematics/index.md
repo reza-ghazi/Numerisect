@@ -30,6 +30,16 @@ bound is worth less than one telling you where the bound comes from.
 
     [:octicons-arrow-right-24: Read](factorization.md)
 
+-   **Prime structures**
+
+    ---
+
+    Decimal rotations and truncations, prime constellations, reciprocal periods,
+    Gaussian and Eisenstein primes, perfect numbers, and why a bounded search can remain
+    inconclusive.
+
+    [:octicons-arrow-right-24: Read](prime-structures.md)
+
 -   **Distribution**
 
     ---

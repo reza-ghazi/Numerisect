@@ -4734,14 +4734,14 @@ class RsaChallengeRequest(BaseModel):
 
 
 class MersenneFactorRequest(BaseModel):
-    exponent: int = Field(default=1061, ge=2, le=10**9)
+    exponent: int = Field(default=1061, ge=3, le=10**9)
     k_limit: int = Field(default=100_000, ge=1, le=50_000_000)
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
 
 
 @app.post("/api/factor-lab/mersenne-factors")
 def factor_lab_mersenne_factors(request: MersenneFactorRequest) -> dict:
-    """Trial-factor M_p = 2^p - 1 over the progression q = 2kp + 1 without building M_p."""
+    """Trial-factor M_p for odd prime p over q = 2kp + 1 without building M_p."""
 
     try:
         result = mersenne_factors(
@@ -4958,7 +4958,7 @@ class SieveIntervalRequest(BaseModel):
 
 @app.post("/api/verify/prime-count")
 def verify_prime_count(request: CrossCheckCountRequest) -> dict:
-    """Compute pi(x) with every independent method available and compare them."""
+    """Compare every available pi(x) method across as many as three engine implementations."""
 
     try:
         bound = evaluate_arbitrary_integer(request.expression)

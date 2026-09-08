@@ -91,6 +91,38 @@ tiny factor, and every subsequent algorithm's analysis assumes small factors are
 **In Numerisect.** The `pari_trial` job backend, YAFU's `trial` entry point, and the
 bounded pre-pass inside the strategy adviser.
 
+### Trial factoring a Mersenne number
+
+Special forms can make trial factoring much thinner than ordinary trial division. Let
+\(p\) be an odd prime and let \(q\) be a prime divisor of \(M_p=2^p-1\). The order of 2
+modulo \(q\) is \(p\), so \(p\mid q-1\); since \(q\) is odd,
+
+\[
+q=2kp+1.
+\]
+
+Moreover, \(2^{(q-1)/2}=(2^p)^k\equiv1\pmod q\), so 2 is a quadratic residue modulo
+\(q\). The supplementary law for the Legendre symbol then gives
+\(q\equiv\pm1\pmod8\). This retains two of the four possible odd residue classes—one
+half of the \(2kp+1\) progression.
+
+A candidate is a divisor exactly when
+
+\[
+2^p\equiv1\pmod q.
+\]
+
+That modular exponentiation never requires constructing \(M_p\). A completed finite
+\(k\)-range proves only that no divisor occurred in the tested range; it says nothing
+about primality of \(M_p\). Lucas–Lehmer answers that different question.
+The exceptional exponent \(p=2\) gives the already-prime value \(M_2=3\) and does not
+belong to the \(2kp+1\) search.
+
+**In Numerisect.** `POST /api/factor-lab/mersenne-factors`, documented in
+[Mersenne numbers](../MERSENNE.md). PARI/GP screens candidates with `ispseudoprime` and
+performs the exact modular divisibility test. The separately pinned examples are
+rechecked with `isprime` in the test suite.
+
 ## Fermat's method, and when the factors are close
 
 If \( N = ab \) with \( a \le b \) both odd, then setting
@@ -542,11 +574,13 @@ use the next dependency.
 ### Why SNFS is faster
 
 If \( N \) already has an algebraic form — \( N = r^{e} \pm s \) for small \( r \)
-and \( s \), or a value of a low-degree polynomial at a small argument — you do not have
-to construct \( f \) from the digits of \( N \). You can read it off. For
-\( N = 2^{101} - 1 \), \( x^{101} - 1 \) is already a polynomial vanishing at
-\( x = 2 \), and after removing the algebraic factors a low-degree polynomial with
-coefficients of size \( O(1) \) remains.
+and \( s \), or a value of a low-degree polynomial at a small argument — polynomial
+selection can exploit that structure instead of deriving a general polynomial only from
+the digits of \(N\). For \(N=2^{101}-1\), the identity \(x^{101}-1\) at \(x=2\)
+exhibits the structure and its cyclotomic decomposition. Turning a recognized form into
+a production SNFS job still belongs to the selected engine's polynomial-selection and
+parameter pipeline; displaying a symbolic polynomial is not itself a completed NFS
+configuration.
 
 That is the whole difference, and it is decisive. In the base-\( m \) construction the
 coefficients of \( f \) are of size \( N^{1/d} \); in the special construction they are
@@ -612,7 +646,7 @@ factors as a difference of two squares. The algorithmic treatment is Brent's.
     kind of thing that is subtly wrong for one edge case.
 
 **In Numerisect.** `POST /api/factor-lab/special-form` recognises perfect powers via PARI
-`ispower`, values \( a^{k} \pm 1 \) for bases to 1000, and cyclotomic values
+`ispower`, values \( a^{k} \pm 1 \) with no base scan or base limit, and cyclotomic values
 \( \Phi_{k}(a) \) for bases to 200 and \( k \) to 60, obtaining every algebraic factor
 by factoring \( \Phi_{n}(b) \) with PARI `factor`. For \( 2^{101}-1 \) it returns the
 SNFS polynomial \( x^{101}-1 \), difficulty 30, and the two algebraic factors
@@ -669,6 +703,7 @@ prime part. See [Independent verification](../VERIFICATION.md) and
 | Topic | Tool | Engine routine |
 |---|---|---|
 | Bounded trial division | `pari_trial` backend; strategy pre-pass | PARI/GP `factor` with a bound; YAFU `trial` |
+| Mersenne trial factoring | `POST /api/factor-lab/mersenne-factors` | PARI `ispseudoprime`, `Mod(2,q)^p`; target \(2^p-1\) is not materialized |
 | Fermat's method | `yafu_fermat` backend | YAFU `fermat`, bound `-fmtmax` |
 | Pollard rho (Brent) | `yafu_rho` backend | YAFU `rho`, bound `-rhomax` |
 | Pollard rho step trace | `POST /api/factor-lab/trace` | PARI/GP `Mod`, `gcd` (teaching trace, capped at 500 steps) |
@@ -685,6 +720,8 @@ prime part. See [Independent verification](../VERIFICATION.md) and
 | MPQS, second opinion | `msieve` and `cross_verify` backends | Msieve |
 | GNFS | `yafu_nfs`, `cado`, `hybrid` backends | YAFU `nfs`; CADO-NFS with an installed parameter set |
 | SNFS | `yafu_snfs` backend | YAFU `snfs` |
+| GGNFS lattice-siever diagnostics | `GET /api/factor-lab/sievers` | Executable discovery, CPU compatibility probe and SHA-256 provenance for YAFU's external sievers |
+| RSA Challenge identification and verification | `GET /api/factor-lab/rsa-catalogue`, `POST /api/factor-lab/rsa-challenge` | PARI exact multiplication, `ispseudoprime`/`isprime`, and a labelled heuristic NFS effort model |
 | SIQS/NFS crossover measurement | `POST /api/factor-lab/tune` | YAFU's own `tune` (needs the GGNFS lattice sievers) |
 | `factorint` strategy comparison | `POST /api/structure/factorint-strategies` | PARI `factorint(n, flag)`, timed by `gettime`, audited by `isprime` |
 | Divisors in a residue class | `POST /api/structure/lenstra-divisors` | PARI `divisorslenstra` (requires \( \gcd(r,s)=1 \) and \( s^{3} > N \)) |

@@ -104,7 +104,7 @@ def test_finding_nothing_is_inconclusive_not_a_primality_claim():
 
 
 def test_a_composite_exponent_is_rejected_by_the_engine():
-    # M_p factors this way only for prime p; 2^15 - 1 has factors outside 2kp + 1.
+    # M_p factors this way only for odd prime p; 2^15 - 1 has factors outside 2kp + 1.
     with pytest.raises(PrimeEngineError):
         mersenne_factors(15, k_limit=100, timeout=60)
 
@@ -112,6 +112,7 @@ def test_a_composite_exponent_is_rejected_by_the_engine():
 def test_bounds_are_enforced():
     for kwargs in (
         {"exponent": 1},
+        {"exponent": 2},  # M_2 = 3 is the trivial exception to q = 2kp + 1.
         {"exponent": 11, "k_limit": 0},
         {"exponent": 11, "k_limit": 50_000_001},
         {"exponent": 11, "timeout": 0},

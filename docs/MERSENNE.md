@@ -19,7 +19,7 @@ exists.
 
 ## Trial factoring, and why it reaches so far
 
-Every prime factor \(q\) of \(M_p\), for prime \(p\), satisfies two classical congruences:
+Every prime factor \(q\) of \(M_p\), for odd prime \(p\), satisfies two classical congruences:
 
 \[
 q \equiv 1 \pmod{2p}, \qquad q \equiv \pm 1 \pmod 8 .
@@ -27,8 +27,14 @@ q \equiv 1 \pmod{2p}, \qquad q \equiv \pm 1 \pmod 8 .
 
 The first follows because the order of \(2\) modulo \(q\) is exactly \(p\), so \(p \mid q-1\)
 and \(q\) is odd. The second is the condition for \(2\) to be a quadratic residue modulo
-\(q\). Together they confine every candidate to \(q = 2kp + 1\) with \(q \equiv \pm 1 \pmod 8\),
-which discards three quarters of that progression before any real work happens.
+\(q\). Together they confine every candidate to \(q = 2kp + 1\) with
+\(q \equiv \pm 1 \pmod 8\). The second condition retains two of the four possible odd
+residue classes, so it discards one half of that progression before the modular test.
+
+The exponent \(p=2\) is the trivial exception: \(M_2=3\), and 3 is not of the form
+\(2kp+1\) for an integer \(k\). The specialized progression search therefore accepts
+odd prime exponents starting at 3. The ordinary primality and factorization tools still
+handle 3 normally.
 
 Membership is then decided by a single modular exponentiation:
 
@@ -38,8 +44,9 @@ q \mid M_p \iff 2^p \equiv 1 \pmod q .
 
 **\(M_p\) is never constructed.** Everything happens modulo the candidate. That is the whole
 point: \(M_{1000151}\) has **301,076 decimal digits**, and its factor \(2000303\) is found at
-\(k = 1\). Building that number in order to divide by it would be pointless, and for larger
-exponents impossible. This is the same reason GIMPS trial-factors an exponent before
+\(k = 1\). Materializing that target merely to test a small candidate would waste memory
+and arithmetic; modular powering makes the work depend on the candidate size and exponent
+instead. This is the same reason a Mersenne search trial-factors an exponent before
 committing to a Lucas–Lehmer test.
 
 ```bash
@@ -66,10 +73,11 @@ exponent has several factors, the product of all of them was also checked to div
 | 600,000,001 | 180,617,998 | 27600000047, 2418000004031 |
 | 999,999,001 | 301,029,695 | 357999642359 |
 
-The last row is the one to look at. \(M_{999999001}\) has **301,029,695 decimal digits**. No
-general factoring method can represent that number, let alone factor it. Testing twenty
-million candidates against it, up to roughly \(4 \times 10^{16}\), took **10.7 seconds**,
-because the number is never built.
+The last row is the one to look at. \(M_{999999001}\) has **301,029,695 decimal digits**.
+Representing such a value is already substantial, while applying a general-purpose
+factorization to it is not realistic. Testing twenty million candidates, up to roughly
+\(4 \times 10^{16}\), took **10.7 seconds** in the recorded local run because the target
+is never built. That timing describes one machine and build, not a portable benchmark.
 
 Two known Mersenne prime exponents, 6,972,593 and 20,996,011, were searched as controls
 and correctly yielded nothing.
@@ -82,9 +90,10 @@ such. For primality, use the Lucas–Lehmer test, which is a proof.
 
 ## Complete factorization
 
-A Mersenne number is the ideal special number field sieve target: \(M_p = 2^p - 1\) gives the
-polynomial \(x^p - 1\) directly, so SNFS difficulty is the size of the number rather than
-anything worse. The special-form analyser reports this:
+A Mersenne number exposes algebraic structure that a special number field sieve can use:
+\(M_p = 2^p - 1\) gives the symbolic relation \(x^p-1\) at \(x=2\). The special-form
+analyser reports that relation and a difficulty indicator; the selected NFS engine still
+owns production polynomial selection and parameters:
 
 ```text
 2^1061-1  ->  homogeneous, n = 2^1061 - 1
@@ -93,9 +102,9 @@ anything worse. The special-form analyser reports this:
               SNFS difficulty: 319
 ```
 
-Hand the number to the ordinary factoring pipeline to actually run it. Difficulty around
-320 is at the edge of what a workstation will finish; \(M_{1061}\) itself took a large
-distributed effort in 2012.
+Hand the number to the ordinary factoring pipeline to actually run it. A displayed
+special-form relation is advice, not a claim that the factorization is practical or that
+an engine-ready polynomial has already been selected.
 
 !!! warning "The analyser used to hang here"
 

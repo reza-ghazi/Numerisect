@@ -603,15 +603,17 @@ def mersenne_factors(
 ) -> dict[str, Any]:
     """Trial-factor the Mersenne number M_p = 2^p - 1 over its own progression.
 
-    Every prime factor q of M_p, for prime p, satisfies q = 2kp + 1 and q = +/-1 (mod 8).
+    Every prime factor q of M_p, for odd prime p, satisfies q = 2kp + 1 and
+    q = +/-1 (mod 8). M_2 = 3 is the trivial exception and is outside this
+    progression search.
     Those two congruences confine the candidates to a thin arithmetic progression, which
     is why this finds factors of Mersenne numbers that no general-purpose method can
     reach.  The membership test is a single modular exponentiation, ``Mod(2, q)^p == 1``.
 
     **M_p is never constructed.**  Every step happens modulo the candidate, so the
     exponent may run into the millions.  M_1000151 has 301,076 decimal digits and its
-    factor 2000303 is found at k = 1; building that number to divide by it would be
-    pointless and, for larger exponents, impossible.
+    factor 2000303 is found at k = 1; materializing that target merely to test a small
+    candidate would waste memory and arithmetic.
 
     Args:
         exponent: A prime p.  M_p is the target; it is never materialised.
@@ -627,9 +629,10 @@ def mersenne_factors(
         PrimeEngineError: If p is not prime, or PARI/GP failed.
     """
 
-    if not 2 <= exponent <= MAX_MERSENNE_EXPONENT:
+    if not 3 <= exponent <= MAX_MERSENNE_EXPONENT:
         raise ValueError(
-            f"The Mersenne exponent must be between 2 and {MAX_MERSENNE_EXPONENT:,}"
+            "Mersenne progression factoring needs an odd prime exponent between 3 and "
+            f"{MAX_MERSENNE_EXPONENT:,}; M_2 = 3 is the trivial exception"
         )
     if not 1 <= k_limit <= MAX_MERSENNE_K:
         raise ValueError(f"The k limit must be between 1 and {MAX_MERSENNE_K:,}")
@@ -666,10 +669,11 @@ def mersenne_factors(
         },
         "engine": "PARI/GP",
         "note": (
-            "Every prime factor q of M_p satisfies q = 2kp + 1 and q = ±1 (mod 8), so "
+            "For odd prime p, every prime factor q of M_p satisfies q = 2kp + 1 and "
+            "q = ±1 (mod 8), so "
             "only that progression is tested, by a single modular exponentiation each. "
-            "M_p itself is never constructed, which is why an exponent in the millions "
-            "is workable here and hopeless for any general method. "
+            "M_p itself is never constructed, which makes trial factoring practical for "
+            "exponents far beyond a general-purpose factorization attempt. "
             + (
                 "The whole k range was searched."
                 if complete

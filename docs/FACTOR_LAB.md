@@ -86,8 +86,9 @@ digits an ECM pretest then SIQS, and CADO-NFS above that.
 
 ## Special forms, algebraic and Aurifeuillean factors
 
-Recognises perfect powers via `ispower`, values a^k ± 1 for bases to 1000, and
-cyclotomic values Φ_k(a) for bases to 200 and k to 60. Every algebraic factor reported
+Recognises perfect powers via `ispower`, values a^k ± 1 by applying `ispower` directly
+to n+1 and n−1 with no base limit, and cyclotomic values Φ_k(a) for bases to 200 and
+k to 60. Every algebraic factor reported
 is obtained by factoring Φ_n(b) with PARI and is **verified to divide the input** before
 it is shown.
 
@@ -177,10 +178,12 @@ NUMERISECT_CADO_THRESHOLD=98
 ```
 
 Tuning needs the GGNFS lattice sievers, which YAFU uses for the NFS side of the
-measurement. Point `NUMERISECT_GGNFS_DIR` at the directory holding `gnfs-lasieve4I*e`;
-without it the route returns 503 with that instruction rather than running a partial
-measurement. A run takes many minutes, so it is a cancellable job rather than a
-synchronous request, and the measured crossover appears as a warning on the finished job.
+measurement. Numerisect searches its managed tools, `~/ggnfs/bin`, `/usr/local/bin` and
+`/usr/bin`, and tests candidate binaries before use. Set `NUMERISECT_GGNFS_DIR` only to
+override that discovery with a particular directory. If no usable siever is found, the
+route returns 503 rather than running a partial measurement. A run takes many minutes,
+so it is a cancellable job rather than a synchronous request, and the measured crossover
+appears as a warning on the finished job.
 
 The measurement reflects this machine, this thread count and these engine builds. It is
 not a general statement about the engines, and it goes stale when an engine is rebuilt.

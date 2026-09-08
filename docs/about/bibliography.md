@@ -18,6 +18,12 @@ list.
 - H. L. Montgomery and R. C. Vaughan. *Multiplicative Number Theory I: Classical Theory*.
   Cambridge.
 - H. Iwaniec and E. Kowalski. *Analytic Number Theory*. American Mathematical Society.
+- K. Ireland and M. Rosen. *A Classical Introduction to Modern Number Theory*. Springer.
+  Gaussian and Eisenstein integers, reciprocity, finite fields and cyclotomic structure.
+- P. Ribenboim. *The New Book of Prime Number Records*. Springer. Special prime forms,
+  primitive roots, recurring decimals and prime constellations.
+- L. E. Dickson. *History of the Theory of Numbers*, volume I. Carnegie Institution.
+  Classical sources for perfect numbers and special prime families.
 
 ## Primality
 
@@ -118,6 +124,12 @@ list.
 
 - The On-Line Encyclopedia of Integer Sequences. <https://oeis.org/> Sequences cited in
   the documentation include A002386 and A005250 (maximal prime gaps) and A005180.
+- RSA Laboratories. *The RSA Factoring Challenge*. The challenge-number definitions and
+  historical status catalogue; Numerisect treats the transcribed values as data and
+  independently verifies every mathematical claim before displaying it.
+- The Great Internet Mersenne Prime Search. <https://www.mersenne.org/> Operational
+  background for Mersenne trial factoring and Lucas–Lehmer testing. Numerisect verifies
+  its own examples with PARI/GP rather than treating a web catalogue as proof.
 
 !!! note "On citation practice"
 
