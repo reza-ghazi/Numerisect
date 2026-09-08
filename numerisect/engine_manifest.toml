@@ -50,6 +50,18 @@ interaction = "built locally and invoked as a separate executable"
 platforms = "Automated recipe currently supports x86-64 Linux and WSL only"
 
 [[engine]]
+name = "GGNFS lattice sievers"
+command = "gnfs-lasieve4I13e"
+repository = "https://github.com/radii/ggnfs.git"
+upstream_ref = "master reviewed 2026-09-07"
+revision = "3490572ca8671635a1b8d13a28aef3e34a657fc7"
+source_kind = "git"
+archive_sha256 = "not-applicable"
+license = "GPL-2.0-or-later"
+interaction = "built locally; invoked by YAFU, not by Numerisect directly"
+platforms = "x86-64 Linux and WSL; the lasieve5 line ships as prebuilt binaries and is not built here"
+
+[[engine]]
 name = "CADO-NFS"
 command = "cado-nfs.py"
 repository = "https://gitlab.inria.fr/cado-nfs/cado-nfs.git"

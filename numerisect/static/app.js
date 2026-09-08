@@ -3487,6 +3487,24 @@ function bindFactorLab(formId, path, buildBody, buildRows, title) {
   });
 }
 
+const sieverForm = $('#factor-lab-sievers-form');
+if (sieverForm) {
+  sieverForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = sieverForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const data = await api('/api/factor-lab/sievers');
+      const rows = Object.entries(data.metrics).concat(data.rows.map((row) => [row[0], row.slice(1).join(' · ')]));
+      renderFactorLab('GGNFS lattice sievers', rows, data.note, data.output_file);
+    } catch (error) {
+      factorLabError(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 bindFactorLab('#factor-lab-rsa-form', '/api/factor-lab/rsa-challenge', () => ({
   target: $('#rsa-target').value.trim(),
   prove_factors: $('#rsa-prove').value === '1',

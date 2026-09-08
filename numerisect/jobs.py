@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .adapters import REGISTRY as ADAPTER_REGISTRY
-from .config import DEFAULT_CADO_THRESHOLD, GGNFS_DIR, JOBS_DIR, MAX_PARALLEL_JOBS
+from .config import DEFAULT_CADO_THRESHOLD, JOBS_DIR, MAX_PARALLEL_JOBS
 from .database import Database, utc_now
 from .engines import (
     CadoParameter,
@@ -29,6 +29,7 @@ from .engines import (
     product_is_complete,
     select_cado_parameter,
 )
+from .sievers import siever_directory
 from .factor_lab import parse_tune_info, reconcile_factors, squfof, tune_recommendation
 from .outputs import save_factorization
 
@@ -387,6 +388,14 @@ class JobManager:
         algorithm: str | None = None,
     ) -> tuple[list[dict[str, object]], int]:
         command = ["yafu", "-threads", str(job["threads"]), "-terse"]
+        # Without a siever directory YAFU cannot run the number field sieve at all: it
+        # reports "possibly bad path to siever" for every relation file and exits
+        # non-zero having found nothing, which reads as an engine crash rather than a
+        # missing dependency. Pass the discovered directory rather than relying on
+        # whatever ggnfs_dir the user's own yafu.ini happens to contain.
+        sievers = siever_directory()
+        if sievers is not None:
+            command += ["-ggnfs_dir", str(sievers).rstrip("/") + "/"]
         if pretest_only:
             command += ["-pretest", str(job["pretest_level"])]
         expression = f"{algorithm}({number})" if algorithm else f"factor({number})"
@@ -429,11 +438,12 @@ class JobManager:
 
         if not executable_path("yafu"):
             raise RuntimeError("YAFU is required to tune the engine thresholds")
-        sievers = GGNFS_DIR
-        if not sievers or not Path(sievers).is_dir():
+        sievers = siever_directory()
+        if sievers is None:
             raise RuntimeError(
-                "YAFU's tune needs the GGNFS lattice sievers. Set NUMERISECT_GGNFS_DIR "
-                "to the directory holding gnfs-lasieve4I*e."
+                "YAFU's tune needs the GGNFS lattice sievers, and no usable one was "
+                "found. Install them, or set NUMERISECT_GGNFS_DIR to a directory "
+                "holding gnfs-lasieve4I*e that runs on this CPU."
             )
         workdir = Path(job["workdir"])
         command = [

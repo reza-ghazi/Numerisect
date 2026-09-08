@@ -210,6 +210,7 @@ from .security import (
     request_has_valid_token,
     request_origin_is_safe,
 )
+from .sievers import report as siever_report
 from .verification import (
     cross_check_primality,
     cross_check_prime_count,
@@ -4729,6 +4730,17 @@ class RsaChallengeRequest(BaseModel):
     prove_factors: bool = False
     proof_seconds: int = Field(default=60, ge=1, le=3600)
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+@app.get("/api/factor-lab/sievers")
+def factor_lab_sievers() -> dict:
+    """Report the GGNFS lattice sievers found, whether each runs on this CPU, and which
+    directory YAFU will be given for number field sieve work."""
+
+    result = siever_report()
+    return _save_manipulation_report(
+        "lattice-sievers", "GGNFS lattice sievers", result
+    )
 
 
 @app.get("/api/factor-lab/rsa-catalogue")

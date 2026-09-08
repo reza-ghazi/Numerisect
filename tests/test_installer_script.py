@@ -115,6 +115,7 @@ def test_engine_manifest_is_complete_and_immutable():
         "Msieve",
         "YAFU",
         "CADO-NFS",
+        "GGNFS lattice sievers",
         "FLINT/Zeta",
         "primesieve",
         "primecount",

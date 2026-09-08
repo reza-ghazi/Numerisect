@@ -390,6 +390,10 @@ truncates them. Values too wide for a JSON response are abbreviated on screen wi
 exact leading and trailing digits and exact digit count, and every value is written at
 full length to a separate export file named in the response.
 
+YAFU's number field sieve needs the GGNFS lattice sievers, which Numerisect
+discovers, validates against this CPU and passes to YAFU automatically; see
+[GGNFS lattice sievers](docs/SIEVERS.md).
+
 Numerisect factors an RSA challenge number through the ordinary pipeline; see
 [The RSA Factoring Challenge](docs/RSA_CHALLENGE.md) for the catalogue of all 54
 numbers, the engine-verified factorizations, and an effort estimate for the open ones.

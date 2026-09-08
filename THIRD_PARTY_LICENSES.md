@@ -15,6 +15,7 @@ archive checksums are not applicable.
 |---|---|---|---|
 | YAFU | [bbuhrow/yafu](https://github.com/bbuhrow/yafu) | Public-domain dedication in upstream build files; bundled and reused components may carry separate notices | Cloned at a pinned commit, compiled locally, and invoked as a separate executable |
 | Msieve | [upiter/msieve](https://github.com/upiter/msieve) | Public-domain dedication stated in the upstream README | Cloned at a pinned commit, compiled locally, and invoked as a separate executable |
+| GGNFS lattice sievers | [radii/ggnfs](https://github.com/radii/ggnfs) | `GPL-2.0-or-later` | Cloned at a pinned commit and compiled locally. Numerisect never invokes these binaries itself; YAFU calls them to perform the number field sieve. The separate lasieve5 line, distributed as prebuilt binaries with recent YAFU releases, is detected and used if already present but is never downloaded. |
 | CADO-NFS | [CADO-NFS GitLab](https://gitlab.inria.fr/cado-nfs/cado-nfs) | `LGPL-2.1-only` (`COPYING` at the pinned revision) | Cloned at a pinned commit, compiled locally, and invoked as a separate executable |
 | PARI/GP | [PARI/GP](https://pari.math.u-bordeaux.fr/) | `GPL-2.0-or-later` | Cloned at a pinned commit, compiled locally, and invoked through the `gp` executable |
 | GMP-ECM | [GMP-ECM GitLab](https://gitlab.inria.fr/zimmerma/ecm) | `GPL-3.0-or-later` (`COPYING` at the pinned revision) | Cloned at a pinned commit, compiled locally, and invoked as a separate executable |

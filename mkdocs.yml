@@ -151,6 +151,7 @@ nav:
   - Guides:
       - FACTORIZATION.md
       - RSA_CHALLENGE.md
+      - SIEVERS.md
       - FACTOR_LAB.md
       - PRIMALITY_LAB.md
       - PRIME_CLASSIFICATION.md

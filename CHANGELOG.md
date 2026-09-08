@@ -5,6 +5,35 @@ binary packages are published.
 
 ## Unreleased
 
+- Fixed the number field sieve in YAFU, which could not run at all. YAFU has no lattice
+  siever of its own and shells out to the GGNFS `gnfs-lasieve4I<index>e` programs, but
+  Numerisect launched it without a siever directory, leaving it to whatever `ggnfs_dir`
+  the user's own `yafu.ini` happened to contain. When that setting was wrong, YAFU printed
+  `possibly bad path to siever` once per worker thread, exited non-zero having found
+  nothing, and reported the input as its own factor. Numerisect rejected that result
+  because the factors did not reconstruct the input, so nothing wrong was ever published,
+  but on a hundred-digit input the failure read as an engine crash rather than a missing
+  dependency. Every YAFU run is now given a discovered, validated siever directory.
+- Added a lattice siever subsystem. It searches the configured directory, the managed
+  tools directory and the conventional install locations; records a SHA-256 for each
+  binary; and reports which sieve indices are available, since the largest one present
+  bounds the difficulty YAFU can attempt. YAFU still chooses the index for a given
+  factorization, and Numerisect does not override it.
+- Every discovered siever is executed once before it is offered to YAFU. An AVX-512 build
+  on a CPU without AVX-512 dies with an illegal instruction the moment it is asked to
+  work, and nothing about the path or the file name reveals that in advance. Such a
+  binary is now reported as unusable rather than passed on. A directory whose sievers all
+  fail is skipped rather than handed over.
+- Pinned the GGNFS lattice sievers in `engine_manifest.toml` so the installer builds
+  lasieve4 from source at a fixed commit like every other managed engine. The separate
+  lasieve5 line, which ships as prebuilt binaries with recent YAFU releases and includes
+  faster AVX-512 builds, is detected and used when already present but is never
+  downloaded, because the project builds from pinned source rather than fetching
+  unverified binaries. The two lines share file names, so the report names the line from
+  the directory it was found in and says that is what it is doing.
+- `tune` no longer requires `NUMERISECT_GGNFS_DIR` to be set by hand; it uses the same
+  discovery as everything else.
+
 - Added RSA Factoring Challenge support. Numerisect could already factor an RSA number,
   because an RSA number is an ordinary semiprime and the pipeline routes it by size, but
   it could not say which challenge number you were holding, whether the published

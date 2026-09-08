@@ -132,6 +132,13 @@
           </div>
         </form>
 
+        <form id="factor-lab-sievers-form">
+          <p class="eyebrow">LATTICE SIEVERS</p>
+          <h2>GGNFS lattice sievers for the number field sieve</h2>
+          <p>YAFU runs the number field sieve by calling the GGNFS lattice sievers, the gnfs-lasieve4I&lt;index&gt;e programs. Without them it cannot sieve at all and fails having found nothing. Two lines are in circulation: lasieve4, the long-standing GGNFS siever, and lasieve5, distributed with recent YAFU releases including AVX-512 builds that sieve faster on hardware that supports them. They share file names, so the line is reported from the directory, not guessed from the binary. Every siever found is executed once here: one built for instructions this CPU lacks dies with an illegal instruction, and is reported as unusable rather than handed to YAFU.</p>
+          <div class="actions"><button class="primary" type="submit"><span>Report the sievers on this machine</span><span>→</span></button></div>
+        </form>
+
         <form id="factor-lab-rsa-form">
           <p class="eyebrow">RSA FACTORING CHALLENGE</p>
           <h2>RSA challenge numbers: identify, verify, estimate</h2>
