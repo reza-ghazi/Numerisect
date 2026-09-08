@@ -29,9 +29,9 @@ from .engines import (
     product_is_complete,
     select_cado_parameter,
 )
-from .sievers import siever_directory
 from .factor_lab import parse_tune_info, reconcile_factors, squfof, tune_recommendation
 from .outputs import save_factorization
+from .sievers import siever_directory
 
 PHASES = (
     ("trial", "Trial division", 8),
