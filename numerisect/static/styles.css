@@ -196,6 +196,10 @@ body[data-active-view="zeta-view"] .mode-tabs { margin-top: 22px; }
 .result-actions { display: flex; align-items: center; gap: 8px; }
 @keyframes result-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 .prime-results { display: flex; flex-wrap: wrap; gap: 8px; max-height: 550px; overflow: auto; margin-top: 18px; }
+.subtool-form { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 28px; }
+.advanced-options { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.advanced-options summary { color: var(--muted); cursor: pointer; font-weight: 700; }
+.advanced-options[open] summary { margin-bottom: 14px; }
 .prime-chip { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: #dbe4e8; background: #0c0f11; font: 12px/1.4 "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }
 .prime-chip.tuple { width: 100%; border-left-color: var(--accent); }
 .prime-verdict { width: 100%; padding: 28px; border-radius: 12px; background: var(--accent-soft); text-align: center; }

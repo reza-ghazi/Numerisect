@@ -30,7 +30,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (212)
+## Routes (213)
 
 ### Engine adapters
 
@@ -142,6 +142,7 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/factor-lab/certificates` | Generate and independently verify a primality certificate per prime factor. |
 | `POST` | `/api/factor-lab/special-form` | Detect special algebraic forms, algebraic factors, and SNFS suitability. |
 | `POST` | `/api/factor-lab/mersenne-factors` | Trial-factor M_p = 2^p − 1 for odd prime p over q = 2kp + 1 without constructing M_p; M_2 = 3 is the documented trivial exception. |
+| `POST` | `/api/factor-lab/mersenne-hunt` | Run bounded Mersenne trial factoring, GMP-ECM P−1/P+1/ECM stages, and PARI/GP multiplicity, divisibility, cofactor, and primality reconciliation. |
 | `GET` | `/api/factor-lab/sievers` | Report the GGNFS lattice sievers found, whether each runs on this CPU, and which directory YAFU will be given for number field sieve work. |
 | `GET` | `/api/factor-lab/rsa-catalogue` | List the RSA Factoring Challenge numbers with their sizes and published status. |
 | `POST` | `/api/factor-lab/rsa-challenge` | Identify an RSA challenge number, re-verify its published factors in PARI/GP, and estimate the number field sieve effort on this machine. |

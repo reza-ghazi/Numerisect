@@ -34,6 +34,8 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
 - Automatic YAFU-to-CADO factorization strategy based on decimal length
 - Manual bounded PARI trial division plus YAFU rho, p−1, p+1, ECM, SIQS, and NFS strategies
+- Staged Mersenne factor hunts with native trial factoring, GMP-ECM P−1/P+1/ECM,
+  exact multiplicities, and an explicitly unresolved or rigorously complete cofactor
 - Factor trees, independently continuable composite cofactors, batch queues, and cross-engine verification
 - Automatic CADO parameter discovery and next-larger parameter selection
 - CPU-thread selector that defaults to every available logical CPU
@@ -74,10 +76,10 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-auto#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-auto#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-auto#diagnostics>. The dedicated Mersenne
-factor search is at <http://127.0.0.1:8765/?ui=20260908-mersenne-auto#factor/mersenne>.
+<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#diagnostics>. The dedicated Mersenne
+factor search is at <http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#factor/mersenne>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server

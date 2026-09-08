@@ -131,6 +131,12 @@ def test_mersenne_factoring_is_a_visible_dedicated_factor_page():
     assert 'id="factor-lab-mersenne-form"' not in batch
     assert "Open Mersenne factor search" in APP
     assert "activateFactorPage('mersenne-factor-page')" in APP
+    mersenne_page = INDEX.split('id="mersenne-factor-page"', 1)[1].split(
+        'id="factor-lab-page"', 1
+    )[0]
+    assert 'id="factor-lab-mersenne-hunt-form"' in mersenne_page
+    assert 'id="mersenne-hunt-result"' in mersenne_page
+    assert "'/api/factor-lab/mersenne-hunt'" in APP
 
 
 def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
@@ -175,11 +181,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260908-mersenne-auto' in INDEX
-    assert '/assets/app.js?v=20260908-mersenne-auto' in INDEX
+    assert '/assets/styles.css?v=20260908-mersenne-hunt' in INDEX
+    assert '/assets/app.js?v=20260908-mersenne-hunt' in INDEX
     assert '/assets/favicon.svg?v=20260907-named-tools' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260908-mersenne-auto#primes/prime-check' in RUNNER
+    assert '?ui=20260908-mersenne-hunt#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 

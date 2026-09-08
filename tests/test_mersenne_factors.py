@@ -8,8 +8,13 @@ Mersenne number has more than 300,000 decimal digits.
 import pytest
 from fastapi.testclient import TestClient
 
+import numerisect.factor_lab as factor_lab
 from numerisect import outputs
-from numerisect.factor_lab import mersenne_factors, special_form_analysis
+from numerisect.factor_lab import (
+    mersenne_factor_hunt,
+    mersenne_factors,
+    special_form_analysis,
+)
 from numerisect.main import app
 from numerisect.primes import PrimeEngineError
 
@@ -120,6 +125,63 @@ def test_manual_timeout_preserves_factors_and_reports_actual_k():
     assert result["complete"] is False
 
 
+def test_staged_hunt_finishes_when_the_remaining_cofactor_is_prime():
+    # M_11 = 23 * 89. Trial factoring finds 23 at k=1 and PARI/GP proves 89.
+    result = mersenne_factor_hunt(11, trial_k_limit=1, trial_seconds=30)
+    assert result["complete"] is True
+    assert result["cofactor"] == "89"
+    assert result["cofactor_status"] == "proven_prime"
+    assert result["factors"] == [{
+        "value": "23", "exponent": 1, "status": "proven_prime",
+        "engine": "PARI/GP Mersenne trial factoring",
+    }]
+    assert all(stage["status"] == "not_needed" for stage in result["stages"][1:])
+
+
+def test_staged_hunt_reconciles_native_engine_factors(monkeypatch):
+    # M_43 = 431 * 9719 * 2099863. The bounded trial stage sees only 431;
+    # a mocked GMP-ECM boundary reports 9719 and GP owns all resulting arithmetic.
+    calls = []
+
+    def native_stage(cofactor, method, b1, curves, timeout, threads):
+        calls.append((cofactor, method, b1, curves, timeout, threads))
+        return {"status": "factor_found", "factors": ["9719"],
+                "detail": "1 divisor(s) reported"}
+
+    monkeypatch.setattr(factor_lab, "_run_ecm_factor_stage", native_stage)
+    result = mersenne_factor_hunt(43, trial_k_limit=5, trial_seconds=30)
+    assert result["complete"] is True
+    assert result["cofactor"] == "2099863"
+    assert [item["value"] for item in result["factors"]] == ["431", "9719"]
+    assert calls and calls[0][1] == "pm1"
+    assert result["stages"][2]["status"] == "not_needed"
+
+
+def test_staged_hunt_keeps_an_unresolved_composite_explicit(monkeypatch):
+    monkeypatch.setattr(
+        factor_lab, "_run_ecm_factor_stage",
+        lambda *args: {"status": "completed", "factors": [], "detail": "no factor found"},
+    )
+    result = mersenne_factor_hunt(43, trial_k_limit=5, trial_seconds=30)
+    assert result["complete"] is False
+    assert result["cofactor_status"] == "composite"
+    assert result["cofactor"] == str(9719 * 2099863)
+    assert "unresolved" in result["note"]
+
+
+def test_ecm_does_not_accept_the_whole_cofactor_as_a_proper_factor(monkeypatch):
+    class Completed:
+        returncode = 2
+        stdout = "Factor found in step 1: 439125228929\nFound input number N\n"
+        stderr = ""
+
+    monkeypatch.setattr(factor_lab.shutil, "which", lambda name: "/usr/bin/ecm")
+    monkeypatch.setattr(factor_lab.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = factor_lab._run_ecm_factor_stage("439125228929", "ecm", 1000, 3, 10, 2)
+    assert result["factors"] == []
+    assert result["status"] == "completed"
+
+
 def test_a_composite_exponent_is_rejected_by_the_engine():
     # M_p factors this way only for odd prime p; 2^15 - 1 has factors outside 2kp + 1.
     with pytest.raises(PrimeEngineError):
@@ -180,6 +242,20 @@ def test_mersenne_route_saves_a_report(local_client, tmp_path, monkeypatch):
     payload = response.json()
     assert payload["factors"] == ["47", "178481"]
     assert payload["output_file"].endswith(".txt")
+
+
+def test_staged_hunt_route_saves_exact_cofactor(local_client, tmp_path, monkeypatch):
+    monkeypatch.setattr(outputs, "OUTPUT_DIR", tmp_path)
+    response = local_client.post(
+        "/api/factor-lab/mersenne-hunt",
+        json={"exponent": 11, "trial_k_limit": 1, "trial_seconds": 30},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["complete"] is True
+    assert payload["cofactor"] == "89"
+    report = (tmp_path / payload["output_file"]).read_text(encoding="utf-8")
+    assert "Exact remaining cofactor (2 digits; proven_prime):\n89" in report
 
 
 def test_mersenne_route_rejects_a_composite_exponent(local_client):
