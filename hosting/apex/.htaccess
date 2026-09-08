@@ -1,0 +1,9 @@
+# BEGIN Numerisect apex redirect
+# This block must precede WordPress and LiteSpeed rewrite rules in a shared
+# document root, or their front controller can consume non-root paths first.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^(?:www\.)?numerisect\.com$ [NC]
+RewriteRule ^ https://docs.numerisect.com%{REQUEST_URI} [R=301,L,NE]
+</IfModule>
+# END Numerisect apex redirect

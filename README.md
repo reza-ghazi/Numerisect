@@ -21,8 +21,10 @@ and results remain on the local machine unless the user deliberately moves or
 shares them. The browser interface requires that local backend; it is not a
 standalone static website.
 
-**Full documentation, including the mathematical background for every tool, is at
-[docs.numerisect.com](https://docs.numerisect.com).**
+**The project website is [numerisect.com](https://numerisect.com), which redirects to
+the canonical documentation site at
+[docs.numerisect.com](https://docs.numerisect.com).** It includes the mathematical
+background for every tool.
 
 For installation status, supported hosts, and prerequisites, see
 [Installation and versioning](docs/INSTALLATION.md).

@@ -175,6 +175,14 @@ def test_the_site_declares_the_custom_domain():
     assert (ROOT / "docs" / "CNAME").read_text(encoding="utf-8").strip() == "docs.numerisect.com"
 
 
+def test_apex_redirect_keeps_the_documentation_host_canonical():
+    redirect = (ROOT / "hosting" / "apex" / ".htaccess").read_text(encoding="utf-8")
+    config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    assert "https://docs.numerisect.com%{REQUEST_URI}" in redirect
+    assert "[R=301,L,NE]" in redirect
+    assert "site_url: https://docs.numerisect.com/" in config
+
+
 def test_the_documentation_site_carries_no_analytics():
     """Numerisect is offline-first; its documentation does not track readers."""
 

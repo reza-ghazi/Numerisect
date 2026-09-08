@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://docs.numerisect.com"
+Homepage = "https://numerisect.com"
 Repository = "https://github.com/reza-ghazi/Numerisect"
 Documentation = "https://docs.numerisect.com"
 Issues = "https://github.com/reza-ghazi/Numerisect/issues"

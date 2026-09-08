@@ -5,6 +5,12 @@ binary packages are published.
 
 ## Unreleased
 
+- Made `https://numerisect.com` the public project entry point while keeping
+  `https://docs.numerisect.com` as the canonical GitHub Pages host. The WHC/LiteSpeed
+  apex and `www` names now use a path-preserving permanent redirect, whose configuration
+  is retained in `hosting/apex/.htaccess`. Updated the site, publishing guide, package
+  metadata and citation record to describe the production arrangement consistently.
+
 - Recorded the Mersenne factors the new routine actually produced, each verified in a
   separate PARI/GP session rather than by the routine that found it, and pinned three of
   them as tests. The largest is a factor of M_999999001, a number with 301,029,695

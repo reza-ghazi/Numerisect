@@ -6,48 +6,45 @@ publishing needs a one-time repository setting.
 
 ## Current state
 
-Pages is enabled with GitHub Actions as the source, and the site is live at
-<https://reza-ghazi.github.io/Numerisect/>.
+Pages uses GitHub Actions as its source and serves the canonical site at
+<https://docs.numerisect.com>. The repository Pages setting names that custom domain,
+HTTPS enforcement is enabled, and `docs/CNAME` ships the same name with every build.
 
-The custom domain is **not** set yet, deliberately. Setting it before the DNS record
-exists would make GitHub redirect the working URL to a name that does not resolve,
-taking the site offline rather than moving it.
+The public entry point <https://numerisect.com> and its `www` name terminate at the WHC
+host. LiteSpeed returns a path-preserving HTTP 301 from both names to the canonical
+`docs` host. The deployed rule is kept under `hosting/apex/.htaccess` in the repository
+so the small piece of hosting configuration remains reviewable and reproducible.
 
-## Remaining step: DNS
-
-Add one record at whichever provider serves `numerisect.com`:
-
-```text
-docs.numerisect.com.   CNAME   reza-ghazi.github.io.
-```
-
-Once `dig +short docs.numerisect.com` returns a GitHub address, set the custom domain:
-
-```bash
-gh api -X PUT repos/reza-ghazi/Numerisect/pages -f cname=docs.numerisect.com
-```
-
-or use **Settings → Pages → Custom domain**. Then tick **Enforce HTTPS** once the
-certificate has been issued, usually within a few minutes.
-
-`docs/CNAME` already contains the domain and ships with every build, so the setting
-survives redeploys once it is applied.
-
-!!! warning "Order matters"
-
-    DNS first, custom domain second. The reverse breaks the working URL.
+This separation is deliberate: GitHub Pages owns and certificates the documentation
+host, while WHC owns only the redirect. Do not change the Pages custom domain to the
+apex; doing so would reverse the canonical direction.
 
 ## DNS
 
-Point the subdomain at GitHub Pages:
+The relevant records are:
 
 ```text
 docs.numerisect.com.   CNAME   reza-ghazi.github.io.
+numerisect.com.        A       <WHC hosting address>
+www.numerisect.com.    CNAME   numerisect.com.
 ```
 
-If your DNS provider cannot add a CNAME at that name, use the four A records and four
-AAAA records GitHub documents for apex-style setups instead. GitHub verifies the domain
-before issuing a certificate, so allow time between the DNS change and enabling HTTPS.
+DNS does not perform the redirect. The apex A record reaches WHC; the LiteSpeed rule
+returns the HTTP 301. The `docs` CNAME reaches GitHub Pages directly.
+
+## Verifying production
+
+Check all three layers after a DNS, redirect, or Pages change:
+
+```bash
+dig +short docs.numerisect.com CNAME
+curl -I https://numerisect.com/
+curl -I https://docs.numerisect.com/
+```
+
+The expected results are the GitHub Pages CNAME, a `301` whose `Location` starts with
+`https://docs.numerisect.com/`, and a final `200`, respectively. Also test an arbitrary
+path with a query string: the redirect must preserve both.
 
 ## How the workflow behaves
 
@@ -58,9 +55,9 @@ workflow itself. It builds with `mkdocs build --strict`, which turns warnings in
 errors, so a broken cross-reference or a page missing from the navigation fails the
 build rather than reaching the site.
 
-**Publish** runs only on a push to `main`. Until Pages is enabled it fails with a 404
-while the build job still passes, which is the correct signal: the site is fine, the
-destination is not configured yet.
+**Publish** runs only on a push to `main` or a manual dispatch from `main`. It deploys the
+artifact to the already configured GitHub Pages environment; the environment URL records
+the resulting canonical site address.
 
 ## Building locally
 

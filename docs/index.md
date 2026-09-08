@@ -18,6 +18,10 @@ That constraint is the reason this documentation exists in the form it does. If 
 to know how a result was obtained, the answer is always a named routine in a named
 library, and every page here says which.
 
+The public project address is <https://numerisect.com>. It permanently redirects here,
+to the canonical documentation site at <https://docs.numerisect.com>, so both addresses
+lead visitors to the same maintained content.
+
 ---
 
 ## Start here
