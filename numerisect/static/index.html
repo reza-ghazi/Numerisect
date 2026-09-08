@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
     <link rel="icon" href="/assets/favicon.svg?v=20260907-named-tools" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-nav" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-auto" />
   </head>
   <body>
     <header class="topbar">
@@ -139,10 +139,11 @@
         <form id="factor-lab-mersenne-form">
           <p class="eyebrow">MERSENNE NUMBERS</p>
           <h2>Mersenne trial factoring of M<sub>p</sub> = 2<sup>p</sup> − 1</h2>
-          <p>Every prime factor q of M<sub>p</sub>, for odd prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8); M<sub>2</sub> = 3 is the trivial exception. Those congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed</strong>, so trial factoring remains practical for exponents far beyond a general-purpose factorization attempt: M<sub>1000151</sub> has 301,076 decimal digits and its factor 2000303 appears at k = 1. Finding nothing is inconclusive; it says no factor of this form exists below the bound searched, not that M<sub>p</sub> is prime.</p>
-          <div class="triple-controls">
+          <p>Every prime factor q of M<sub>p</sub>, for odd prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8); M<sub>2</sub> = 3 is the trivial exception. Those congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed.</strong> Automatic mode searches until it finds the first factor or exhausts the time budget. Manual mode checks the complete selected k range. Neither mode promises the complete factorization of M<sub>p</sub>.</p>
+          <div class="four-controls">
             <label>Exponent p (odd prime)<input id="mersenne-exponent" type="number" min="3" max="1000000000" value="1061" required /></label>
-            <label>Largest k searched<input id="mersenne-k" type="number" min="1" max="50000000" value="100000" required /></label>
+            <label>Search mode<select id="mersenne-mode"><option value="automatic">Automatic · first factor</option><option value="manual">Manual k bound</option></select></label>
+            <label>Manual largest k<input id="mersenne-k" type="number" min="1" max="50000000" value="100000" disabled required /><span class="field-note">Used only in manual mode</span></label>
             <label>Timeout (seconds)<input id="mersenne-timeout" type="number" min="1" max="3600" value="300" /></label>
           </div>
           <div class="actions"><button class="primary" type="submit"><span>Search for factors</span><span>→</span></button></div>
@@ -2561,6 +2562,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260908-mersenne-nav" defer></script>
+    <script src="/assets/app.js?v=20260908-mersenne-auto" defer></script>
   </body>
 </html>

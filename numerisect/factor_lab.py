@@ -598,7 +598,7 @@ def tune_recommendation(parsed: dict[str, Any], current_threshold: int) -> dict[
 
 def mersenne_factors(
     exponent: int,
-    k_limit: int = 100_000,
+    k_limit: int | None = None,
     timeout: int = 300,
 ) -> dict[str, Any]:
     """Trial-factor the Mersenne number M_p = 2^p - 1 over its own progression.
@@ -617,7 +617,9 @@ def mersenne_factors(
 
     Args:
         exponent: A prime p.  M_p is the target; it is never materialised.
-        k_limit: Largest k searched in q = 2kp + 1 (1 to 50,000,000).
+        k_limit: Manual largest k in q = 2kp + 1 (1 to 50,000,000). ``None``
+            selects automatic mode, which searches until the first factor, timeout, or
+            the 50,000,000 safety ceiling.
         timeout: PARI/GP time limit in seconds.
 
     Returns:
@@ -634,13 +636,16 @@ def mersenne_factors(
             "Mersenne progression factoring needs an odd prime exponent between 3 and "
             f"{MAX_MERSENNE_EXPONENT:,}; M_2 = 3 is the trivial exception"
         )
-    if not 1 <= k_limit <= MAX_MERSENNE_K:
+    if k_limit is not None and not 1 <= k_limit <= MAX_MERSENNE_K:
         raise ValueError(f"The k limit must be between 1 and {MAX_MERSENNE_K:,}")
     if not 1 <= timeout <= 3600:
         raise ValueError("Engine time limit must be between 1 and 3,600 seconds")
 
+    automatic = k_limit is None
+    ceiling = MAX_MERSENNE_K if automatic else k_limit
     lines = _gp_call(
-        f"fl_mersenne_factors({exponent},{k_limit},{timeout})", timeout + 30
+        f"fl_mersenne_factors({exponent},{ceiling},{timeout},{int(automatic)})",
+        timeout + 30,
     )
     _require_complete(lines)
     records = [row.split("|") for row in _tagged(lines, "FACTOR")]
@@ -648,13 +653,19 @@ def mersenne_factors(
         raise PrimeEngineError("PARI/GP returned an invalid Mersenne factor record")
     if int(_one(lines, "DONE")) != len(records):
         raise PrimeEngineError("PARI/GP returned an incomplete Mersenne factor search")
-    complete = _one(lines, "TRUNCATED") == "0"
+    timed_out = _one(lines, "TRUNCATED") != "0"
+    scanned_k = int(_one(lines, "SCANNED_K"))
+    stop_reason = _one(lines, "STOP_REASON")
+    complete = not timed_out and stop_reason == "ceiling"
     digits = int(_one(lines, "MERSENNE_DIGITS"))
     rows = [[factor, k, str(len(factor))] for factor, k in records]
     return {
         "exponent": str(exponent),
         "mersenne_digits": str(digits),
-        "k_limit": str(k_limit),
+        "k_limit": str(ceiling),
+        "scanned_k": str(scanned_k),
+        "automatic": automatic,
+        "stop_reason": stop_reason,
         "complete": complete,
         "factors": [factor for factor, _ in records],
         "columns": ["Factor q", "k in q = 2kp + 1", "Digits of q"],
@@ -662,10 +673,12 @@ def mersenne_factors(
         "metrics": {
             "Exponent p": str(exponent),
             "M_p decimal digits": f"{digits:,}",
-            "Largest k searched": f"{k_limit:,}",
-            "Largest candidate tested": f"{2 * k_limit * exponent + 1:,}",
+            "Search mode": "automatic" if automatic else "manual bound",
+            "Largest k actually searched": f"{scanned_k:,}",
+            "Largest candidate tested": f"{2 * scanned_k * exponent + 1:,}",
             "Factors found": str(len(records)),
-            "Search complete": "yes" if complete else "no",
+            "Stop reason": stop_reason.replace("_", " "),
+            "Selected k range complete": "yes" if complete else "no",
         },
         "engine": "PARI/GP",
         "note": (
@@ -675,12 +688,17 @@ def mersenne_factors(
             "M_p itself is never constructed, which makes trial factoring practical for "
             "exponents far beyond a general-purpose factorization attempt. "
             + (
-                "The whole k range was searched."
-                if complete
-                else "The budget ran out before the whole k range was searched."
+                "Automatic mode stopped after finding the first factor."
+                if stop_reason == "factor_found"
+                else (
+                    "The whole requested k range was searched."
+                    if complete
+                    else "The time budget expired; every factor found before it expired was preserved."
+                )
             )
-            + " Finding no factor is inconclusive: it means no factor of the form "
-            "2kp + 1 exists below the bound searched, and says nothing about whether "
-            "M_p is prime. Use the Lucas–Lehmer test for that question."
+            + " This is factor discovery, not a complete factorization of M_p. Finding "
+            "nothing is inconclusive: it means no factor of the form 2kp + 1 exists "
+            "below the actual bound searched, and says nothing about whether M_p is "
+            "prime. Use the Lucas–Lehmer test for that question."
         ),
     }

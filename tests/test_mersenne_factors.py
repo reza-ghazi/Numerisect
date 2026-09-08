@@ -103,6 +103,23 @@ def test_finding_nothing_is_inconclusive_not_a_primality_claim():
     assert "Lucas–Lehmer" in result["note"]
 
 
+def test_automatic_mode_selects_k_dynamically_and_stops_at_the_first_factor():
+    result = mersenne_factors(87083, timeout=30)
+    assert result["automatic"] is True
+    assert result["factors"] == ["77503871"]
+    assert result["scanned_k"] == "445"
+    assert result["stop_reason"] == "factor_found"
+    assert result["complete"] is False
+
+
+def test_manual_timeout_preserves_factors_and_reports_actual_k():
+    result = mersenne_factors(29, k_limit=50_000_000, timeout=1)
+    assert {"233", "1103", "2089"}.issubset(result["factors"])
+    assert result["stop_reason"] == "timeout"
+    assert 1 <= int(result["scanned_k"]) < 50_000_000
+    assert result["complete"] is False
+
+
 def test_a_composite_exponent_is_rejected_by_the_engine():
     # M_p factors this way only for odd prime p; 2^15 - 1 has factors outside 2kp + 1.
     with pytest.raises(PrimeEngineError):

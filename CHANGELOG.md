@@ -5,6 +5,12 @@ binary packages are published.
 
 ## Unreleased
 
+- Added automatic Mersenne trial-factor search: the native PARI/GP loop now chooses the
+  effective k range from the first factor, time budget, and safety ceiling, preserves
+  factors found before timeout, and reports the largest k actually tested. Manual mode
+  remains available for exhaustive finite ranges, and the interface now distinguishes
+  factor discovery from complete factorization.
+
 - Made Mersenne trial factoring a visible, dedicated Factor integers page instead of
   nesting it inside the hidden Batch queue page. Composite Lucas–Lehmer results now
   explain that the proof yields no divisor and link directly to the native progression
