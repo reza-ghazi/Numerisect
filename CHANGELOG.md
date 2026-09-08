@@ -5,6 +5,17 @@ binary packages are published.
 
 ## Unreleased
 
+- Gave every documented endpoint a purpose. The API reference listed 208 routes and left
+  151 of them with a blank Purpose column, so the table named routes without saying what
+  any of them did. Each one now carries a description, and for the 134 routes with a
+  matching page in the application the text is taken from that page's own heading and
+  subtitle, so the reference and the interface cannot drift apart in wording.
+- Fixed a broken row in the API reference. The `l-zeros` entry contained an unescaped
+  `|L|`, which split the row into extra columns and rendered as a malformed table.
+- Added contract tests asserting that no documented endpoint has a blank purpose, that no
+  table row contains an unescaped pipe, and that the reference uses the same names the
+  interface shows.
+
 - Corrected the three places in the documentation that still named a renamed tool page:
   the reciprocals guide called the full-reptend page by its old heading, and two rows of
   the zeta routine table used operation names the interface no longer shows.

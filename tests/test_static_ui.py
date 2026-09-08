@@ -7,6 +7,45 @@ APP = (ROOT / "numerisect" / "static" / "app.js").read_text(encoding="utf-8")
 RUNNER = (ROOT / "run.sh").read_text(encoding="utf-8")
 
 
+API_REFERENCE = (ROOT / "docs" / "reference" / "api.md").read_text(encoding="utf-8")
+
+
+def test_every_documented_endpoint_states_its_purpose():
+    """An endpoint table with a blank Purpose column tells the reader nothing.
+
+    151 of the 208 rows shipped empty, so the reference listed routes without
+    saying what any of them did.
+    """
+
+    rows = re.findall(
+        r"^\| `(?:GET|POST|DELETE)` \| `([^`]+)` \| (.*) \|$", API_REFERENCE, re.M
+    )
+    assert len(rows) > 200, f"the endpoint table shrank unexpectedly: {len(rows)} rows"
+    blank = [route for route, purpose in rows if not purpose.strip()]
+    assert not blank, f"endpoints documented with no purpose: {blank}"
+
+
+def test_api_reference_table_rows_are_well_formed():
+    """An unescaped pipe silently splits a row into extra columns.
+
+    The l-zeros row contained |L| and rendered as a broken table.
+    """
+
+    broken = [
+        line
+        for line in API_REFERENCE.splitlines()
+        if line.startswith("| `") and len(re.findall(r"(?<!\\)\|", line)) != 4
+    ]
+    assert not broken, f"table rows with unescaped pipes: {broken}"
+
+
+def test_api_reference_uses_the_names_the_interface_shows():
+    """A reader moving between the app and the reference must see one vocabulary."""
+
+    for name in ("Pell", "Carmichael", "Goldbach", "Chebotarev", "Pocklington"):
+        assert name in API_REFERENCE, f"the API reference never mentions {name}"
+
+
 def _form_headings() -> dict[str, str]:
     """Each tool's <h2>, which is exactly what the navigation button displays."""
 
