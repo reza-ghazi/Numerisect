@@ -12,7 +12,7 @@ fi
 
 export PYTHONPATH="$project_dir${PYTHONPATH:+:$PYTHONPATH}"
 
-ui_url="http://127.0.0.1:8765/?ui=20260908-mersenne-nav#primes/prime-check"
+ui_url="http://127.0.0.1:8765/?ui=20260908-mersenne-auto#primes/prime-check"
 echo "Numerisect source: $project_dir"
 echo "Numerisect interface: $project_dir/numerisect/static"
 echo "Opening: $ui_url"

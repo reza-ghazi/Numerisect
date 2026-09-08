@@ -4735,7 +4735,7 @@ class RsaChallengeRequest(BaseModel):
 
 class MersenneFactorRequest(BaseModel):
     exponent: int = Field(default=1061, ge=3, le=10**9)
-    k_limit: int = Field(default=100_000, ge=1, le=50_000_000)
+    k_limit: int | None = Field(default=None, ge=1, le=50_000_000)
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
 
 

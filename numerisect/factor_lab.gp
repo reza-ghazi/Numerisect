@@ -357,38 +357,36 @@ fl_reconcile(n, candidates) =
 \\
 \\ An exhausted k range is INCONCLUSIVE. It means no factor of the form 2kp + 1 exists
 \\ below the bound searched, and says nothing about whether M_p is prime.
-fl_mersenne_factors(p, k_limit, seconds) =
+fl_mersenne_factors(p, k_limit, seconds, stop_after_first) =
 {
-  my(found = 0, truncated = 0, q, r, k, deadline);
+  my(found = 0, truncated = 0, q, k, scanned = 0, started = getwalltime(),
+     stop_reason = "ceiling", hits = List());
   if(p < 3, error("Mersenne progression factoring needs an odd prime exponent p >= 3; M_2 = 3 is the trivial exception"));
   if(!isprime(p), error("M_p can only be factored this way for a prime exponent p"));
   print("EXPONENT:", p);
   print("K_LIMIT:", k_limit);
   \\ #digits of 2^p - 1 without building it.
   print("MERSENNE_DIGITS:", floor(p * log(2) / log(10)) + 1);
-  r = alarm(seconds,
-    my(hits = List(), qq);
-    for(k = 1, k_limit,
-      qq = 2 * k * p + 1;
-      \\ q = +/-1 mod 8 is necessary; it discards half of the progression.
-      if(qq % 8 == 1 || qq % 8 == 7,
-        if(ispseudoprime(qq),
-          if(Mod(2, qq)^p == 1,
-            listput(hits, [k, qq]);
-          );
-        );
+  for(k = 1, k_limit,
+    if(getwalltime() - started >= 1000 * seconds,
+      truncated = 1; stop_reason = "timeout"; break();
+    );
+    scanned = k;
+    q = 2 * k * p + 1;
+    \\ q = +/-1 mod 8 is necessary; it discards half of the progression.
+    if(q % 8 == 1 || q % 8 == 7,
+      if(ispseudoprime(q) && Mod(2, q)^p == 1,
+        listput(hits, [k, q]);
+        if(stop_after_first, stop_reason = "factor_found"; break());
       );
     );
-    Vec(hits);
   );
-  if(type(r) == "t_ERROR",
-    truncated = 1;
-    r = [];
-  );
-  for(i = 1, #r,
-    print("FACTOR:", r[i][2], "|", r[i][1]);
+  for(i = 1, #hits,
+    print("FACTOR:", hits[i][2], "|", hits[i][1]);
     found++;
   );
+  print("SCANNED_K:", scanned);
+  print("STOP_REASON:", stop_reason);
   print("TRUNCATED:", truncated);
   print("DONE:", found);
 };

@@ -49,6 +49,14 @@ and arithmetic; modular powering makes the work depend on the candidate size and
 instead. This is the same reason a Mersenne search trial-factors an exponent before
 committing to a Lucas–Lehmer test.
 
+There is no formula that predicts the smallest factor—and therefore no mathematically
+correct fixed value of (k) that can be inferred from (p). The application's
+**Automatic** mode handles this honestly: the native search advances (k) until it finds
+the first factor, reaches the 50,000,000 safety ceiling, or consumes the selected time
+budget. It reports the largest (k) actually tested. **Manual** mode instead checks every
+candidate through the bound supplied by the user and reports every factor in that finite
+range. Factors found before a timeout are retained in either mode.
+
 ```bash
 curl --cookie jar --header 'Content-Type: application/json' \
   --data '{"exponent":1000151,"k_limit":5}' \
@@ -87,6 +95,13 @@ and correctly yielded nothing.
 An exhausted \(k\) range means **no factor of the form \(2kp+1\) exists below the bound
 searched**. It is not evidence that \(M_p\) is prime, and Numerisect never reports it as
 such. For primality, use the Lucas–Lehmer test, which is a proof.
+
+Finding one or several trial factors is still not a complete factorization. Dividing them
+out can leave a cofactor almost as large as (M_p): for (M_{87083}), the displayed
+eight-digit factor leaves a cofactor of roughly 26,207 decimal digits. Completely
+factoring a cofactor of that size is not currently practical. Numerisect therefore says
+**factors found**, never **all factors**, unless an engine has actually resolved and
+verified every cofactor.
 
 ## Complete factorization
 

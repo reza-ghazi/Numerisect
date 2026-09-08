@@ -3521,11 +3521,15 @@ function bindFactorLab(formId, path, buildBody, buildRows, title, panelSelector 
 
 bindFactorLab('#factor-lab-mersenne-form', '/api/factor-lab/mersenne-factors', () => ({
   exponent: Number($('#mersenne-exponent').value),
-  k_limit: Number($('#mersenne-k').value),
+  k_limit: $('#mersenne-mode').value === 'manual' ? Number($('#mersenne-k').value) : null,
   timeout_seconds: Number($('#mersenne-timeout').value),
 }), (data) => Object.entries(data.metrics).concat(
   data.rows.map((row) => [`Factor q = ${row[0]}`, `k = ${row[1]}, ${row[2]} digits`]),
 ), 'Mersenne trial factoring', '#mersenne-factor-result');
+
+$('#mersenne-mode').addEventListener('change', (event) => {
+  $('#mersenne-k').disabled = event.target.value !== 'manual';
+});
 
 const sieverForm = $('#factor-lab-sievers-form');
 if (sieverForm) {
