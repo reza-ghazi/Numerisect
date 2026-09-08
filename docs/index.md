@@ -128,8 +128,10 @@ seeing shape; not a certified value.
 !!! warning "This is an experimental pre-release"
 
     Numerisect is source-distributed and has no official binary packages. It has been
-    exercised on Fedora Linux x86-64. Windows WSL and macOS paths are implemented but
-    have not been verified by the project.
+    exercised on Fedora Linux x86-64 and by GitHub Actions on Ubuntu Linux x86-64 and
+    ARM64, Ubuntu 24.04 x86-64 inside Windows WSL, and macOS on ARM64 and Intel. Native
+    Windows remains unsupported, and the Arch Linux installer path has not yet received
+    clean-host CI verification.
 
 Some things it deliberately does not do:
 
