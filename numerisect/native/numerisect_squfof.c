@@ -62,7 +62,8 @@ static const size_t MULTIPLIER_COUNT = sizeof(MULTIPLIERS) / sizeof(MULTIPLIERS[
 
 /* Largest input the 64-bit cycle can handle once scaled by the largest
  * multiplier. 2^62 keeps 4*k*N inside 128-bit intermediates with room to spare. */
-static const uint64_t MAX_INPUT = (uint64_t)1 << 62;
+/* Avoid MAX_INPUT: Darwin's sys/syslimits.h reserves that macro name. */
+static const uint64_t MAX_SQUFOF_INPUT = (uint64_t)1 << 62;
 
 #define QUEUE_CAPACITY 64
 
@@ -222,7 +223,7 @@ int main(int argc, char **argv) {
 
   gmp_printf("N:%Zd\n", n_big);
 
-  if (mpz_cmp_ui(n_big, MAX_INPUT) >= 0) {
+  if (mpz_cmp_ui(n_big, MAX_SQUFOF_INPUT) >= 0) {
     printf("STATUS:rejected\n");
     printf("REASON:SQUFOF here is limited to inputs below 2^62; route larger inputs to SIQS or NFS\n");
     printf("DONE:0\n");

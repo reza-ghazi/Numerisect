@@ -82,6 +82,17 @@ def test_squfof_helper_emits_a_completion_marker():
     assert "STATUS:found" in output
 
 
+def test_squfof_source_avoids_the_darwin_max_input_macro():
+    source = (
+        pathlib.Path(__file__).parents[1]
+        / "numerisect"
+        / "native"
+        / "numerisect_squfof.c"
+    ).read_text(encoding="utf-8")
+    assert "static const uint64_t MAX_INPUT" not in source
+    assert "MAX_SQUFOF_INPUT" in source
+
+
 def test_squfof_factors_are_verified_against_the_input():
     # Every reported factor must actually divide, checked here against PARI's own
     # factorization rather than trusting the helper.
