@@ -61,6 +61,16 @@ jobs:
         run: ./install.sh --check --prefix "$RUNNER_TEMP/numerisect-check"
       - name: Run complete native test suite
         run: pytest -q
+      - name: Show native build diagnostics
+        if: failure()
+        run: |
+          for log in data/*-build.log; do
+            if [[ -f "$log" ]]; then
+              echo "::group::$log"
+              sed -n '1,240p' "$log"
+              echo "::endgroup::"
+            fi
+          done
       - name: Exercise versioned user installation
         run: |
           ./install.sh --no-system-deps --prefix "$RUNNER_TEMP/numerisect-install"
