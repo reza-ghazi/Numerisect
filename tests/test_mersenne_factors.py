@@ -16,7 +16,6 @@ from numerisect.factor_lab import (
     special_form_analysis,
 )
 from numerisect.main import app
-from numerisect.primes import PrimeEngineError
 
 
 @pytest.fixture()
@@ -46,9 +45,10 @@ def test_every_reported_factor_satisfies_both_congruences():
     exponent = 43
     result = mersenne_factors(exponent, k_limit=30_000, timeout=120)
     assert result["rows"]
-    for factor, k, digits in result["rows"]:
-        q, k = int(factor), int(k)
-        assert q == 2 * k * exponent + 1
+    for factor, k, order, digits in result["rows"]:
+        q, k, order = int(factor), int(k), int(order)
+        assert q == 2 * k * order + 1
+        assert order == exponent
         assert q % 8 in (1, 7)
         assert len(factor) == int(digits)
 
@@ -182,10 +182,13 @@ def test_ecm_does_not_accept_the_whole_cofactor_as_a_proper_factor(monkeypatch):
     assert result["status"] == "completed"
 
 
-def test_a_composite_exponent_is_rejected_by_the_engine():
-    # M_p factors this way only for odd prime p; 2^15 - 1 has factors outside 2kp + 1.
-    with pytest.raises(PrimeEngineError):
-        mersenne_factors(15, k_limit=100, timeout=60)
+def test_an_odd_composite_exponent_searches_every_order_divisor():
+    # 1603 = 7 * 229, so M_7 divides M_1603 and contributes 127 at d=7, k=9.
+    result = mersenne_factors(1603, k_limit=100, timeout=60)
+    assert result["exponent_prime"] is False
+    assert result["exponent_factorization"] == "7 * 229"
+    assert ["127", "9", "7", "3"] in result["rows"]
+    assert result["metrics"]["Order divisors completed"] == "3 of 3"
 
 
 def test_bounds_are_enforced():
@@ -258,8 +261,9 @@ def test_staged_hunt_route_saves_exact_cofactor(local_client, tmp_path, monkeypa
     assert "Exact remaining cofactor (2 digits; proven_prime):\n89" in report
 
 
-def test_mersenne_route_rejects_a_composite_exponent(local_client):
+def test_mersenne_route_accepts_an_odd_composite_exponent(local_client):
     response = local_client.post(
-        "/api/factor-lab/mersenne-factors", json={"exponent": 15, "k_limit": 100}
+        "/api/factor-lab/mersenne-factors", json={"exponent": 1603, "k_limit": 100}
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert "127" in response.json()["factors"]

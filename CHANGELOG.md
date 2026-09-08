@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Extended both Mersenne tools to odd composite exponents. PARI/GP factors the exponent
+  and searches every order-divisor progression `q = 2kd + 1`, so algebraic divisors such
+  as `127 | M_1603` are no longer rejected or missed. Results identify the exponent
+  factorization and exact order used for each factor.
+
 - Added staged Mersenne factor hunts. PARI/GP now owns exact construction, divisor
   verification, multiplicity removal, and bounded rigorous cofactor classification;
   GMP-ECM supplies P−1, P+1, and ECM discovery stages. The interface distinguishes

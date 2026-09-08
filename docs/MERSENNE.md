@@ -32,16 +32,30 @@ and \(q\) is odd. The second is the condition for \(2\) to be a quadratic residu
 \(q \equiv \pm 1 \pmod 8\). The second condition retains two of the four possible odd
 residue classes, so it discards one half of that progression before the modular test.
 
-The exponent \(p=2\) is the trivial exception: \(M_2=3\), and 3 is not of the form
-\(2kp+1\) for an integer \(k\). The specialized progression search therefore accepts
-odd prime exponents starting at 3. The ordinary primality and factorization tools still
-handle 3 normally.
+If the odd exponent \(p\) is composite, a divisor \(q\) can have
+\(d=\operatorname{ord}_q(2)\) equal to any divisor \(d>1\) of \(p\), not necessarily
+\(p\) itself. Numerisect therefore asks PARI/GP to factor the exponent, enumerate every
+such order divisor, and search
+
+\[
+q=2kd+1,\qquad d\mid p,\quad d>1.
+\]
+
+This includes the algebraic factors inherited from \(M_d\mid M_p\). For example,
+\(1603=7\cdot229\), so \(M_7=127\) divides \(M_{1603}\); the search finds 127 at
+\(d=7,k=9\). A prime-exponent-only \(q=2kp+1\) search would miss it.
+
+The exponent \(p=2\) remains the trivial exception: \(M_2=3\). The specialized search
+accepts odd prime or composite exponents starting at 3.
 
 Membership is then decided by a single modular exponentiation:
 
 \[
 q \mid M_p \iff 2^p \equiv 1 \pmod q .
 \]
+
+PARI/GP also completes `isprime(q)` before the application calls a returned candidate a
+prime factor; the pseudoprime filter is only a fast rejection step.
 
 **\(M_p\) is never constructed.** Everything happens modulo the candidate. That is the whole
 point: \(M_{1000151}\) has **301,076 decimal digits**, and its factor \(2000303\) is found at
@@ -93,9 +107,10 @@ and correctly yielded nothing.
 
 ### Finding nothing is inconclusive
 
-An exhausted \(k\) range means **no factor of the form \(2kp+1\) exists below the bound
-searched**. It is not evidence that \(M_p\) is prime, and Numerisect never reports it as
-such. For primality, use the Lucas–Lehmer test, which is a proof.
+For prime \(p\), an exhausted \(k\) range means no factor of the form \(2kp+1\) exists
+below the bound searched. For composite \(p\), it means every selected
+\(q=2kd+1\) order progression was exhausted through that bound. Neither outcome is
+evidence that \(M_p\) is prime.
 
 Finding one or several trial factors is still not a complete factorization. Dividing them
 out can leave a cofactor almost as large as (M_p): for (M_{87083}), the displayed
@@ -186,7 +201,7 @@ identify a divisor. In the application, a composite result therefore links direc
 ## Routes
 
 ```text
-POST /api/factor-lab/mersenne-factors   trial-factor M_p over q = 2kp + 1
+POST /api/factor-lab/mersenne-factors   trial-factor over every odd order divisor d of p
 POST /api/factor-lab/mersenne-hunt      trial, P-1, P+1, ECM, and exact reconciliation
 POST /api/factor-lab/special-form       recognise the form, report the SNFS polynomial
 POST /api/number-theory/lucas-lehmer    prove primality of M_p

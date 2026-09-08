@@ -350,7 +350,7 @@ fl_mersenne_inventory(p, candidates, proof_seconds) =
 {
   my(remaining, c, e, count = 0, cprime, allprime = 1,
      cofactor_status = "unit", screen, proof, complete = 0);
-  if(p < 3 || !isprime(p), error("A staged Mersenne hunt needs an odd prime exponent"));
+  if(p < 3 || p % 2 == 0, error("A staged Mersenne hunt needs an odd exponent of at least 3"));
   remaining = 2^p - 1;
   candidates = vecsort(candidates);
   for(i = 1, #candidates,
@@ -396,7 +396,7 @@ fl_mersenne_inventory(p, candidates, proof_seconds) =
 };
 
 \\ --- Mersenne trial factoring ----------------------------------------------------
-\\ Every prime factor q of M_p = 2^p - 1, for odd prime p, satisfies two classical
+\\ For odd prime p, every prime factor q of M_p = 2^p - 1 satisfies two classical
 \\ congruences:
 \\
 \\   q = 2kp + 1        (Euler / Fermat: the order of 2 modulo q is exactly p)
@@ -411,37 +411,60 @@ fl_mersenne_inventory(p, candidates, proof_seconds) =
 \\ before any factor was found. This is the same reason GIMPS trial-factors before it
 \\ commits to a Lucas-Lehmer test.
 \\
-\\ An exhausted k range is INCONCLUSIVE. It means no factor of the form 2kp + 1 exists
-\\ below the bound searched, and says nothing about whether M_p is prime.
+\\ For odd composite p, ord_q(2) may be any divisor d > 1 of p. PARI/GP therefore
+\\ enumerates every such d and searches q = 2kd + 1. An exhausted k range is still
+\\ INCONCLUSIVE: it says nothing about whether M_p or its remaining cofactor is prime.
 fl_mersenne_factors(p, k_limit, seconds, stop_after_first) =
 {
-  my(found = 0, truncated = 0, q, k, scanned = 0, started = getwalltime(),
-     stop_reason = "ceiling", hits = List());
-  if(p < 3, error("Mersenne progression factoring needs an odd prime exponent p >= 3; M_2 = 3 is the trivial exception"));
-  if(!isprime(p), error("M_p can only be factored this way for a prime exponent p"));
+  my(found = 0, truncated = 0, q, k, d, scanned = 0, largest_q = 0, started = getwalltime(),
+     stop_reason = "ceiling", hits = List(), orders, completed_orders = 0,
+     seen = Map(), pf, pf_text = "");
+  if(p < 3 || p % 2 == 0, error("Mersenne progression factoring needs an odd exponent p >= 3; M_2 = 3 is the trivial exception"));
   print("EXPONENT:", p);
   print("K_LIMIT:", k_limit);
+  pf = factor(p);
+  for(i = 1, matsize(pf)[1],
+    pf_text = concat(pf_text, if(i > 1, " * ", ""));
+    pf_text = concat(pf_text, Str(pf[i, 1]));
+    if(pf[i, 2] > 1, pf_text = concat(pf_text, concat("^", Str(pf[i, 2]))));
+  );
+  print("EXPONENT_PRIME:", isprime(p));
+  print("EXPONENT_FACTORIZATION:", pf_text);
+  \\ If p is composite, a prime divisor q of M_p can have any odd order d>1
+  \\ dividing p. Searching q=2kd+1 for every such d includes the algebraic
+  \\ M_d divisors that a prime-p-only search misses. PARI/GP owns divisors(p).
+  orders = select(x -> x > 1, divisors(p));
+  print("ORDER_DIVISORS:", #orders);
   \\ #digits of 2^p - 1 without building it.
   print("MERSENNE_DIGITS:", floor(p * log(2) / log(10)) + 1);
-  for(k = 1, k_limit,
-    if(getwalltime() - started >= 1000 * seconds,
-      truncated = 1; stop_reason = "timeout"; break();
-    );
-    scanned = k;
-    q = 2 * k * p + 1;
-    \\ q = +/-1 mod 8 is necessary; it discards half of the progression.
-    if(q % 8 == 1 || q % 8 == 7,
-      if(ispseudoprime(q) && Mod(2, q)^p == 1,
-        listput(hits, [k, q]);
-        if(stop_after_first, stop_reason = "factor_found"; break());
+  for(i = 1, #orders,
+    d = orders[i];
+    for(k = 1, k_limit,
+      if(getwalltime() - started >= 1000 * seconds,
+        truncated = 1; stop_reason = "timeout"; break();
+      );
+      scanned = max(scanned, k);
+      q = 2 * k * d + 1;
+      largest_q = max(largest_q, q);
+      \\ q = +/-1 mod 8 is necessary for an odd order d.
+      if(q % 8 == 1 || q % 8 == 7,
+        if(ispseudoprime(q) && Mod(2, q)^d == 1 && isprime(q) && !mapisdefined(seen, q),
+          mapput(seen, q, 1);
+          listput(hits, [k, q, d]);
+          if(stop_after_first, stop_reason = "factor_found"; break());
+        );
       );
     );
+    if(truncated || stop_reason == "factor_found", break());
+    completed_orders++;
   );
   for(i = 1, #hits,
-    print("FACTOR:", hits[i][2], "|", hits[i][1]);
+    print("FACTOR:", hits[i][2], "|", hits[i][1], "|", hits[i][3]);
     found++;
   );
   print("SCANNED_K:", scanned);
+  print("LARGEST_CANDIDATE:", largest_q);
+  print("ORDERS_COMPLETED:", completed_orders);
   print("STOP_REASON:", stop_reason);
   print("TRUNCATED:", truncated);
   print("DONE:", found);

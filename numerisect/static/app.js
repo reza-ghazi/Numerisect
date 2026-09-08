@@ -3525,7 +3525,7 @@ bindFactorLab('#factor-lab-mersenne-form', '/api/factor-lab/mersenne-factors', (
   k_limit: $('#mersenne-mode').value === 'manual' ? Number($('#mersenne-k').value) : null,
   timeout_seconds: Number($('#mersenne-timeout').value),
 }), (data) => Object.entries(data.metrics).concat(
-  data.rows.map((row) => [`Factor q = ${row[0]}`, `k = ${row[1]}, ${row[2]} digits`]),
+  data.rows.map((row) => [`Factor q = ${row[0]}`, `k = ${row[1]}, order d = ${row[2]}, ${row[3]} digits`]),
 ), 'Mersenne trial factoring', '#mersenne-factor-result');
 
 $('#mersenne-mode').addEventListener('change', (event) => {

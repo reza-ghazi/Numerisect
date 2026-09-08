@@ -160,7 +160,8 @@ cofactor. Nothing is divided out in Python. The recorded parts always multiply b
 the input, and a composite cofactor is flagged so it can be continued as a child job.
 
 The dedicated Mersenne hunt applies the same boundary to \(M_p=2^p-1\). It first
-exhausts the selected special-form \(q=2kp+1\) range, then gives the exact cofactor to
+exhausts \(q=2kp+1\) for prime \(p\), or every \(q=2kd+1\) progression for
+\(d>1\) dividing an odd composite \(p\), then gives the exact cofactor to
 GMP-ECM's P−1, P+1, and ECM modes. PARI/GP rebuilds and reconciles the inventory after
 each discovery. The report contains the exact cofactor and says `complete` only when
 every remaining part is rigorously prime; exhausted bounds remain inconclusive.

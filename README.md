@@ -76,10 +76,10 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#diagnostics>. The dedicated Mersenne
-factor search is at <http://127.0.0.1:8765/?ui=20260908-mersenne-hunt#factor/mersenne>.
+<http://127.0.0.1:8765/?ui=20260908-mersenne-orders#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20260908-mersenne-orders#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20260908-mersenne-orders#diagnostics>. The dedicated Mersenne
+factor search is at <http://127.0.0.1:8765/?ui=20260908-mersenne-orders#factor/mersenne>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -395,8 +395,9 @@ truncates them. Values too wide for a JSON response are abbreviated on screen wi
 exact leading and trailing digits and exact digit count, and every value is written at
 full length to a separate export file named in the response.
 
-Mersenne numbers have their own route: for odd prime p, trial factoring over q = 2kp + 1
-never builds M_p, so it reaches exponents in the millions far beyond a practical
+Mersenne numbers have their own route: for odd prime p, trial factoring over q = 2kp + 1;
+for odd composite p, PARI/GP enumerates every order divisor d and searches q = 2kd + 1.
+The search never builds M_p, so it reaches exponents in the millions far beyond a practical
 general-purpose factorization attempt. M_2 = 3 is the trivial exception. See
 [Mersenne numbers](docs/MERSENNE.md).
 
