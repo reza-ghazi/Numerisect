@@ -64,12 +64,10 @@ jobs:
       - name: Show native build diagnostics
         if: failure()
         run: |
-          for log in data/*-build.log; do
-            if [[ -f "$log" ]]; then
-              echo "::group::$log"
-              sed -n '1,240p' "$log"
-              echo "::endgroup::"
-            fi
+          for root in data "$HOME/.local/share/numerisect"; do
+            [[ -d "$root" ]] || continue
+            find "$root" -type f -name '*-build.log' \
+              -exec sh -c 'for log do echo "::group::$log"; sed -n "1,240p" "$log"; echo "::endgroup::"; done' sh {} +
           done
       - name: Exercise versioned user installation
         run: |
