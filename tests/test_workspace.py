@@ -332,6 +332,15 @@ def test_job_limits_recorded_in_manifest(tmp_path, monkeypatch):
         manager.shutdown()
 
 
+def test_memory_limit_uses_the_host_supported_resource(monkeypatch):
+    monkeypatch.setattr(jobs.sys, "platform", "darwin")
+    assert jobs._memory_limit_resource() == jobs.resource.RLIMIT_DATA
+    assert jobs._memory_limit_label() == "data-segment"
+    monkeypatch.setattr(jobs.sys, "platform", "linux")
+    assert jobs._memory_limit_resource() == jobs.resource.RLIMIT_AS
+    assert jobs._memory_limit_label() == "address-space"
+
+
 # --- Interface contract for the workspace view ---------------------------------------
 
 from pathlib import Path  # noqa: E402

@@ -6,6 +6,7 @@ import re
 import resource
 import signal
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -61,6 +62,22 @@ class LimitExceeded(RuntimeError):
 MAX_PRIORITY = 10
 MIN_PRIORITY = -10
 ACTIVE_STATUSES = frozenset({"queued", "running", "cancelling", "paused"})
+
+
+def _memory_limit_resource() -> int:
+    """Return the enforceable per-process memory resource for this POSIX host.
+
+    Darwin reserves a large virtual address map before an engine starts, making a
+    practical ``RLIMIT_AS`` low enough to protect the host also prevent ``exec``.
+    ``RLIMIT_DATA`` constrains the engine's writable data/heap allocation instead.
+    Linux uses the stronger total-address-space limit.
+    """
+
+    return resource.RLIMIT_DATA if sys.platform == "darwin" else resource.RLIMIT_AS
+
+
+def _memory_limit_label() -> str:
+    return "data-segment" if sys.platform == "darwin" else "address-space"
 
 
 class JobManager:
@@ -242,7 +259,7 @@ class JobManager:
             self._dispatch()
 
     def _limits_preexec(self, job: dict[str, Any]):
-        """Return a ``preexec_fn`` applying RLIMIT_CPU/RLIMIT_AS, or ``None``."""
+        """Return a ``preexec_fn`` applying CPU and host-appropriate memory limits."""
 
         cpu = job.get("cpu_seconds")
         memory = job.get("memory_mb")
@@ -254,7 +271,7 @@ class JobManager:
                 resource.setrlimit(resource.RLIMIT_CPU, (int(cpu), int(cpu) + 5))
             if memory:
                 limit = int(memory) * 1024 * 1024
-                resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+                resource.setrlimit(_memory_limit_resource(), (limit, limit))
 
         return apply
 
@@ -367,7 +384,8 @@ class JobManager:
             )
         if limits.get("memory_mb") and return_code in {-signal.SIGABRT, -signal.SIGSEGV}:
             raise LimitExceeded(
-                f"The engine aborted under the {limits.get('memory_mb')} MB address-space limit"
+                f"The engine aborted under the {limits.get('memory_mb')} MB "
+                f"{_memory_limit_label()} limit"
             )
         return return_code, "".join(captured)
 
