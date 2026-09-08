@@ -20,7 +20,7 @@ wheel uses `~/.local/share/numerisect`.
 | `NUMERISECT_CADO_THRESHOLD` | `95` | Decimal-digit boundary for automatic YAFU-to-CADO routing |
 | `NUMERISECT_PRETEST_LEVEL` | `20` | Default YAFU ECM pretest level |
 | `NUMERISECT_MAX_PARALLEL_JOBS` | `1` | Simultaneous CPU-heavy jobs |
-| `NUMERISECT_GGNFS_DIR` | unset | Directory holding the GGNFS lattice sievers, needed for NFS and engine tuning |
+| `NUMERISECT_GGNFS_DIR` | unset | Optional override for the automatically discovered GGNFS lattice-siever directory |
 
 !!! tip "Tuning the threshold"
 

@@ -129,6 +129,7 @@ not_in_nav: |
 nav:
   - Home:
       - index.md
+      - capabilities.md
       - getting-started/installation.md
       - getting-started/first-steps.md
       - getting-started/interface.md
@@ -143,6 +144,7 @@ nav:
   - Mathematics:
       - mathematics/index.md
       - mathematics/primality.md
+      - mathematics/prime-structures.md
       - mathematics/factorization.md
       - mathematics/distribution.md
       - mathematics/modular.md

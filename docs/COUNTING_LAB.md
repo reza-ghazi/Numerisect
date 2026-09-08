@@ -47,17 +47,16 @@ computed by the identical PARI routines listed above.
 
 ### Why agreement is the point
 
-primecount ships six independent prime-counting algorithms. They are not
-variations on one implementation: Legendre's formula, Meissel's refinement,
-Lehmer's extension, Lagarias–Miller–Odlyzko, Deléglise–Rivat and Gourdon's
-method are different mathematics with different code paths, different sieving
-structure and different complexity. PARI/GP's `primepi` is a seventh
-implementation that shares no code with any of them.
+primecount ships six mathematically distinct prime-counting algorithms: Legendre's
+formula, Meissel's refinement, Lehmer's extension, Lagarias–Miller–Odlyzko,
+Deléglise–Rivat and Gourdon's method. They have different mathematics, code paths,
+sieving structures and complexity, but they still live in one primecount codebase.
+PARI/GP's `primepi` is a second, engine-independent implementation.
 
-A single algorithm cannot check itself. Running several on one x and finding
-that they return the same integer is an independent correctness check — of the
-installed binaries, of this machine, and of the request — that no single run can
-provide. That is what this page is for; the timings are a by-product.
+A single method cannot check itself. Running several on one x and finding that they
+return the same integer checks distinct algorithms and execution paths; agreement with
+PARI additionally crosses a codebase boundary. That is what this page is for; the
+timings are a by-product.
 
 So the report never resolves a disagreement. If two sources differ, the page
 says `NO — SOURCES DISAGREE`, prefixes the note with `DISAGREEMENT:`, prints
@@ -76,7 +75,7 @@ consensus, not an answer.
 | Deléglise–Rivat | `--deleglise-rivat` | Alpha-tuned refinement of LMO |
 | Gourdon | `--gourdon` | primecount's default algorithm |
 | Add `--double-check` | `--double-check` | Recomputes π(x) with alternative alpha tuning factors, so the default algorithm verifies its own first result under a different parameterisation |
-| Add PARI/GP `primepi` | — | The seventh, engine-independent source |
+| Add PARI/GP `primepi` | — | An additional method output from an independent engine implementation |
 
 ### Bounds
 

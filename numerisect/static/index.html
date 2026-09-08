@@ -135,9 +135,9 @@
         <form id="factor-lab-mersenne-form">
           <p class="eyebrow">MERSENNE NUMBERS</p>
           <h2>Mersenne trial factoring of M<sub>p</sub> = 2<sup>p</sup> − 1</h2>
-          <p>Every prime factor q of M<sub>p</sub>, for prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8). Those two congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed</strong>, so an exponent in the millions is workable here and hopeless for any general method: M<sub>1000151</sub> has 301,076 decimal digits and its factor 2000303 appears at k = 1. Finding nothing is inconclusive; it says no factor of this form exists below the bound searched, not that M<sub>p</sub> is prime.</p>
+          <p>Every prime factor q of M<sub>p</sub>, for odd prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8); M<sub>2</sub> = 3 is the trivial exception. Those congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed</strong>, so trial factoring remains practical for exponents far beyond a general-purpose factorization attempt: M<sub>1000151</sub> has 301,076 decimal digits and its factor 2000303 appears at k = 1. Finding nothing is inconclusive; it says no factor of this form exists below the bound searched, not that M<sub>p</sub> is prime.</p>
           <div class="triple-controls">
-            <label>Exponent p (prime)<input id="mersenne-exponent" type="number" min="2" max="1000000000" value="1061" required /></label>
+            <label>Exponent p (odd prime)<input id="mersenne-exponent" type="number" min="3" max="1000000000" value="1061" required /></label>
             <label>Largest k searched<input id="mersenne-k" type="number" min="1" max="50000000" value="100000" required /></label>
             <label>Timeout (seconds)<input id="mersenne-timeout" type="number" min="1" max="3600" value="300" /></label>
           </div>
@@ -561,7 +561,7 @@
           <form id="verify-count-form" class="panel utility-card">
             <p class="eyebrow">INDEPENDENT AGREEMENT</p>
             <h2>Cross-check &pi;(x)</h2>
-            <p>Computes &pi;(x) with primecount's six independent algorithms, primesieve's sieve, and PARI's own counter, then reports whether they agree. Agreement across independent implementations is evidence no single algorithm can give. A disagreement means one engine is faulty, and Numerisect will not choose between them.</p>
+            <p>Computes &pi;(x) with six mathematically distinct algorithms in primecount, primesieve's sieve, and PARI's own counter, then reports whether they agree. That is eight method outputs across three engine implementations. A disagreement is never reconciled or hidden.</p>
             <label>Bound x<input id="verify-count-x" type="text" spellcheck="false" placeholder="10^10" required /></label>
             <label>Threads<input id="verify-count-threads" type="number" min="1" max="256" value="4" /></label>
             <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
@@ -1314,8 +1314,8 @@
 
           <form id="counting-comparison-form" class="panel utility-card utility-wide">
             <p class="eyebrow">ALGORITHM CROSS-CHECK</p>
-            <h2>Count π(x) with independent algorithms</h2>
-            <p>primecount ships six independent prime-counting algorithms, and PARI/GP <code>primepi</code> is a seventh implementation that shares no code with them. Running several on one x turns agreement into a correctness check that no single algorithm can give for itself. Any disagreement is reported prominently and never reconciled. Legendre, Meissel and Lehmer are capped at x ≤ 10¹⁶; PARI <code>primepi</code> joins only while x ≤ 10¹¹.</p>
+            <h2>Count π(x) with distinct algorithms</h2>
+            <p>primecount supplies six mathematically distinct algorithms in one codebase; PARI/GP <code>primepi</code> adds an independent engine implementation. Running several on one x checks different formulas and execution paths. Any disagreement is reported prominently and never reconciled. Legendre, Meissel and Lehmer are capped at x ≤ 10¹⁶; PARI <code>primepi</code> joins only while x ≤ 10¹¹.</p>
             <div class="four-controls">
               <label>x ≤ 10³¹<input id="counting-comparison-x" value="10000000000" required /></label>
               <label>primecount threads<input id="counting-comparison-threads" type="number" min="1" max="256" value="1" required /></label>

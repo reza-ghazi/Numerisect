@@ -8,6 +8,13 @@ Numerisect is a local workbench for integer factorization, primality, prime expl
 and analytic number theory. It runs on your machine, listens only on loopback, and keeps
 every calculation, log and result there.
 
+!!! info "Current release: 0.6.0"
+
+    Numerisect is an experimental, source-distributed pre-release. The current interface
+    contains 133 Prime Tools pages, 22 zeta/L-function pages, an expert factorization
+    workspace, and 212 documented API operations. Start with the
+    [capability index](capabilities.md) when you know the question but not the tool name.
+
 **It is a user interface over existing number-theory libraries.** PARI/GP, FLINT/Arb,
 YAFU, Msieve, CADO-NFS, GMP-ECM, primesieve and primecount perform the mathematics.
 Where no library provides a routine, a small compiled C program fills the gap. Python
@@ -62,6 +69,15 @@ lead visitors to the same maintained content.
 
     [:octicons-arrow-right-24: Reference](reference/api.md)
 
+-   **Survey the whole workbench**
+
+    ---
+
+    A compact, auditable map of the factorization, Prime Tools, zeta, verification and
+    workflow capabilities currently shipped in 0.6.0.
+
+    [:octicons-arrow-right-24: Capability index](capabilities.md)
+
 </div>
 
 ---
@@ -70,14 +86,15 @@ lead visitors to the same maintained content.
 
 | Area | Examples |
 |---|---|
-| **Factorization** | Automatic YAFU-to-CADO routing, SQUFOF, resumable ECM campaigns, SIQS and NFS with expert parameters, cross-engine verification, distributed CADO-NFS |
+| **Factorization** | Automatic YAFU-to-CADO routing, SQUFOF, resumable ECM campaigns, SIQS and NFS with expert parameters, GGNFS siever diagnostics, distributed CADO-NFS, RSA Challenge verification, and Mersenne trial factoring without constructing \(2^p-1\) |
 | **Primality** | Rigorous proofs, Baillie–PSW, a comparison laboratory across eight tests, deterministic Miller–Rabin witness sets, Pocklington and Pratt certificates |
-| **Prime structure** | A 56-class catalogue, reciprocal periods, special families, Cunningham chains, covering sets, constrained generation |
-| **Distribution** | Exact \(\pi(x)\) to \(10^{31}\), six independent counting algorithms compared, nth-prime bounds, prime races, maximal gaps, Hardy–Littlewood and Bateman–Horn predictions |
+| **Prime structure** | A 56-class catalogue, exact reciprocal periods, Gaussian and Eisenstein primes, special families, Cunningham chains, covering sets, and constrained generation |
+| **Distribution** | Exact \(\pi(x)\) to \(10^{31}\), six mathematically distinct `primecount` algorithms plus independent PARI and primesieve cross-checks, nth-prime bounds, prime races, maximal gaps, and clearly labelled Hardy–Littlewood and Bateman–Horn predictions |
 | **Algebra** | Congruences over composite moduli, four discrete-logarithm algorithms, finite fields, number fields with prime-ideal decomposition, Chebotarev experiments |
 | **Quadratic forms** | Reduction, composition, class groups, Pell equations and continued fractions at unlimited digit length |
 | **Zeta and L-functions** | Rigorous \(\zeta(s)\) enclosures, certified critical-line zeros, Turing counts, Riemann–Siegel, pair correlation, Dirichlet L-functions, Dedekind zeta |
 | **Visualization** | Ulam, Sacks and polar spirals, Eisenstein lattices, modular wheels, residue heatmaps, sieve animations |
+| **Research workflow** | Batch import, local result cache, saved workspaces, searchable reports and jobs, resource limits, CLI/API parity, export formats, and reproducibility manifests |
 
 ---
 
@@ -116,8 +133,10 @@ seeing shape; not a certified value.
 
 Some things it deliberately does not do:
 
-- **It does not go online during calculations.** Engine installation and the optional
-  catalogue lookups are the only outbound paths, both behind explicit confirmation.
+- **Ordinary calculations stay local.** The three network-capable paths are confirmed
+  engine source builds, optional catalogue lookups, and deliberately configured
+  distributed CADO-NFS. Each is off by default or requires explicit authorization; there
+  is no telemetry, analytics, or update check.
 - **It is not audited cryptographic software.** The prime-construction laboratory is
   labelled experimental and should not be used to generate keys.
 - **It does not claim more than it proves.** Where an engine cannot answer, the gap is
