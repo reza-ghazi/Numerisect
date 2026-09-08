@@ -102,6 +102,15 @@ if [[ "$host_os" == Darwin ]]; then
   libtool_command="glibtoolize"
 fi
 
+darwin_openmp_available() {
+  [[ "$host_os" != Darwin ]] && return 0
+  command -v brew >/dev/null 2>&1 || return 1
+  local libomp_prefix=""
+  libomp_prefix="$(brew --prefix libomp 2>/dev/null)" || return 1
+  [[ -f "$libomp_prefix/include/omp.h" ]] &&
+    [[ -f "$libomp_prefix/lib/libomp.dylib" || -f "$libomp_prefix/lib/libomp.a" ]]
+}
+
 declare -a missing_commands=()
 for command in git make cc cmake pkg-config autoconf automake "$libtool_command"; do
   command -v "$command" >/dev/null 2>&1 || missing_commands+=("$command")
@@ -113,6 +122,9 @@ for module in gmp mpfr flint; do
     missing_libraries+=("$module")
   fi
 done
+if ! darwin_openmp_available; then
+  missing_libraries+=("libomp")
+fi
 
 detect_package_manager() {
   if command -v dnf >/dev/null 2>&1; then package_manager="dnf"
@@ -148,7 +160,7 @@ install_system_packages() {
     apt-get) packages=(git make gcc g++ cmake pkg-config python3-venv libgmp-dev libmpfr-dev libflint-dev autoconf automake libtool) ;;
     pacman) packages=(git make gcc cmake pkgconf python gmp mpfr flint autoconf automake libtool) ;;
     brew)
-      packages=(git make cmake pkg-config gmp mpfr flint autoconf automake libtool)
+      packages=(git make cmake pkg-config gmp mpfr flint libomp autoconf automake libtool)
       requires_admin="no"
       ;;
   esac
@@ -193,6 +205,9 @@ for module in gmp mpfr flint; do
     missing_libraries_after+=("$module")
   fi
 done
+if ! darwin_openmp_available; then
+  missing_libraries_after+=("libomp")
+fi
 if ((${#missing_after[@]} || ${#missing_libraries_after[@]})); then
   ((${#missing_after[@]})) && echo "Missing required system commands: ${missing_after[*]}" >&2
   ((${#missing_libraries_after[@]})) && echo "Missing required system libraries: ${missing_libraries_after[*]}" >&2

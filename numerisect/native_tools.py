@@ -4,6 +4,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -56,6 +57,87 @@ def _ensure_flint_link_flag(flags: list[str]) -> list[str]:
     return [*flags[:first_library], "-lflint", *flags[first_library:]]
 
 
+def _pkg_config_flags(module: str) -> list[str]:
+    """Return compiler and linker flags for a system or managed native library."""
+
+    pkg_config = shutil.which("pkg-config")
+    if not pkg_config:
+        return []
+    query = subprocess.run(
+        [pkg_config, "--cflags", "--libs", module],
+        env=_pkg_config_environment(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    return shlex.split(query.stdout) if query.returncode == 0 else []
+
+
+def _managed_library_flags(library: str) -> list[str]:
+    """Fallback flags for a library built into Numerisect's managed prefix."""
+
+    prefix = TOOLS_DIR / "prefix"
+    return [
+        f"-I{prefix / 'include'}",
+        f"-L{prefix / 'lib'}",
+        f"-L{prefix / 'lib64'}",
+        f"-Wl,-rpath,{prefix / 'lib'}",
+        f"-Wl,-rpath,{prefix / 'lib64'}",
+        f"-l{library}",
+    ]
+
+
+def _darwin_openmp_flags(prefix: Path) -> list[str]:
+    """Apple Clang flags for the keg-only Homebrew libomp runtime."""
+
+    return [
+        "-Xpreprocessor",
+        "-fopenmp",
+        f"-I{prefix / 'include'}",
+        f"-L{prefix / 'lib'}",
+        f"-Wl,-rpath,{prefix / 'lib'}",
+        "-lomp",
+    ]
+
+
+def _openmp_flags() -> list[str]:
+    """Return the host toolchain's OpenMP compile and link flags."""
+
+    if sys.platform != "darwin":
+        return ["-fopenmp"]
+
+    configured = os.environ.get("NUMERISECT_LIBOMP_PREFIX", "").strip()
+    candidates = [Path(configured)] if configured else []
+    brew = shutil.which("brew")
+    if brew:
+        query = subprocess.run(
+            [brew, "--prefix", "libomp"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        if query.returncode == 0 and query.stdout.strip():
+            candidates.append(Path(query.stdout.strip()))
+    candidates.extend((Path("/opt/homebrew/opt/libomp"), Path("/usr/local/opt/libomp")))
+    prefix = next(
+        (
+            path
+            for path in candidates
+            if (path / "include" / "omp.h").is_file()
+            and any((path / "lib" / name).is_file() for name in ("libomp.dylib", "libomp.a"))
+        ),
+        None,
+    )
+    if prefix is None:
+        raise RuntimeError(
+            "Homebrew libomp is required to build Numerisect's multithreaded native "
+            "helpers on macOS"
+        )
+    return _darwin_openmp_flags(prefix)
+
+
 def build_zeta_tool() -> Path:
     destination = TOOLS_BIN_DIR / ZETA_TOOL_NAME
     source = NATIVE_DIR / "numerisect_zeta.c"
@@ -68,19 +150,9 @@ def build_zeta_tool() -> Path:
         if not compiler:
             raise RuntimeError("A C compiler is required to build the FLINT zeta helper")
         environment = _pkg_config_environment()
-        pkg_config = shutil.which("pkg-config")
-        flags: list[str] = []
-        if pkg_config:
-            query = subprocess.run(
-                [pkg_config, "--cflags", "--libs", "flint"],
-                env=environment,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-            )
-            if query.returncode == 0:
-                flags = _ensure_flint_link_flag(shlex.split(query.stdout))
+        flags = _pkg_config_flags("flint")
+        if flags:
+            flags = _ensure_flint_link_flag(flags)
         if not flags:
             prefix = TOOLS_DIR / "prefix"
             if not (prefix / "include" / "flint" / "flint.h").is_file():
@@ -102,7 +174,7 @@ def build_zeta_tool() -> Path:
             compiler,
             "-O3",
             "-std=c11",
-            "-fopenmp",
+            *_openmp_flags(),
             str(source),
             "-o",
             str(temporary),
@@ -176,14 +248,10 @@ def build_squfof_tool() -> Path:
             raise RuntimeError("A C compiler is required to build the SQUFOF helper")
         TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+        flags = _pkg_config_flags("gmp") or _managed_library_flags("gmp")
         command = [
             compiler, "-O3", "-std=c11", str(source), "-o", str(temporary),
-            f"-I{TOOLS_DIR / 'prefix' / 'include'}",
-            f"-L{TOOLS_DIR / 'prefix' / 'lib'}",
-            f"-L{TOOLS_DIR / 'prefix' / 'lib64'}",
-            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib'}",
-            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib64'}",
-            "-lgmp", "-lm",
+            *flags, "-lm",
         ]
         result = subprocess.run(
             command, env=_pkg_config_environment(), stdout=subprocess.PIPE,
@@ -245,14 +313,10 @@ def build_bigsieve_tool() -> Path:
             raise RuntimeError("A C compiler is required to build the big sieve")
         TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+        flags = _pkg_config_flags("gmp") or _managed_library_flags("gmp")
         command = [
-            compiler, "-O3", "-std=c11", "-fopenmp", str(source), "-o", str(temporary),
-            f"-I{TOOLS_DIR / 'prefix' / 'include'}",
-            f"-L{TOOLS_DIR / 'prefix' / 'lib'}",
-            f"-L{TOOLS_DIR / 'prefix' / 'lib64'}",
-            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib'}",
-            f"-Wl,-rpath,{TOOLS_DIR / 'prefix' / 'lib64'}",
-            "-lgmp", "-lm",
+            compiler, "-O3", "-std=c11", *_openmp_flags(), str(source),
+            "-o", str(temporary), *flags, "-lm",
         ]
         result = subprocess.run(
             command, env=_pkg_config_environment(), stdout=subprocess.PIPE,
@@ -286,4 +350,3 @@ def bigsieve_tool_path() -> Path:
         ):
             return path
     return build_bigsieve_tool()
-
