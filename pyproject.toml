@@ -59,6 +59,7 @@ include = ["numerisect*"]
 numerisect = [
   "*.gp",
   "engine_manifest.toml",
+  "rsa_challenge.toml",
   "native/*.c",
   "static/*.html",
   "static/*.css",

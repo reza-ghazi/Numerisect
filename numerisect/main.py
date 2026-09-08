@@ -200,6 +200,8 @@ from .primes import (
     special_numbers_in_range,
     verify_primality_certificate,
 )
+from .rsa_challenge import catalogue as rsa_catalogue
+from .rsa_challenge import challenge_report as rsa_challenge_report
 from .security import (
     LOOPBACK_HOSTS,
     REQUEST_TOKEN,
@@ -4720,6 +4722,43 @@ def _save_factor_lab_report(kind: str, heading: str, result: dict, rows: list[st
     lines.extend(rows)
     path = save_prime_output(kind, heading, lines)
     return {**result, "output_file": path.name}
+
+
+class RsaChallengeRequest(BaseModel):
+    target: str = Field(default="RSA-250", min_length=1, max_length=1_000)
+    prove_factors: bool = False
+    proof_seconds: int = Field(default=60, ge=1, le=3600)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+@app.get("/api/factor-lab/rsa-catalogue")
+def factor_lab_rsa_catalogue() -> dict:
+    """List the RSA Factoring Challenge numbers with their sizes and published status."""
+
+    result = rsa_catalogue()
+    return _save_manipulation_report(
+        "rsa-catalogue", "RSA Factoring Challenge catalogue", result
+    )
+
+
+@app.post("/api/factor-lab/rsa-challenge")
+def factor_lab_rsa_challenge(request: RsaChallengeRequest) -> dict:
+    """Identify an RSA challenge number, re-verify its published factors, estimate effort."""
+
+    try:
+        result = rsa_challenge_report(
+            request.target,
+            request.prove_factors,
+            request.proof_seconds,
+            request.timeout_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "rsa-challenge", f"RSA challenge report: {result['name']}", result
+    )
 
 
 @app.post("/api/factor-lab/squfof")

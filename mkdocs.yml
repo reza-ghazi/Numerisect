@@ -150,6 +150,7 @@ nav:
       - mathematics/zeta.md
   - Guides:
       - FACTORIZATION.md
+      - RSA_CHALLENGE.md
       - FACTOR_LAB.md
       - PRIMALITY_LAB.md
       - PRIME_CLASSIFICATION.md

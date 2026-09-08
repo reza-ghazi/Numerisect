@@ -141,6 +141,8 @@ in-process. See the [command-line reference](cli.md).
 |---|---|---|
 | `POST` | `/api/factor-lab/certificates` | Generate and independently verify a primality certificate per prime factor. |
 | `POST` | `/api/factor-lab/special-form` | Detect special algebraic forms, algebraic factors, and SNFS suitability. |
+| `GET` | `/api/factor-lab/rsa-catalogue` | List the RSA Factoring Challenge numbers with their sizes and published status. |
+| `POST` | `/api/factor-lab/rsa-challenge` | Identify an RSA challenge number, re-verify its published factors in PARI/GP, and estimate the number field sieve effort on this machine. |
 | `POST` | `/api/factor-lab/squfof` | Factor with Shanks' square forms factorization (numerisect-squfof, C/GMP). |
 | `POST` | `/api/factor-lab/strategy` | Recommend an engine and estimate the expected remaining factor size. |
 | `POST` | `/api/factor-lab/trace` | Produce a bounded, educational step trace of a factoring algorithm. |

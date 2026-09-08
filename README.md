@@ -390,6 +390,10 @@ truncates them. Values too wide for a JSON response are abbreviated on screen wi
 exact leading and trailing digits and exact digit count, and every value is written at
 full length to a separate export file named in the response.
 
+Numerisect factors an RSA challenge number through the ordinary pipeline; see
+[The RSA Factoring Challenge](docs/RSA_CHALLENGE.md) for the catalogue of all 54
+numbers, the engine-verified factorizations, and an effort estimate for the open ones.
+
 See [Quadratic forms and continued fractions](docs/FORMS_LAB.md) for binary quadratic
 form reduction and composition, class groups, Pell equations, and the connection between
 the principal cycle of forms and SQUFOF.

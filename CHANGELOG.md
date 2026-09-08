@@ -5,6 +5,19 @@ binary packages are published.
 
 ## Unreleased
 
+- Added RSA Factoring Challenge support. Numerisect could already factor an RSA number,
+  because an RSA number is an ordinary semiprime and the pipeline routes it by size, but
+  it could not say which challenge number you were holding, whether the published
+  factorization is genuine, or what an unfactored one would cost. All 54 challenge
+  numbers, RSA-100 through RSA-2048, now ship as catalogue data that is never trusted on
+  its own authority: PARI/GP proves each value composite, recomputes its decimal and bit
+  length, multiplies the published factors back together and tests each for primality.
+  The test suite re-runs those checks over the whole file, so a mistyped digit fails the
+  build rather than reaching a user. An effort estimate from the conjectured number field
+  sieve complexity, anchored on the measured 2,700 core-years of RSA-250 and scaled to the
+  local core count, is reported as an order of magnitude and labelled a heuristic. An open
+  challenge number is reported as unfactored, never as unfactorable.
+
 - Gave every documented endpoint a purpose. The API reference listed 208 routes and left
   151 of them with a blank Purpose column, so the table named routes without saying what
   any of them did. Each one now carries a description, and for the 134 routes with a

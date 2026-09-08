@@ -132,6 +132,25 @@
           </div>
         </form>
 
+        <form id="factor-lab-rsa-form">
+          <p class="eyebrow">RSA FACTORING CHALLENGE</p>
+          <h2>RSA challenge numbers: identify, verify, estimate</h2>
+          <p>Numerisect factors an RSA number the same way it factors any semiprime, so this tool answers what the factoring pipeline cannot: which challenge number you are holding, whether its published factorization is genuine, and what attempting it would cost here. PARI/GP proves the value composite, multiplies the published factors back together and tests each for primality; nothing is taken from the catalogue on trust. The effort figure is a heuristic from the conjectured number field sieve complexity, anchored on the measured RSA-250 result, and is an order of magnitude only.</p>
+          <label>Challenge name or decimal value<input id="rsa-target" type="text" spellcheck="false" placeholder="RSA-250" value="RSA-250" required /></label>
+          <details>
+            <summary>Advanced</summary>
+            <div class="controls-grid">
+              <label>Prove the factors are prime<select id="rsa-prove"><option value="0">no, Baillie–PSW is enough</option><option value="1">yes, run isprime</option></select></label>
+              <label>Proof budget (seconds)<input id="rsa-proof-seconds" type="number" min="1" max="3600" value="60" /></label>
+              <label>Timeout (seconds)<input id="rsa-timeout" type="number" min="1" max="3600" value="300" /></label>
+            </div>
+          </details>
+          <div class="actions">
+            <button class="primary" type="submit"><span>Report on this challenge number</span><span>→</span></button>
+            <button id="rsa-catalogue-button" class="secondary" type="button">List all 54 challenge numbers</button>
+          </div>
+        </form>
+
         <form id="factor-lab-squfof-form">
           <p class="eyebrow">SHANKS SQUARE FORMS</p>
           <h2>SQUFOF, Shanks' square forms factorization</h2>

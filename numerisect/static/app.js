@@ -3487,6 +3487,29 @@ function bindFactorLab(formId, path, buildBody, buildRows, title) {
   });
 }
 
+bindFactorLab('#factor-lab-rsa-form', '/api/factor-lab/rsa-challenge', () => ({
+  target: $('#rsa-target').value.trim(),
+  prove_factors: $('#rsa-prove').value === '1',
+  proof_seconds: Number($('#rsa-proof-seconds').value),
+  timeout_seconds: Number($('#rsa-timeout').value),
+}), (data) => data.rows, 'RSA Factoring Challenge');
+
+// The catalogue is a plain listing rather than a computation, so it is a GET.
+const rsaCatalogueButton = $('#rsa-catalogue-button');
+if (rsaCatalogueButton) {
+  rsaCatalogueButton.addEventListener('click', async () => {
+    rsaCatalogueButton.disabled = true;
+    try {
+      const data = await api('/api/factor-lab/rsa-catalogue');
+      renderFactorLab('RSA Factoring Challenge catalogue', data.rows, data.note, data.output_file);
+    } catch (error) {
+      factorLabError(error.message);
+    } finally {
+      rsaCatalogueButton.disabled = false;
+    }
+  });
+}
+
 bindFactorLab('#factor-lab-squfof-form', '/api/factor-lab/squfof', () => ({
   expression: $('#squfof-expression').value.trim(),
   max_iterations: Number($('#squfof-iterations').value),
