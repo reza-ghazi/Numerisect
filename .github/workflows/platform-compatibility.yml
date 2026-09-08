@@ -71,6 +71,9 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 45
     steps:
+      - name: Preserve POSIX source line endings
+        shell: pwsh
+        run: git config --global core.autocrlf false
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

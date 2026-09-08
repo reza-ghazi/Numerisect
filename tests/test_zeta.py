@@ -1,6 +1,10 @@
 import pytest
 
-from numerisect.native_tools import _ensure_flint_link_flag
+from numerisect.native_tools import (
+    _darwin_openmp_flags,
+    _ensure_flint_link_flag,
+    _managed_library_flags,
+)
 from numerisect.zeta import (
     ZetaEngineError,
     count_zeta_zeros,
@@ -26,6 +30,22 @@ def test_ubuntu_flint_pkg_config_link_flag_is_repaired():
     ]
     complete = ["-I/opt/flint/include", "-L/opt/flint/lib", "-lflint", "-lgmp"]
     assert _ensure_flint_link_flag(complete) == complete
+
+
+def test_macos_native_library_and_openmp_flags_use_explicit_prefixes(tmp_path):
+    openmp = _darwin_openmp_flags(tmp_path / "libomp")
+    assert openmp == [
+        "-Xpreprocessor",
+        "-fopenmp",
+        f"-I{tmp_path / 'libomp/include'}",
+        f"-L{tmp_path / 'libomp/lib'}",
+        f"-Wl,-rpath,{tmp_path / 'libomp/lib'}",
+        "-lomp",
+    ]
+    managed = _managed_library_flags("gmp")
+    assert "-lgmp" in managed
+    assert any(flag.startswith("-I") for flag in managed)
+    assert any(flag.startswith("-L") for flag in managed)
 
 
 def test_rigorous_zeta_evaluation():

@@ -30,6 +30,8 @@ def test_installer_is_cross_platform_and_checks_dependencies():
     assert 'gmp-devel mpfr-devel flint-devel' in INSTALLER
     assert 'libgmp-dev libmpfr-dev libflint-dev' in INSTALLER
     assert 'pkg-config --exists' in INSTALLER
+    assert 'flint libomp autoconf' in INSTALLER
+    assert 'brew --prefix libomp' in INSTALLER
 
 
 def test_installer_preserves_shared_state_and_managed_engine_setup():
