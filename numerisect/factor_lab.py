@@ -720,12 +720,10 @@ def mersenne_factors(
 ) -> dict[str, Any]:
     """Trial-factor the Mersenne number M_p = 2^p - 1 over its own progression.
 
-    Every prime factor q of M_p, for odd prime p, satisfies q = 2kp + 1 and
-    q = +/-1 (mod 8). M_2 = 3 is the trivial exception and is outside this
-    progression search.
-    Those two congruences confine the candidates to a thin arithmetic progression, which
-    is why this finds factors of Mersenne numbers that no general-purpose method can
-    reach.  The membership test is a single modular exponentiation, ``Mod(2, q)^p == 1``.
+    For prime p, every prime factor q satisfies q = 2kp + 1. For composite odd
+    p, PARI/GP enumerates every order divisor d > 1 of p and searches q = 2kd + 1,
+    covering the algebraic M_d divisors that a prime-exponent-only search misses.
+    In both cases q = +/-1 (mod 8), and membership is one modular exponentiation.
 
     **M_p is never constructed.**  Every step happens modulo the candidate, so the
     exponent may run into the millions.  M_1000151 has 301,076 decimal digits and its
@@ -733,7 +731,7 @@ def mersenne_factors(
     candidate would waste memory and arithmetic.
 
     Args:
-        exponent: A prime p.  M_p is the target; it is never materialised.
+        exponent: An odd p. M_p is the target; it is never materialised.
         k_limit: Manual largest k in q = 2kp + 1 (1 to 50,000,000). ``None``
             selects automatic mode, which searches until the first factor, timeout, or
             the 50,000,000 safety ceiling.
@@ -745,12 +743,12 @@ def mersenne_factors(
 
     Raises:
         ValueError: If a bound is violated.
-        PrimeEngineError: If p is not prime, or PARI/GP failed.
+        PrimeEngineError: If PARI/GP failed.
     """
 
-    if not 3 <= exponent <= MAX_MERSENNE_EXPONENT:
+    if not 3 <= exponent <= MAX_MERSENNE_EXPONENT or exponent % 2 == 0:
         raise ValueError(
-            "Mersenne progression factoring needs an odd prime exponent between 3 and "
+            "Mersenne progression factoring needs an odd exponent between 3 and "
             f"{MAX_MERSENNE_EXPONENT:,}; M_2 = 3 is the trivial exception"
         )
     if k_limit is not None and not 1 <= k_limit <= MAX_MERSENNE_K:
@@ -766,16 +764,21 @@ def mersenne_factors(
     )
     _require_complete(lines)
     records = [row.split("|") for row in _tagged(lines, "FACTOR")]
-    if any(len(row) != 2 or not all(part.isdigit() for part in row) for row in records):
+    if any(len(row) != 3 or not all(part.isdigit() for part in row) for row in records):
         raise PrimeEngineError("PARI/GP returned an invalid Mersenne factor record")
     if int(_one(lines, "DONE")) != len(records):
         raise PrimeEngineError("PARI/GP returned an incomplete Mersenne factor search")
     timed_out = _one(lines, "TRUNCATED") != "0"
     scanned_k = int(_one(lines, "SCANNED_K"))
+    largest_candidate = int(_one(lines, "LARGEST_CANDIDATE"))
     stop_reason = _one(lines, "STOP_REASON")
     complete = not timed_out and stop_reason == "ceiling"
     digits = int(_one(lines, "MERSENNE_DIGITS"))
-    rows = [[factor, k, str(len(factor))] for factor, k in records]
+    exponent_prime = _one(lines, "EXPONENT_PRIME") == "1"
+    exponent_factorization = _one(lines, "EXPONENT_FACTORIZATION")
+    order_count = int(_one(lines, "ORDER_DIVISORS"))
+    orders_completed = int(_one(lines, "ORDERS_COMPLETED"))
+    rows = [[factor, k, order, str(len(factor))] for factor, k, order in records]
     return {
         "exponent": str(exponent),
         "mersenne_digits": str(digits),
@@ -784,24 +787,32 @@ def mersenne_factors(
         "automatic": automatic,
         "stop_reason": stop_reason,
         "complete": complete,
-        "factors": [factor for factor, _ in records],
-        "columns": ["Factor q", "k in q = 2kp + 1", "Digits of q"],
+        "factors": [factor for factor, _, _ in records],
+        "exponent_prime": exponent_prime,
+        "exponent_factorization": exponent_factorization,
+        "columns": ["Factor q", "k in q = 2kd + 1", "Order divisor d", "Digits of q"],
         "rows": rows,
         "metrics": {
             "Exponent p": str(exponent),
+            "Exponent factorization": exponent_factorization,
+            "Exponent type": "prime" if exponent_prime else "composite",
             "M_p decimal digits": f"{digits:,}",
             "Search mode": "automatic" if automatic else "manual bound",
-            "Largest k actually searched": f"{scanned_k:,}",
-            "Largest candidate tested": f"{2 * scanned_k * exponent + 1:,}",
+            "Largest k reached in any order": f"{scanned_k:,}",
+            "Largest candidate tested": f"{largest_candidate:,}",
             "Factors found": str(len(records)),
+            "Order divisors completed": f"{orders_completed} of {order_count}",
             "Stop reason": stop_reason.replace("_", " "),
             "Selected k range complete": "yes" if complete else "no",
         },
         "engine": "PARI/GP",
         "note": (
-            "For odd prime p, every prime factor q of M_p satisfies q = 2kp + 1 and "
-            "q = ±1 (mod 8), so "
-            "only that progression is tested, by a single modular exponentiation each. "
+            (
+                "For prime p, every prime factor q of M_p satisfies q = 2kp + 1. "
+                if exponent_prime
+                else "Because p is composite, PARI/GP factored the exponent and searched q = 2kd + 1 for every order divisor d > 1 of p. "
+            )
+            + "Every candidate also satisfies q = ±1 (mod 8) and is tested by one modular exponentiation. "
             "M_p itself is never constructed, which makes trial factoring practical for "
             "exponents far beyond a general-purpose factorization attempt. "
             + (
@@ -814,7 +825,7 @@ def mersenne_factors(
                 )
             )
             + " This is factor discovery, not a complete factorization of M_p. Finding "
-            "nothing is inconclusive: it means no factor of the form 2kp + 1 exists "
+            "nothing is inconclusive: it means no factor in the searched q = 2kd + 1 progressions exists "
             "below the actual bound searched, and says nothing about whether M_p is "
             "prime. Use the Lucas–Lehmer test for that question."
         ),

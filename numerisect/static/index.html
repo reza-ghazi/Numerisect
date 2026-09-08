@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
     <link rel="icon" href="/assets/favicon.svg?v=20260907-named-tools" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-hunt" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-orders" />
   </head>
   <body>
     <header class="topbar">
@@ -139,9 +139,9 @@
         <form id="factor-lab-mersenne-form">
           <p class="eyebrow">MERSENNE NUMBERS</p>
           <h2>Mersenne trial factoring of M<sub>p</sub> = 2<sup>p</sup> − 1</h2>
-          <p>Every prime factor q of M<sub>p</sub>, for odd prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8); M<sub>2</sub> = 3 is the trivial exception. Those congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed.</strong> Automatic mode searches until it finds the first factor or exhausts the time budget. Manual mode checks the complete selected k range. Neither mode promises the complete factorization of M<sub>p</sub>.</p>
+          <p>For odd prime p, every prime factor q of M<sub>p</sub> satisfies q = 2kp + 1 and q ≡ ±1 (mod 8). For an odd composite exponent, PARI/GP first factors p and searches q = 2kd + 1 for every order divisor d &gt; 1 of p, including its algebraic M<sub>d</sub> divisors. <strong>M<sub>p</sub> is never constructed.</strong> Automatic mode searches until it finds the first factor or exhausts the time budget. Manual mode checks every selected order progression through the chosen k bound. Neither mode promises the complete factorization of M<sub>p</sub>.</p>
           <div class="four-controls">
-            <label>Exponent p (odd prime)<input id="mersenne-exponent" type="number" min="3" max="1000000000" value="1061" required /></label>
+            <label>Exponent p (odd, prime or composite)<input id="mersenne-exponent" type="number" min="3" step="2" max="1000000000" value="1061" required /></label>
             <label>Search mode<select id="mersenne-mode"><option value="automatic">Automatic · first factor</option><option value="manual">Manual k bound</option></select></label>
             <label>Manual largest k<input id="mersenne-k" type="number" min="1" max="50000000" value="100000" disabled required /><span class="field-note">Used only in manual mode</span></label>
             <label>Timeout (seconds)<input id="mersenne-timeout" type="number" min="1" max="3600" value="300" /></label>
@@ -153,9 +153,9 @@
         <form id="factor-lab-mersenne-hunt-form" class="subtool-form">
           <p class="eyebrow">STAGED FACTOR HUNT</p>
           <h2>Search, reconcile, and classify the remaining cofactor</h2>
-          <p>Run exhaustive Mersenne trial factoring through the selected k bound, then GMP-ECM's Pollard p−1, Williams p+1, and elliptic-curve stages. PARI/GP constructs M<sub>p</sub>, verifies every divisor, records multiplicities, and rigorously classifies the remaining cofactor when possible. A bounded hunt can discover more factors, but reports completion only when every remaining part is proven prime.</p>
+          <p>Run exhaustive order-divisor trial factoring through the selected k bound, then GMP-ECM's Pollard p−1, Williams p+1, and elliptic-curve stages. PARI/GP factors composite exponents, constructs M<sub>p</sub>, verifies every divisor, records multiplicities, and rigorously classifies the remaining cofactor when possible. A bounded hunt can discover more factors, but reports completion only when every remaining part is proven prime.</p>
           <div class="five-controls">
-            <label>Exponent p (odd prime)<input id="mersenne-hunt-exponent" type="number" min="3" max="1000000" value="87083" required /></label>
+            <label>Exponent p (odd, prime or composite)<input id="mersenne-hunt-exponent" type="number" min="3" step="2" max="1000000" value="87083" required /></label>
             <label>Trial largest k<input id="mersenne-hunt-k" type="number" min="1" max="50000000" value="100000" required /></label>
             <label>Trial seconds<input id="mersenne-hunt-trial-seconds" type="number" min="1" max="3600" value="60" required /></label>
             <label>Each native stage (seconds)<input id="mersenne-hunt-stage-seconds" type="number" min="1" max="3600" value="60" required /></label>
@@ -2586,6 +2586,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260908-mersenne-hunt" defer></script>
+    <script src="/assets/app.js?v=20260908-mersenne-orders" defer></script>
   </body>
 </html>

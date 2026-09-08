@@ -4755,7 +4755,7 @@ class MersenneHuntRequest(BaseModel):
 
 @app.post("/api/factor-lab/mersenne-factors")
 def factor_lab_mersenne_factors(request: MersenneFactorRequest) -> dict:
-    """Trial-factor M_p for odd prime p over q = 2kp + 1 without building M_p."""
+    """Trial-factor M_p over every odd order divisor of p without building M_p."""
 
     try:
         result = mersenne_factors(

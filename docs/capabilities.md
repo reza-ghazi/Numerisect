@@ -47,7 +47,7 @@ The workspace is organized around a production pipeline and an expert laboratory
 | SQUFOF | A bounded factor search for \(N<2^{62}\), implemented in C with GMP because no exposed engine routine supplies it | [Expert laboratory](FACTOR_LAB.md) |
 | Resumable ECM | A GMP-ECM campaign with saved stage-one residues and native factor reconciliation | [Expert laboratory](FACTOR_LAB.md) |
 | Special-form analysis | Perfect powers and \(a^k\!\pm1\) without a base limit, plus bounded cyclotomic/Aurifeuillean analysis and SNFS advice | [Expert laboratory](FACTOR_LAB.md) |
-| Mersenne trial factoring | Searches \(q=2kp+1\), filters by \(q\equiv\pm1\pmod8\), and tests \(2^p\equiv1\pmod q\) without materializing \(M_p\) | [Mersenne numbers](MERSENNE.md) |
+| Mersenne trial factoring | Searches \(q=2kp+1\) for prime exponents and every \(q=2kd+1\) order progression for odd composite exponents, without materializing \(M_p\) | [Mersenne numbers](MERSENNE.md) |
 | Staged Mersenne factor hunt | Reconciles exact multiplicities and the cofactor in PARI/GP after bounded trial, P−1, P+1, and GMP-ECM stages | [Mersenne numbers](MERSENNE.md) |
 | RSA Challenge catalogue | Identifies all 54 challenge values and independently checks recorded size, compositeness and published factors | [RSA Challenge](RSA_CHALLENGE.md) |
 | GGNFS diagnostics | Discovers lattice sievers, rejects binaries that cannot execute on this CPU, and reports usable indices and hashes | [GGNFS sievers](SIEVERS.md) |
