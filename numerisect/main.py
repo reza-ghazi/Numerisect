@@ -92,6 +92,7 @@ from .exports import (
 from .factor_lab import (
     algorithm_trace,
     batch_certificates,
+    mersenne_factor_hunt,
     mersenne_factors,
     special_form_analysis,
     squfof,
@@ -4739,6 +4740,19 @@ class MersenneFactorRequest(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
 
 
+class MersenneHuntRequest(BaseModel):
+    exponent: int = Field(default=87083, ge=3, le=1_000_000)
+    trial_k_limit: int = Field(default=100_000, ge=1, le=50_000_000)
+    trial_seconds: int = Field(default=60, ge=1, le=3600)
+    stage_seconds: int = Field(default=60, ge=1, le=3600)
+    pm1_b1: int = Field(default=50_000, ge=100, le=10**12)
+    pp1_b1: int = Field(default=50_000, ge=100, le=10**12)
+    ecm_b1: int = Field(default=50_000, ge=100, le=10**12)
+    ecm_curves: int = Field(default=25, ge=1, le=1_000_000)
+    proof_seconds: int = Field(default=10, ge=1, le=600)
+    threads: int = Field(default=os.cpu_count() or 1, ge=1, le=256)
+
+
 @app.post("/api/factor-lab/mersenne-factors")
 def factor_lab_mersenne_factors(request: MersenneFactorRequest) -> dict:
     """Trial-factor M_p for odd prime p over q = 2kp + 1 without building M_p."""
@@ -4753,6 +4767,49 @@ def factor_lab_mersenne_factors(request: MersenneFactorRequest) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _save_manipulation_report(
         "mersenne-factors", f"Mersenne factors of M_{request.exponent}", result
+    )
+
+
+@app.post("/api/factor-lab/mersenne-hunt")
+def factor_lab_mersenne_hunt(request: MersenneHuntRequest) -> dict:
+    """Run trial factoring, P-1, P+1, ECM, and native cofactor reconciliation."""
+
+    try:
+        result = mersenne_factor_hunt(
+            request.exponent,
+            trial_k_limit=request.trial_k_limit,
+            trial_seconds=request.trial_seconds,
+            stage_seconds=request.stage_seconds,
+            pm1_b1=request.pm1_b1,
+            pp1_b1=request.pp1_b1,
+            ecm_b1=request.ecm_b1,
+            ecm_curves=request.ecm_curves,
+            proof_seconds=request.proof_seconds,
+            threads=request.threads,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    report_rows = [
+        *(f"{key}: {value}" for key, value in result["metrics"].items()),
+        "",
+        "Stages:",
+        *(f"{stage['stage']}: {stage['status']} — {stage['detail']}"
+          for stage in result["stages"]),
+        "",
+        "Discovered divisors:",
+        *(f"{factor['value']} ^ {factor['exponent']} "
+          f"[{factor['status']}; {factor['engine']}]"
+          for factor in result["factors"]),
+        "",
+        f"Exact remaining cofactor ({result['cofactor_digits']} digits; "
+        f"{result['cofactor_status']}):",
+        result["cofactor"],
+    ]
+    return _save_factor_lab_report(
+        "mersenne-hunt", f"Staged Mersenne factor hunt for M_{request.exponent}",
+        result, report_rows,
     )
 
 

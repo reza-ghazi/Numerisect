@@ -3510,7 +3510,8 @@ function bindFactorLab(formId, path, buildBody, buildRows, title, panelSelector 
     button.disabled = true;
     try {
       const data = await api(path, { method: 'POST', body: JSON.stringify(buildBody()) });
-      renderFactorLab(title, buildRows(data), data.note, data.output_file, panelSelector);
+      const resolvedTitle = typeof title === 'function' ? title(data) : title;
+      renderFactorLab(resolvedTitle, buildRows(data), data.note, data.output_file, panelSelector);
     } catch (error) {
       factorLabError(error.message, panelSelector);
     } finally {
@@ -3530,6 +3531,27 @@ bindFactorLab('#factor-lab-mersenne-form', '/api/factor-lab/mersenne-factors', (
 $('#mersenne-mode').addEventListener('change', (event) => {
   $('#mersenne-k').disabled = event.target.value !== 'manual';
 });
+
+bindFactorLab('#factor-lab-mersenne-hunt-form', '/api/factor-lab/mersenne-hunt', () => ({
+  exponent: Number($('#mersenne-hunt-exponent').value),
+  trial_k_limit: Number($('#mersenne-hunt-k').value),
+  trial_seconds: Number($('#mersenne-hunt-trial-seconds').value),
+  stage_seconds: Number($('#mersenne-hunt-stage-seconds').value),
+  pm1_b1: Number($('#mersenne-hunt-pm1').value),
+  pp1_b1: Number($('#mersenne-hunt-pp1').value),
+  ecm_b1: Number($('#mersenne-hunt-ecm').value),
+  ecm_curves: Number($('#mersenne-hunt-curves').value),
+  proof_seconds: 10,
+  threads: Number($('#mersenne-hunt-threads').value || navigator.hardwareConcurrency || 1),
+}), (data) => Object.entries(data.metrics)
+  .concat(data.stages.map((stage) => [stage.stage, `${stage.status.replaceAll('_', ' ')} · ${stage.detail}`]))
+  .concat(data.factors.map((factor) => [
+    `Factor ${factor.value}${factor.exponent > 1 ? ` ^ ${factor.exponent}` : ''}`,
+    `${factor.status.replaceAll('_', ' ')} · ${factor.engine}`,
+  ]))
+  .concat([['Remaining cofactor preview', data.cofactor_preview]]),
+(data) => data.complete ? 'Complete Mersenne factorization' : 'Mersenne factor hunt · unresolved cofactor',
+'#mersenne-hunt-result');
 
 const sieverForm = $('#factor-lab-sievers-form');
 if (sieverForm) {

@@ -5,6 +5,13 @@ binary packages are published.
 
 ## Unreleased
 
+- Added staged Mersenne factor hunts. PARI/GP now owns exact construction, divisor
+  verification, multiplicity removal, and bounded rigorous cofactor classification;
+  GMP-ECM supplies P−1, P+1, and ECM discovery stages. The interface distinguishes
+  proven factors from the unresolved cofactor, previews large cofactors safely, saves
+  every exact cofactor to the report, and claims completion only after every remaining
+  part is rigorously prime.
+
 - Added automatic Mersenne trial-factor search: the native PARI/GP loop now chooses the
   effective k range from the first factor, time budget, and safety ceiling, preserves
   factors found before timeout, and reports the largest k actually tested. Manual mode

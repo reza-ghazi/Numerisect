@@ -320,7 +320,7 @@ fl_certificates(factors, seconds) =
 \\ primality, and returns the remaining cofactor. No arithmetic happens in Python.
 fl_reconcile(n, candidates) =
 {
-  my(remaining = n, c, e, count = 0);
+  my(remaining = n, c, e, count = 0, allprime = 1, cprime);
   if(n < 1, error("Reconciliation needs a positive integer"));
   candidates = vecsort(candidates);
   for(i = 1, #candidates,
@@ -329,13 +329,69 @@ fl_reconcile(n, candidates) =
     e = 0;
     while(remaining % c == 0, remaining = remaining / c; e++);
     if(e > 0,
-      print("FACTOR:", c, "|", e, "|", if(isprime(c), 1, 0));
+      cprime = isprime(c);
+      if(!cprime, allprime = 0);
+      print("FACTOR:", c, "|", e, "|", if(cprime, 1, 0));
       count++;
     );
   );
   print("COFACTOR:", remaining, "|", if(remaining > 1 && isprime(remaining), 1, 0));
   \\ Complete means every reported part is prime, so nothing is left to factor.
-  print("COMPLETE:", if(remaining == 1 || isprime(remaining), 1, 0));
+  print("COMPLETE:", if(allprime && (remaining == 1 || isprime(remaining)), 1, 0));
+  print("DONE:", count);
+};
+
+\\ Build M_p only for the staged factor hunt, divide every engine-reported divisor
+\\ inside PARI/GP, preserve multiplicity, and classify the exact remaining cofactor.
+\\ Unlike fl_mersenne_factors, this routine necessarily materializes M_p. Its caller
+\\ therefore enforces a much smaller exponent limit and never routes the arithmetic
+\\ through Python.
+fl_mersenne_inventory(p, candidates, proof_seconds) =
+{
+  my(remaining, c, e, count = 0, cprime, allprime = 1,
+     cofactor_status = "unit", screen, proof, complete = 0);
+  if(p < 3 || !isprime(p), error("A staged Mersenne hunt needs an odd prime exponent"));
+  remaining = 2^p - 1;
+  candidates = vecsort(candidates);
+  for(i = 1, #candidates,
+    c = candidates[i];
+    if(c < 2, next());
+    e = 0;
+    while(remaining % c == 0, remaining /= c; e++);
+    if(e > 0,
+      cprime = isprime(c);
+      if(!cprime, allprime = 0);
+      print("INVENTORY_FACTOR:", c, "|", e, "|", if(cprime, 1, 0));
+      count++;
+    );
+  );
+  if(remaining == 1,
+    cofactor_status = "unit";
+    complete = allprime;
+  ,
+    screen = alarm(proof_seconds, ispseudoprime(remaining));
+    if(type(screen) == "t_ERROR",
+      cofactor_status = "unknown";
+    , if(!screen,
+      cofactor_status = "composite";
+    ,
+      proof = alarm(proof_seconds, isprime(remaining));
+      if(type(proof) == "t_ERROR",
+        cofactor_status = "probable_prime";
+      ,
+        if(proof,
+          cofactor_status = "proven_prime";
+          complete = allprime;
+        ,
+          cofactor_status = "composite";
+        );
+      );
+    ));
+  );
+  print("INVENTORY_COFACTOR:", remaining);
+  print("INVENTORY_COFACTOR_DIGITS:", if(remaining == 1, 1, #Str(remaining)));
+  print("INVENTORY_COFACTOR_STATUS:", cofactor_status);
+  print("INVENTORY_COMPLETE:", complete);
   print("DONE:", count);
 };
 

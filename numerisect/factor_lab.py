@@ -29,12 +29,14 @@ persists results. It performs no arithmetic on mathematical quantities.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
 from typing import Any
 
 from .config import PACKAGE_DIR
+from .engines import parse_ecm_output
 from .native_tools import squfof_tool_path
 from .primes import PrimeEngineError, _run_gp
 
@@ -78,6 +80,9 @@ ALGEBRAIC_DIGIT_CAP = 60
 MAX_MERSENNE_K = 50_000_000
 #: Largest Mersenne exponent accepted. M_p is never built, so this bounds only the work.
 MAX_MERSENNE_EXPONENT = 10**9
+#: The staged hunt constructs M_p in PARI/GP so that native engines can work on the
+#: exact cofactor. This is deliberately distinct from the progression-only search.
+MAX_MERSENNE_HUNT_EXPONENT = 1_000_000
 
 
 def _program() -> str:
@@ -510,6 +515,118 @@ def reconcile_factors(number: int, candidates: list[int], timeout: int = 120) ->
     }
 
 
+def _mersenne_inventory(exponent: int, candidates: list[str], proof_seconds: int) -> dict[str, Any]:
+    """Ask PARI/GP to divide and classify a Mersenne factor inventory."""
+
+    values = sorted({int(value) for value in candidates if int(value) > 1})
+    vector = ",".join(str(value) for value in values)
+    lines = _gp_call(
+        f"fl_mersenne_inventory({exponent},[{vector}],{proof_seconds})",
+        proof_seconds + 30,
+    )
+    factors: list[dict[str, Any]] = []
+    for row in _tagged(lines, "INVENTORY_FACTOR"):
+        fields = row.split("|")
+        if len(fields) != 3 or not all(field.isdigit() for field in fields):
+            raise PrimeEngineError("PARI/GP returned an invalid Mersenne inventory")
+        factors.append(
+            {
+                "value": fields[0],
+                "exponent": int(fields[1]),
+                "status": "proven_prime" if fields[2] == "1" else "composite_divisor",
+            }
+        )
+    if int(_one(lines, "DONE")) != len(factors):
+        raise PrimeEngineError("PARI/GP returned an incomplete Mersenne inventory")
+    cofactor = _one(lines, "INVENTORY_COFACTOR")
+    digits = _one(lines, "INVENTORY_COFACTOR_DIGITS")
+    status = _one(lines, "INVENTORY_COFACTOR_STATUS")
+    if (
+        not cofactor.isdigit()
+        or not digits.isdigit()
+        or status
+        not in {
+            "unit",
+            "composite",
+            "unknown",
+            "probable_prime",
+            "proven_prime",
+        }
+    ):
+        raise PrimeEngineError("PARI/GP returned an invalid Mersenne cofactor")
+    return {
+        "factors": factors,
+        "cofactor": cofactor,
+        "cofactor_digits": digits,
+        "cofactor_status": status,
+        "complete": _one(lines, "INVENTORY_COMPLETE") == "1",
+    }
+
+
+def _run_ecm_factor_stage(
+    cofactor: str,
+    method: str,
+    b1: int,
+    curves: int,
+    timeout: int,
+    threads: int,
+) -> dict[str, Any]:
+    """Run one GMP-ECM stage and return only engine-reported divisors."""
+
+    executable = shutil.which("ecm")
+    if not executable:
+        return {"status": "skipped", "factors": [], "detail": "GMP-ECM is not installed"}
+    command = [executable]
+    if method in {"pm1", "pp1"}:
+        command.append(f"-{method}")
+    else:
+        command += ["-c", str(curves)]
+    command += ["-one", str(b1)]
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            command,
+            input=f"{cofactor}\n",
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+            env={**os.environ, "OMP_NUM_THREADS": str(threads)},
+        )
+        output = f"{completed.stdout}\n{completed.stderr}"
+        return_code = completed.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        stdout = (
+            exc.stdout.decode(errors="replace")
+            if isinstance(exc.stdout, bytes)
+            else (exc.stdout or "")
+        )
+        stderr = (
+            exc.stderr.decode(errors="replace")
+            if isinstance(exc.stderr, bytes)
+            else (exc.stderr or "")
+        )
+        output = f"{stdout}\n{stderr}"
+        return_code = None
+    parsed = parse_ecm_output(output)
+    # GMP-ECM can report "Factor found: N" when a curve degenerates. N is not a
+    # proper divisor and must not replace the unresolved cofactor in the inventory.
+    reported_factors = [str(item["value"]) for item in parsed["factors"]]
+    factors = [value for value in reported_factors if value != cofactor]
+    if return_code not in {None, 0} and not reported_factors:
+        raise PrimeEngineError(f"GMP-ECM {method} exited with status {return_code}")
+    return {
+        "status": "timeout" if timed_out else ("factor_found" if factors else "completed"),
+        "factors": factors,
+        "detail": (
+            f"{len(factors)} divisor(s) reported"
+            if factors
+            else ("time budget expired" if timed_out else "no factor found at this bound")
+        ),
+    }
+
+
 # YAFU writes its tuning result to yafu.ini as a single line:
 #   tune_info=<cpu>,<os>,<9 floats>
 # The floats are YAFU's fitted timing model; the two Numerisect reads are the
@@ -700,5 +817,138 @@ def mersenne_factors(
             "nothing is inconclusive: it means no factor of the form 2kp + 1 exists "
             "below the actual bound searched, and says nothing about whether M_p is "
             "prime. Use the Lucas–Lehmer test for that question."
+        ),
+    }
+
+
+def mersenne_factor_hunt(
+    exponent: int,
+    *,
+    trial_k_limit: int = 100_000,
+    trial_seconds: int = 60,
+    stage_seconds: int = 60,
+    pm1_b1: int = 50_000,
+    pp1_b1: int = 50_000,
+    ecm_b1: int = 50_000,
+    ecm_curves: int = 25,
+    proof_seconds: int = 10,
+    threads: int | None = None,
+) -> dict[str, Any]:
+    """Run a bounded, staged native factor hunt for ``M_p``.
+
+    The specialized PARI/GP progression search runs first. PARI/GP then constructs
+    ``M_p`` and owns every division, multiplicity count, and primality decision.
+    GMP-ECM supplies P-1, P+1, and ECM divisor discovery on the exact unresolved
+    cofactor. Python only validates, launches, parses, and schedules these stages.
+
+    A completed campaign means every remaining part is rigorously prime. Exhausting
+    the configured stages is explicitly an incomplete factorization.
+    """
+
+    if not 3 <= exponent <= MAX_MERSENNE_HUNT_EXPONENT:
+        raise ValueError(
+            "The staged hunt materializes M_p natively and accepts prime exponents "
+            f"from 3 through {MAX_MERSENNE_HUNT_EXPONENT:,}; use trial factoring "
+            "alone for larger exponents"
+        )
+    if not 1 <= trial_k_limit <= MAX_MERSENNE_K:
+        raise ValueError(f"The trial k limit must be between 1 and {MAX_MERSENNE_K:,}")
+    selected_threads = threads if threads is not None else (os.cpu_count() or 1)
+    for label, value, low, high in (
+        ("Trial time", trial_seconds, 1, 3600),
+        ("Per-stage time", stage_seconds, 1, 3600),
+        ("Proof time", proof_seconds, 1, 600),
+        ("P-1 B1", pm1_b1, 100, 10**12),
+        ("P+1 B1", pp1_b1, 100, 10**12),
+        ("ECM B1", ecm_b1, 100, 10**12),
+        ("ECM curves", ecm_curves, 1, 1_000_000),
+        ("CPU threads", selected_threads, 1, 256),
+    ):
+        if not low <= value <= high:
+            raise ValueError(f"{label} must be between {low:,} and {high:,}")
+
+    trial = mersenne_factors(exponent, trial_k_limit, trial_seconds)
+    candidates = list(trial["factors"])
+    sources = {value: "PARI/GP Mersenne trial factoring" for value in candidates}
+    inventory = _mersenne_inventory(exponent, candidates, proof_seconds)
+    stages: list[dict[str, str]] = [
+        {
+            "stage": "Mersenne trial factoring",
+            "status": trial["stop_reason"],
+            "detail": (
+                f"searched through k={trial['scanned_k']}; found {len(trial['factors'])} divisor(s)"
+            ),
+        }
+    ]
+
+    stage_specs = (
+        ("Pollard p-1", "pm1", pm1_b1, 1),
+        ("Williams p+1", "pp1", pp1_b1, 1),
+        ("Elliptic-curve method", "ecm", ecm_b1, ecm_curves),
+    )
+    for label, method, b1, curves in stage_specs:
+        if inventory["complete"]:
+            stages.append(
+                {"stage": label, "status": "not_needed", "detail": "factorization already complete"}
+            )
+            continue
+        if inventory["cofactor_status"] in {"unit", "proven_prime"}:
+            stages.append(
+                {
+                    "stage": label,
+                    "status": "not_applicable",
+                    "detail": f"cofactor is {inventory['cofactor_status'].replace('_', ' ')}",
+                }
+            )
+            continue
+        result = _run_ecm_factor_stage(
+            inventory["cofactor"], method, b1, curves, stage_seconds, selected_threads
+        )
+        for value in result["factors"]:
+            candidates.append(value)
+            sources[value] = f"GMP-ECM {label}"
+        stages.append({"stage": label, "status": result["status"], "detail": result["detail"]})
+        if result["factors"]:
+            inventory = _mersenne_inventory(exponent, candidates, proof_seconds)
+
+    for factor in inventory["factors"]:
+        factor["engine"] = sources.get(factor["value"], "native reconciliation")
+    cofactor = inventory["cofactor"]
+    preview = cofactor if len(cofactor) <= 160 else f"{cofactor[:80]}…{cofactor[-80:]}"
+    complete = bool(inventory["complete"])
+    rows = [
+        [item["value"], str(item["exponent"]), item["status"], item["engine"]]
+        for item in inventory["factors"]
+    ]
+    return {
+        "exponent": str(exponent),
+        "mersenne_digits": trial["mersenne_digits"],
+        "complete": complete,
+        "factors": inventory["factors"],
+        "cofactor": cofactor,
+        "cofactor_preview": preview,
+        "cofactor_digits": inventory["cofactor_digits"],
+        "cofactor_status": inventory["cofactor_status"],
+        "stages": stages,
+        "columns": ["Discovered divisor", "Multiplicity", "Proof status", "Engine"],
+        "rows": rows,
+        "metrics": {
+            "Exponent p": str(exponent),
+            "M_p decimal digits": f"{int(trial['mersenne_digits']):,}",
+            "Distinct divisors found": str(len(inventory["factors"])),
+            "Remaining cofactor digits": f"{int(inventory['cofactor_digits']):,}",
+            "Remaining cofactor status": inventory["cofactor_status"].replace("_", " "),
+            "Complete prime factorization": "yes" if complete else "no",
+            "CPU threads exposed to native stages": str(selected_threads),
+        },
+        "engine": "PARI/GP + GMP-ECM",
+        "note": (
+            "Every displayed divisor was divided from M_p by PARI/GP and carries its "
+            "exact multiplicity. "
+            + (
+                "Every part is rigorously prime, so the factorization is complete."
+                if complete
+                else "The listed factors are proven discoveries, but the remaining cofactor is unresolved; exhausting these bounded stages does not prove that no additional factors exist."
+            )
         ),
     }

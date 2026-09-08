@@ -11,7 +11,8 @@ where each tool stops.
 | --- | --- | --- |
 | Is \(M_p\) prime? | Lucas–Lehmer (`number_theory.gp`) | exponents in the thousands |
 | Find a small factor of \(M_p\) | **Mersenne trial factoring**, below | exponents in the **millions** |
-| Factor \(M_p\) completely | SNFS through the ordinary pipeline | roughly \(p \le 1200\) |
+| Hunt for additional factors | **Staged factor hunt**, below | materialized \(M_p\), currently \(p\le10^6\) |
+| Factor \(M_p\) completely | staged hunt or SNFS, when every cofactor can be resolved | strongly input-dependent |
 | Is this a known Mersenne prime? | the 56-class prime classifier | catalogue lookup |
 
 The middle row is the one that changes what is possible, and it is the reason this page
@@ -50,8 +51,8 @@ instead. This is the same reason a Mersenne search trial-factors an exponent bef
 committing to a Lucas–Lehmer test.
 
 There is no formula that predicts the smallest factor—and therefore no mathematically
-correct fixed value of (k) that can be inferred from (p). The application's
-**Automatic** mode handles this honestly: the native search advances (k) until it finds
+correct fixed value of \(k\) that can be inferred from \(p\). The application's
+**Automatic** mode handles this honestly: the native search advances \(k\) until it finds
 the first factor, reaches the 50,000,000 safety ceiling, or consumes the selected time
 budget. It reports the largest (k) actually tested. **Manual** mode instead checks every
 candidate through the bound supplied by the user and reports every factor in that finite
@@ -103,6 +104,43 @@ factoring a cofactor of that size is not currently practical. Numerisect therefo
 **factors found**, never **all factors**, unless an engine has actually resolved and
 verified every cofactor.
 
+## Staged factor hunt and factor inventory
+
+The second form on **Factor integers → Mersenne numbers** joins the native operations
+that are useful after trial factoring:
+
+1. PARI/GP exhaustively searches the selected finite \(k\) range.
+2. PARI/GP constructs \(M_p\), verifies that each reported divisor divides it, removes
+   every occurrence, and records exact multiplicities.
+3. GMP-ECM runs Pollard \(p-1\), Williams \(p+1\), and an elliptic-curve campaign on the
+   exact remaining cofactor, with the selected CPU count exposed to its native OpenMP
+   runtime.
+4. After every discovery, PARI/GP reconciles the entire inventory again and attempts a
+   bounded rigorous primality proof for the cofactor.
+
+The web response shows only a bounded cofactor preview. The automatically saved report
+contains the **exact complete cofactor**, even when it has tens of thousands of digits.
+The status vocabulary is deliberate:
+
+- `proven_prime` means PARI/GP completed a rigorous proof;
+- `composite` means the cofactor is definitely composite;
+- `probable_prime` means screening succeeded but the proof budget expired;
+- `unknown` means even bounded screening did not finish;
+- **complete prime factorization: yes** appears only when all reported divisors and the
+  final cofactor are rigorously prime.
+
+P−1, P+1, and ECM are factor-discovery methods, not exhaustive searches. Finishing all
+three without a new divisor leaves the result incomplete. For a cofactor of practical
+NFS size, it can subsequently be submitted to the ordinary SIQS/NFS/SNFS workflow. A
+26,207-digit cofactor such as the one left by the known factor of \(M_{87083}\) is far
+beyond a realistic complete NFS factorization.
+
+```bash
+curl --cookie jar --header 'Content-Type: application/json' \
+  --data '{"exponent":87083,"trial_k_limit":100000,"trial_seconds":60,"stage_seconds":60}' \
+  http://127.0.0.1:8765/api/factor-lab/mersenne-hunt
+```
+
 ## Complete factorization
 
 A Mersenne number exposes algebraic structure that a special number field sieve can use:
@@ -149,6 +187,7 @@ identify a divisor. In the application, a composite result therefore links direc
 
 ```text
 POST /api/factor-lab/mersenne-factors   trial-factor M_p over q = 2kp + 1
+POST /api/factor-lab/mersenne-hunt      trial, P-1, P+1, ECM, and exact reconciliation
 POST /api/factor-lab/special-form       recognise the form, report the SNFS polynomial
 POST /api/number-theory/lucas-lehmer    prove primality of M_p
 ```

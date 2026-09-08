@@ -9,6 +9,7 @@ performs the computation.
 | SQUFOF | `numerisect-squfof`, a C program in this project using GMP |
 | Pollard rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Fermat, bounded trial division | YAFU's `rho`, `pm1`, `pp1`, `ecm`, `siqs`, `nfs`, `snfs`, `fermat`, `trial` |
 | ECM campaigns | GMP-ECM with `-save`, `-resume`, `-c`, `-sigma`, `-param` |
+| Staged Mersenne factor hunt | PARI/GP progression search and reconciliation; GMP-ECM `-pm1`, `-pp1`, and ECM curves |
 | Special forms, algebraic and Aurifeuillean factors, SNFS suitability | PARI/GP `ispower`, `polcyclo`, `factor` |
 | Strategy advice and the decision tree | PARI/GP `isprime`, `factor`, `ispower` |
 | Algorithm traces | PARI/GP `Mod`, `gcd`, `forprime` |
@@ -157,6 +158,12 @@ PARI/GP therefore reconciles it (`fl_reconcile`): it divides the candidates out,
 reports the prime powers actually present, decides primality, and returns the remaining
 cofactor. Nothing is divided out in Python. The recorded parts always multiply back to
 the input, and a composite cofactor is flagged so it can be continued as a child job.
+
+The dedicated Mersenne hunt applies the same boundary to \(M_p=2^p-1\). It first
+exhausts the selected special-form \(q=2kp+1\) range, then gives the exact cofactor to
+GMP-ECM's P−1, P+1, and ECM modes. PARI/GP rebuilds and reconciles the inventory after
+each discovery. The report contains the exact cofactor and says `complete` only when
+every remaining part is rigorously prime; exhausted bounds remain inconclusive.
 
 A campaign that finishes its curves without splitting the input reports an explicit
 **inconclusive** failure telling the user to raise B1 or the curve count, or to switch
