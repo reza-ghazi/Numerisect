@@ -125,6 +125,11 @@ large exponent, search for a factor first.
 
 `pl_lucas_lehmer_riesel` covers the related \(k \cdot 2^n - 1\) family.
 
+Lucas–Lehmer's nonzero final residue proves that \(M_p\) is composite but does not
+identify a divisor. In the application, a composite result therefore links directly to
+**Factor integers → Mersenne numbers**, where the separate progression search tests
+\(q=2kp+1\) candidates without constructing \(M_p\).
+
 ## Routes
 
 ```text

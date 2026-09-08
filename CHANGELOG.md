@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Made Mersenne trial factoring a visible, dedicated Factor integers page instead of
+  nesting it inside the hidden Batch queue page. Composite Lucas–Lehmer results now
+  explain that the proof yields no divisor and link directly to the native progression
+  factor search with the exponent prefilled.
+
 - Added GitHub Actions compatibility coverage for Linux ARM64, Ubuntu 24.04 under
   Windows WSL, and macOS on ARM64 and Intel. Each platform checks installer detection,
   runs the native-backed test suite, performs a versioned user-local installation, and

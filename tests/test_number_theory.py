@@ -80,7 +80,13 @@ def test_primality_comparison_preserves_probable_vs_proven():
     [("mersenne", "5", "prime"), ("mersenne", "11", "composite"), ("fermat", "2", "prime")],
 )
 def test_special_form_proofs(kind, parameter, verdict):
-    assert special_form_test(kind, parameter)["metrics"]["Rigorous verdict"] == verdict
+    result = special_form_test(kind, parameter)
+    assert result["metrics"]["Rigorous verdict"] == verdict
+    if kind == "mersenne" and verdict == "composite":
+        assert result["factor_search"] == {"kind": "mersenne", "exponent": parameter}
+        assert "does not produce a divisor" in result["note"]
+    else:
+        assert result["factor_search"] is None
 
 
 def test_perfect_power_and_algebraic_primes():
