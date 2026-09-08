@@ -285,10 +285,23 @@ def special_form_test(kind: str, parameter: str, timeout: int = 60) -> dict:
     lines = _execute(call, timeout)
     passed = _one(lines, "PASSES") == 1
     number = _one(lines, "NUMBER")
+    factor_search = kind == "mersenne" and not passed and value >= 3
     return {
         "metrics": {"Number": str(number), "Form": name, "Test": method, "Rigorous verdict": "prime" if passed else "composite"},
         "columns": ["Test", "Outcome"], "rows": [[method, "pass" if passed else "fail"]],
-        "note": f"The native {method} criterion is necessary and sufficient for this special form, so the result is a proof.",
+        "factor_search": (
+            {"kind": "mersenne", "exponent": str(value)} if factor_search else None
+        ),
+        "note": (
+            f"The native {method} criterion is necessary and sufficient for this special "
+            "form, so the result is a proof. "
+            + (
+                "Lucas–Lehmer does not produce a divisor; open the Mersenne factor "
+                "search to test q = 2kp + 1 candidates without constructing M_p."
+                if factor_search
+                else "A primality proof does not require or produce a factorization."
+            )
+        ),
     }
 
 

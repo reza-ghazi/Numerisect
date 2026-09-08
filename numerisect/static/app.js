@@ -262,11 +262,26 @@ $('#factor-form').addEventListener('submit', async (event) => {
   }
 });
 
-document.querySelectorAll('[data-factor-page]').forEach((button) => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('[data-factor-page]').forEach((item) => item.classList.toggle('active', item === button));
-    document.querySelectorAll('.factor-page').forEach((page) => page.classList.toggle('hidden', page.id !== button.dataset.factorPage));
+const factorPageRoutes = {
+  'single-factor-page': 'single',
+  'mersenne-factor-page': 'mersenne',
+  'batch-factor-page': 'batch',
+  'factor-lab-page': 'labs',
+};
+
+function activateFactorPage(pageId, updateHash = true) {
+  const selected = factorPageRoutes[pageId] ? pageId : 'single-factor-page';
+  document.querySelectorAll('[data-factor-page]').forEach((item) => {
+    const active = item.dataset.factorPage === selected;
+    item.classList.toggle('active', active);
+    active ? item.setAttribute('aria-current', 'page') : item.removeAttribute('aria-current');
   });
+  document.querySelectorAll('.factor-page').forEach((page) => page.classList.toggle('hidden', page.id !== selected));
+  if (updateHash) history.pushState(null, '', `#factor/${factorPageRoutes[selected]}`);
+}
+
+document.querySelectorAll('[data-factor-page]').forEach((button) => {
+  button.addEventListener('click', () => activateFactorPage(button.dataset.factorPage));
 });
 
 $('#batch-file').addEventListener('change', async (event) => {
@@ -628,8 +643,13 @@ function applyHashRoute() {
   } else if (section === 'workspaces' || section === 'history') {
     activateView(document.querySelector('[data-view="workspace-view"]'), false);
     loadWorkspaces();
+  } else if (section === 'factor') {
+    const page = Object.entries(factorPageRoutes).find(([, route]) => route === primeTool)?.[0];
+    activateView(document.querySelector('[data-view="factor-view"]'), false);
+    activateFactorPage(page || 'single-factor-page', false);
   } else {
     activateView(document.querySelector('[data-view="factor-view"]'), false);
+    activateFactorPage('single-factor-page', false);
   }
 }
 
@@ -808,6 +828,18 @@ function showPrimeResult(title, data, type, form) {
   const download = $('#prime-download');
   download.href = `/api/outputs/${encodeURIComponent(data.output_file)}`;
   download.classList.toggle('hidden', !data.output_file);
+  if (data.factor_search?.kind === 'mersenne') {
+    const actions = document.createElement('div');
+    actions.className = 'actions result-followup-actions';
+    actions.innerHTML = '<button class="primary" type="button">Open Mersenne factor search</button>';
+    actions.querySelector('button').addEventListener('click', () => {
+      $('#mersenne-exponent').value = data.factor_search.exponent;
+      activateView(document.querySelector('[data-view="factor-view"]'), false);
+      activateFactorPage('mersenne-factor-page');
+      $('#factor-lab-mersenne-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    content.appendChild(actions);
+  }
   panel.classList.remove('hidden');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -3447,8 +3479,8 @@ if ($('#cache-stats')) {
 // SQUFOF is computed by the numerisect-squfof C helper; every other operation here is
 // computed by PARI/GP. This code only submits forms and renders returned values.
 
-function renderFactorLab(title, rows, note, outputFile) {
-  const panel = $('#factor-lab-result');
+function renderFactorLab(title, rows, note, outputFile, panelSelector = '#factor-lab-result') {
+  const panel = $(panelSelector);
   panel.classList.remove('hidden');
   const table = rows.length
     ? `<table class="result-table"><tbody>${rows
@@ -3463,13 +3495,13 @@ function renderFactorLab(title, rows, note, outputFile) {
     ${note ? `<p class="hint">${escapeHtml(note)}</p>` : ''}${saved}`;
 }
 
-function factorLabError(message) {
-  const panel = $('#factor-lab-result');
+function factorLabError(message, panelSelector = '#factor-lab-result') {
+  const panel = $(panelSelector);
   panel.classList.remove('hidden');
   panel.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
 }
 
-function bindFactorLab(formId, path, buildBody, buildRows, title) {
+function bindFactorLab(formId, path, buildBody, buildRows, title, panelSelector = '#factor-lab-result') {
   const form = $(formId);
   if (!form) return;
   form.addEventListener('submit', async (event) => {
@@ -3478,9 +3510,9 @@ function bindFactorLab(formId, path, buildBody, buildRows, title) {
     button.disabled = true;
     try {
       const data = await api(path, { method: 'POST', body: JSON.stringify(buildBody()) });
-      renderFactorLab(title, buildRows(data), data.note, data.output_file);
+      renderFactorLab(title, buildRows(data), data.note, data.output_file, panelSelector);
     } catch (error) {
-      factorLabError(error.message);
+      factorLabError(error.message, panelSelector);
     } finally {
       button.disabled = false;
     }
@@ -3493,7 +3525,7 @@ bindFactorLab('#factor-lab-mersenne-form', '/api/factor-lab/mersenne-factors', (
   timeout_seconds: Number($('#mersenne-timeout').value),
 }), (data) => Object.entries(data.metrics).concat(
   data.rows.map((row) => [`Factor q = ${row[0]}`, `k = ${row[1]}, ${row[2]} digits`]),
-), 'Mersenne trial factoring');
+), 'Mersenne trial factoring', '#mersenne-factor-result');
 
 const sieverForm = $('#factor-lab-sievers-form');
 if (sieverForm) {

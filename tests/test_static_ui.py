@@ -123,6 +123,16 @@ def test_navigation_labels_carry_the_recognised_name():
         assert name in labels, f"no navigation label mentions {name}"
 
 
+def test_mersenne_factoring_is_a_visible_dedicated_factor_page():
+    assert 'data-factor-page="mersenne-factor-page">Mersenne numbers' in INDEX
+    page = INDEX.split('id="mersenne-factor-page"', 1)[1].split('</section>', 1)[0]
+    assert 'id="factor-lab-mersenne-form"' in page
+    batch = INDEX.split('id="batch-factor-page"', 1)[1].split('</section>', 1)[0]
+    assert 'id="factor-lab-mersenne-form"' not in batch
+    assert "Open Mersenne factor search" in APP
+    assert "activateFactorPage('mersenne-factor-page')" in APP
+
+
 def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     grid = INDEX.split('id="prime-page-grid"', 1)[1].split(
         'id="prime-result-panel"', 1
@@ -165,11 +175,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260907-named-tools' in INDEX
-    assert '/assets/app.js?v=20260907-named-tools' in INDEX
+    assert '/assets/styles.css?v=20260908-mersenne-nav' in INDEX
+    assert '/assets/app.js?v=20260908-mersenne-nav' in INDEX
     assert '/assets/favicon.svg?v=20260907-named-tools' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260907-named-tools#primes/prime-check' in RUNNER
+    assert '?ui=20260908-mersenne-nav#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 

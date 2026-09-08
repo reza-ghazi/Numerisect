@@ -99,6 +99,7 @@ summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .empty-detail p { margin: 0; }
 .empty-glyph { font: 800 66px/1 "SFMono-Regular", monospace; color: #293139; }
 .actions { display: flex; gap: 8px; }
+.result-followup-actions { margin-top: 16px; }
 .number-block { margin: 24px 0 18px; background: #0c0f11; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
 .number-block code { word-break: break-all; line-height: 1.6; color: #dce4e8; }
 .number-badge { display: inline-block; padding: 3px 7px; margin-bottom: 8px; border-radius: 5px; color: var(--accent); background: var(--accent-soft); font-size: 11px; font-weight: 800; }
@@ -113,8 +114,7 @@ summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .error { color: #ffb0b3; border: 1px solid rgba(255,107,112,.3); background: rgba(255,107,112,.08); }
 .result-section, .log-section { border-top: 1px solid var(--line); margin-top: 25px; padding-top: 20px; }
 .factor-list { display: grid; gap: 8px; }
-.workspace-switch { display: flex; width: min(100%, 520px); gap: 8px; margin: 18px auto 12px; }
-.workspace-switch button { flex: 1; }
+.workspace-switch { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 8px; margin: 18px auto 12px; }
 .workspace-switch button.active { color: #08111c; border-color: var(--accent); background: var(--accent); }
 .factor-equation {
   padding: 18px; margin-bottom: 13px; border: 1px solid rgba(79,156,249,.24);
@@ -303,6 +303,7 @@ body[data-active-view="zeta-view"] .mode-tabs { margin-top: 22px; }
   .actions { flex-direction: column; }
   .mode-tabs { width: 100%; }
   .mode-tab { flex: 1; }
+  .workspace-switch { grid-template-columns: 1fr 1fr; }
   .prime-page-intro { align-items: flex-start; }
   .prime-page-intro .tool-count { display: none; }
   .prime-result-panel { padding: 18px; }

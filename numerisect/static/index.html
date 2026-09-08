@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
     <link rel="icon" href="/assets/favicon.svg?v=20260907-named-tools" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260907-named-tools" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-nav" />
   </head>
   <body>
     <header class="topbar">
@@ -40,7 +40,9 @@
 
       <nav class="workspace-switch" aria-label="Factorization workspace">
         <button class="secondary active" type="button" data-factor-page="single-factor-page">Single integer</button>
+        <button class="secondary" type="button" data-factor-page="mersenne-factor-page">Mersenne numbers</button>
         <button class="secondary" type="button" data-factor-page="batch-factor-page">Batch queue</button>
+        <button class="secondary" type="button" data-factor-page="factor-lab-page">Advanced labs</button>
       </nav>
 
       <section id="single-factor-page" class="submit-card panel factor-page">
@@ -131,7 +133,9 @@
             <a id="batch-download" class="secondary button-link hidden" href="#">Download batch report</a>
           </div>
         </form>
+      </section>
 
+      <section id="mersenne-factor-page" class="submit-card panel factor-page hidden">
         <form id="factor-lab-mersenne-form">
           <p class="eyebrow">MERSENNE NUMBERS</p>
           <h2>Mersenne trial factoring of M<sub>p</sub> = 2<sup>p</sup> − 1</h2>
@@ -143,7 +147,10 @@
           </div>
           <div class="actions"><button class="primary" type="submit"><span>Search for factors</span><span>→</span></button></div>
         </form>
+        <section id="mersenne-factor-result" class="prime-results hidden" aria-live="polite"></section>
+      </section>
 
+      <section id="factor-lab-page" class="submit-card panel factor-page hidden">
         <form id="factor-lab-sievers-form">
           <p class="eyebrow">LATTICE SIEVERS</p>
           <h2>GGNFS lattice sievers for the number field sieve</h2>
@@ -1413,7 +1420,7 @@
           <form id="special-form-test-form" class="panel utility-card">
             <p class="eyebrow">SPECIAL-FORM PROOFS</p>
             <h2>Test Mersenne or Fermat numbers</h2>
-            <p>Use the necessary-and-sufficient Lucas–Lehmer or Pépin criterion without general factorization.</p>
+            <p>Use the necessary-and-sufficient Lucas–Lehmer or Pépin criterion. These tests prove prime or composite but do not produce factors; a composite Mersenne result offers a direct link to the separate factor search.</p>
             <div class="controls-grid">
               <label>Family<select id="special-form-kind"><option value="mersenne">Mersenne 2^p−1</option><option value="fermat">Fermat 2^(2^n)+1</option></select></label>
               <label>Exponent p / index n<input id="special-form-parameter" value="31" required /></label>
@@ -2554,6 +2561,6 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260907-named-tools" defer></script>
+    <script src="/assets/app.js?v=20260908-mersenne-nav" defer></script>
   </body>
 </html>
