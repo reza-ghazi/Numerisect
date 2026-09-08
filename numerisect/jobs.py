@@ -64,20 +64,21 @@ MIN_PRIORITY = -10
 ACTIVE_STATUSES = frozenset({"queued", "running", "cancelling", "paused"})
 
 
-def _memory_limit_resource() -> int:
+def _memory_limit_resource() -> int | None:
     """Return the enforceable per-process memory resource for this POSIX host.
 
     Darwin reserves a large virtual address map before an engine starts, making a
-    practical ``RLIMIT_AS`` low enough to protect the host also prevent ``exec``.
-    ``RLIMIT_DATA`` constrains the engine's writable data/heap allocation instead.
-    Linux uses the stronger total-address-space limit.
+    practical ``RLIMIT_AS`` prevent ``exec``. Its ``RLIMIT_DATA`` only governs
+    ``sbrk`` growth and also prevents PARI/GP from starting at practical limits, while
+    ``RLIMIT_RSS`` is advisory. Darwin therefore uses the process-group RSS watchdog
+    below. Linux uses the stronger kernel-enforced total-address-space limit.
     """
 
-    return resource.RLIMIT_DATA if sys.platform == "darwin" else resource.RLIMIT_AS
+    return None if sys.platform == "darwin" else resource.RLIMIT_AS
 
 
 def _memory_limit_label() -> str:
-    return "data-segment" if sys.platform == "darwin" else "address-space"
+    return "resident-set" if sys.platform == "darwin" else "address-space"
 
 
 class JobManager:
@@ -269,11 +270,62 @@ class JobManager:
         def apply() -> None:
             if cpu:
                 resource.setrlimit(resource.RLIMIT_CPU, (int(cpu), int(cpu) + 5))
-            if memory:
+            memory_resource = _memory_limit_resource()
+            if memory and memory_resource is not None:
                 limit = int(memory) * 1024 * 1024
-                resource.setrlimit(_memory_limit_resource(), (limit, limit))
+                resource.setrlimit(memory_resource, (limit, limit))
 
         return apply
+
+    @staticmethod
+    def _process_group_rss_kb(process_group: int) -> int | None:
+        """Return Darwin RSS for every process in a process group, in KiB."""
+
+        try:
+            result = subprocess.run(
+                ["ps", "-axo", "pgid=,rss="],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env={**os.environ, "LC_ALL": "C"},
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        total = 0
+        for line in result.stdout.splitlines():
+            fields = line.split()
+            if len(fields) != 2:
+                continue
+            try:
+                pgid, rss = (int(value) for value in fields)
+            except ValueError:
+                continue
+            if pgid == process_group:
+                total += rss
+        return total
+
+    def _watch_memory(
+        self, job_id: str, process: subprocess.Popen[str], memory_mb: int
+    ) -> None:
+        """Enforce a process-group resident-set limit on Darwin."""
+
+        limit_kb = memory_mb * 1024
+        while process.poll() is None:
+            rss_kb = self._process_group_rss_kb(process.pid)
+            if rss_kb is not None and rss_kb > limit_kb:
+                with self._lock:
+                    self._limit_hits[job_id] = "memory"
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                return
+            time.sleep(0.25)
 
     def _watch_wall_clock(self, job_id: str, process: subprocess.Popen[str], wall: int) -> None:
         """Terminate the process group once active (unpaused) time exceeds ``wall``."""
@@ -353,6 +405,13 @@ class JobManager:
                 name=f"wall-clock-{job_id[:8]}",
                 daemon=True,
             ).start()
+        if sys.platform == "darwin" and limits.get("memory_mb"):
+            threading.Thread(
+                target=self._watch_memory,
+                args=(job_id, process, int(limits["memory_mb"])),
+                name=f"memory-{job_id[:8]}",
+                daemon=True,
+            ).start()
         if stdin_text is not None and process.stdin is not None:
             process.stdin.write(stdin_text)
             process.stdin.close()
@@ -377,6 +436,11 @@ class JobManager:
         if limit_hit == "wall":
             raise LimitExceeded(
                 f"The wall-clock limit of {limits.get('wall_seconds')} seconds was exceeded"
+            )
+        if limit_hit == "memory":
+            raise LimitExceeded(
+                f"The engine exceeded the {limits.get('memory_mb')} MB "
+                f"{_memory_limit_label()} limit"
             )
         if limits.get("cpu_seconds") and return_code in {-signal.SIGXCPU, -signal.SIGKILL}:
             raise LimitExceeded(
