@@ -61,6 +61,39 @@ def test_a_mersenne_far_too_large_to_construct_is_still_factored():
     assert int(result["factors"][0]) == 2 * 1 * 1000151 + 1
 
 
+@pytest.mark.parametrize("exponent,k_limit,expected", [
+    # Each of these was verified in a separate PARI/GP session: q prime, k a genuine
+    # integer in q = 2kp + 1, q = +/-1 (mod 8), and 2^p = 1 (mod q).
+    (600_000_001, 100, ["27600000047"]),          # M_p has 180,617,998 digits
+    (999_999_001, 200, ["357999642359"]),         # M_p has 301,029,695 digits
+    (30_000_001, 100, ["1380000047"]),            # M_p has   9,030,901 digits
+])
+def test_factors_are_found_for_exponents_in_the_hundreds_of_millions(
+    exponent, k_limit, expected
+):
+    """The reach of this routine is the whole point, so it is pinned.
+
+    M_999999001 has 301,029,695 decimal digits. If anything here ever starts building
+    M_p rather than working modulo the candidate, this test stops finishing.
+    """
+
+    result = mersenne_factors(exponent, k_limit=k_limit, timeout=120)
+    assert result["factors"] == expected
+    for factor in result["factors"]:
+        q = int(factor)
+        assert (q - 1) % (2 * exponent) == 0
+        assert q % 8 in (1, 7)
+
+
+@pytest.mark.parametrize("exponent", [6_972_593, 20_996_011])
+def test_a_known_mersenne_prime_yields_no_factor(exponent):
+    """A control. M_6972593 and M_20996011 are prime, so no search can find a factor."""
+
+    result = mersenne_factors(exponent, k_limit=200_000, timeout=180)
+    assert result["factors"] == []
+    assert result["complete"] is True
+
+
 def test_finding_nothing_is_inconclusive_not_a_primality_claim():
     result = mersenne_factors(1000003, k_limit=2_000, timeout=120)
     assert result["factors"] == []

@@ -48,6 +48,32 @@ curl --cookie jar --header 'Content-Type: application/json' \
   http://127.0.0.1:8765/api/factor-lab/mersenne-factors
 ```
 
+### Results this actually produced
+
+Every factor below was found by the route above and then **verified in a separate PARI/GP
+session**, not by the routine that found it. For each one: \(q\) is prime, \(k\) is a genuine
+integer in \(q = 2kp+1\), \(q \equiv \pm 1 \pmod 8\), and \(2^p \equiv 1 \pmod q\). Where an
+exponent has several factors, the product of all of them was also checked to divide
+\(M_p\).
+
+| exponent \(p\) | decimal digits of \(M_p\) | factors found |
+| --- | --- | --- |
+| 2,000,003 | 602,061 | 160000241, 8924785387159 |
+| 30,000,001 | 9,030,901 | 1380000047 |
+| 50,000,017 | 15,051,505 | 1131900384847, 3615901229407, 355682820932119 |
+| 70,000,027 | 21,072,108 | 9520003673 |
+| 400,000,009 | 120,412,001 | 10876800244729 |
+| 600,000,001 | 180,617,998 | 27600000047, 2418000004031 |
+| 999,999,001 | 301,029,695 | 357999642359 |
+
+The last row is the one to look at. \(M_{999999001}\) has **301,029,695 decimal digits**. No
+general factoring method can represent that number, let alone factor it. Testing twenty
+million candidates against it, up to roughly \(4 \times 10^{16}\), took **10.7 seconds**,
+because the number is never built.
+
+Two known Mersenne prime exponents, 6,972,593 and 20,996,011, were searched as controls
+and correctly yielded nothing.
+
 ### Finding nothing is inconclusive
 
 An exhausted \(k\) range means **no factor of the form \(2kp+1\) exists below the bound

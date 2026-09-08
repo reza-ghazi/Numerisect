@@ -5,6 +5,12 @@ binary packages are published.
 
 ## Unreleased
 
+- Recorded the Mersenne factors the new routine actually produced, each verified in a
+  separate PARI/GP session rather than by the routine that found it, and pinned three of
+  them as tests. The largest is a factor of M_999999001, a number with 301,029,695
+  decimal digits, found in 10.7 seconds. Two known Mersenne prime exponents are searched
+  as controls and must continue to yield nothing.
+
 ## 0.6.0 — 2026-09-07
 
 - Added Mersenne trial factoring. Every prime factor q of M_p = 2^p − 1, for prime p,
