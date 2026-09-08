@@ -189,3 +189,10 @@ def test_the_documentation_site_carries_no_analytics():
     config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
     for tracker in ("google_analytics", "gtag", "analytics:", "googletagmanager"):
         assert tracker not in config, f"the documentation site must not carry {tracker}"
+
+
+def test_documentation_check_runs_for_dependency_and_workflow_updates():
+    workflow = (ROOT / ".github" / "workflows" / "docs.yml").read_text(encoding="utf-8")
+    pull_request_paths = workflow.split("pull_request:", 1)[1].split("workflow_dispatch:", 1)[0]
+    assert '"pyproject.toml"' in pull_request_paths
+    assert '".github/workflows/docs.yml"' in pull_request_paths

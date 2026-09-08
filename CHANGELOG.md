@@ -5,6 +5,14 @@ binary packages are published.
 
 ## Unreleased
 
+- Updated the pinned GitHub Actions to `actions/checkout` 7.0.1 and
+  `actions/setup-python` 7.0.0, and widened the tested compatibility ranges through
+  FastAPI 0.141, Starlette 1.x and mypy 2.x. The test client now uses Starlette's
+  preferred `httpx2` package instead of its deprecated `httpx` compatibility path. Also
+  corrected the documentation workflow's pull-request paths so changes to
+  `pyproject.toml` or the workflow itself can satisfy the required documentation-build
+  check instead of leaving Dependabot updates permanently blocked.
+
 - Made `https://numerisect.com` the public project entry point while keeping
   `https://docs.numerisect.com` as the canonical GitHub Pages host. The WHC/LiteSpeed
   apex and `www` names now use a path-preserving permanent redirect, whose configuration

@@ -25,8 +25,8 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-  "fastapi>=0.110,<0.137",
-  "starlette>=0.40,<1",
+  "fastapi>=0.110,<0.142",
+  "starlette>=0.40,<2",
   "uvicorn>=0.29,<0.53",
 ]
 
@@ -37,8 +37,8 @@ Documentation = "https://docs.numerisect.com"
 Issues = "https://github.com/reza-ghazi/Numerisect/issues"
 
 [project.optional-dependencies]
-test = ["pytest>=8,<10", "httpx>=0.27,<1"]
-dev = ["build>=1.2,<2", "mypy>=1.17,<2", "ruff>=0.12,<1"]
+test = ["pytest>=8,<10", "httpx2>=2,<3"]
+dev = ["build>=1.2,<2", "mypy>=1.17,<3", "ruff>=0.12,<1"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10"]
 
 [project.scripts]
