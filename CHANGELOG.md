@@ -10,7 +10,8 @@ binary packages are published.
   runs the native-backed test suite, performs a versioned user-local installation, and
   smoke-tests the installed CLI. The clean-host runs also drove portability fixes for
   Homebrew's keg-only GMP/OpenMP libraries, a Darwin system-header collision in the C
-  SQUFOF helper, WSL checkout line endings, and macOS resource-limit semantics.
+  SQUFOF helper, WSL checkout line endings, and a process-group RSS watchdog for
+  reliable macOS memory limits.
 
 - Audited the public documentation against the 0.6.0 application after making
   `numerisect.com` the entry point. Added a capability index and a mathematical

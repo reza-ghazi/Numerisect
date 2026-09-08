@@ -127,13 +127,13 @@ POST /api/jobs/{id}/pause             SIGSTOP the process group
 POST /api/jobs/{id}/resume-paused     SIGCONT the process group
 ```
 
-Per-job resource limits are applied to the engine process before `exec`: `cpu_seconds`
-becomes `RLIMIT_CPU`; `memory_mb` becomes Linux `RLIMIT_AS` or macOS `RLIMIT_DATA`; and
-`wall_seconds` is enforced by a watchdog that cancels the process group. macOS uses the
-data/heap limit because its system loader reserves a large virtual address map before the
-engine starts, making a practical `RLIMIT_AS` prevent `exec` itself. Exceeding a limit
-fails the job with an explicit `limit_exceeded` reason, and all three requested values
-are recorded in the reproducibility manifest.
+Per-job resource limits are applied to the engine process: `cpu_seconds` becomes
+`RLIMIT_CPU`; Linux enforces `memory_mb` with `RLIMIT_AS`; and watchdogs enforce
+`wall_seconds` and the aggregate process-group resident-set limit on macOS. Darwin needs
+the RSS watchdog because its loader reserves a large virtual address map, `RLIMIT_DATA`
+prevents PARI/GP from starting at practical values, and `RLIMIT_RSS` is advisory.
+Exceeding a limit fails the job with an explicit `limit_exceeded` reason, and all three
+requested values are recorded in the reproducibility manifest.
 
 Pause uses `SIGSTOP`, which every supported engine tolerates because it requires no
 cooperation from the process. A paused job holds its worker slot and its scratch

@@ -1,6 +1,7 @@
 """Application-infrastructure tests: workspaces, search, exports, batch import, caching."""
 
 import json
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
@@ -334,11 +335,37 @@ def test_job_limits_recorded_in_manifest(tmp_path, monkeypatch):
 
 def test_memory_limit_uses_the_host_supported_resource(monkeypatch):
     monkeypatch.setattr(jobs.sys, "platform", "darwin")
-    assert jobs._memory_limit_resource() == jobs.resource.RLIMIT_DATA
-    assert jobs._memory_limit_label() == "data-segment"
+    assert jobs._memory_limit_resource() is None
+    assert jobs._memory_limit_label() == "resident-set"
     monkeypatch.setattr(jobs.sys, "platform", "linux")
     assert jobs._memory_limit_resource() == jobs.resource.RLIMIT_AS
     assert jobs._memory_limit_label() == "address-space"
+
+
+def test_darwin_memory_watchdog_stops_an_oversized_process_group(monkeypatch):
+    manager = object.__new__(jobs.JobManager)
+    manager._lock = threading.Lock()
+    manager._limit_hits = {}
+
+    class Process:
+        pid = 2468
+
+        @staticmethod
+        def poll():
+            return None
+
+        @staticmethod
+        def wait(timeout):
+            assert timeout == 5
+
+    signals = []
+    monkeypatch.setattr(manager, "_process_group_rss_kb", lambda _pgid: 513 * 1024)
+    monkeypatch.setattr(jobs.os, "killpg", lambda pgid, signum: signals.append((pgid, signum)))
+
+    manager._watch_memory("job-id", Process(), 512)
+
+    assert signals == [(2468, jobs.signal.SIGTERM)]
+    assert manager._limit_hits == {"job-id": "memory"}
 
 
 # --- Interface contract for the workspace view ---------------------------------------
