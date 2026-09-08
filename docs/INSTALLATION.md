@@ -1,6 +1,6 @@
 # Installation and versioning
 
-Numerisect 0.5.0 is an experimental, source-distributed pre-release. No
+Numerisect 0.6.0 is an experimental, source-distributed pre-release. No
 official RPM, DEB, AppImage, macOS package, Windows executable, or other binary
 installer is published. The repository includes `install.sh` as a convenience
 for installing a checked-out source revision into a user-owned directory.
@@ -99,8 +99,8 @@ The default layout is:
 ```text
 ~/.local/share/numerisect/
 ├── bin/numerisect
-├── current -> releases/0.5.0
-├── releases/0.5.0/
+├── current -> releases/0.6.0
+├── releases/0.6.0/
 ├── state/
 └── output/
 ```
@@ -125,7 +125,7 @@ used. The current implementation uses Git rather than source archives, so no
 archive checksum applies. Third-party sources are not committed to this
 repository.
 
-The reviewed 0.5.0 manifest pins primesieve 12.15 and primecount 8.5 in
+The reviewed 0.6.0 manifest pins primesieve 12.15 and primecount 8.5 in
 addition to the existing engines. `primecount` is built against the managed
 primesieve development tree so a system executable without development files
 cannot produce a mismatched build.

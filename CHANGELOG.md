@@ -5,6 +5,29 @@ binary packages are published.
 
 ## Unreleased
 
+## 0.6.0 — 2026-09-07
+
+- Added Mersenne trial factoring. Every prime factor q of M_p = 2^p − 1, for prime p,
+  satisfies q = 2kp + 1 and q ≡ ±1 (mod 8), so only that thin progression is tested and
+  membership is one modular exponentiation. M_p is never constructed, which is what makes
+  the routine reach exponents in the millions: M_1000151 has 301,076 decimal digits and
+  its factor 2000303 is found at k = 1. An exhausted k range is reported as inconclusive,
+  meaning no factor of that form exists below the bound searched, and never as evidence
+  that M_p is prime.
+- Fixed the special-form analyser, which attempted a full integer factorization of the
+  input. The Aurifeuillean check called `factor()` on Φ_n(b), and Φ_n(b) is the whole
+  input whenever n is prime, so asking for a report on 2^1061 − 1 asked PARI to factor a
+  320-digit number inside a metadata routine. It exhausted its budget and returned
+  nothing; 10^101 − 1 behaved the same way. The split is now attempted only below a size
+  cap and reported as not attempted above it, which is inconclusive rather than a claim
+  that no algebraic factor exists. Both inputs now answer in well under a tenth of a
+  second, with the correct SNFS polynomial and difficulty.
+- Replaced the special-form search over every base up to 1,000 and every exponent below
+  it, on the order of a million full-precision exponentiations, with a direct `ispower`
+  question. The answer is also strictly better: there is no longer a base limit, so forms
+  with a large base are found too.
+- Corrected the rendering of a homogeneous form, which read `n = 2^1061 -1 1`.
+
 - Fixed the number field sieve in YAFU, which could not run at all. YAFU has no lattice
   siever of its own and shells out to the GGNFS `gnfs-lasieve4I<index>e` programs, but
   Numerisect launched it without a siever directory, leaving it to whatever `ggnfs_dir`

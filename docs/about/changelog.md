@@ -7,7 +7,7 @@ Version history is maintained in the repository.
 ## Versioning
 
 Numerisect is an experimental pre-release. Versions are `MAJOR.MINOR.PATCH`, but until a
-1.0 release the minor number carries the weight: 0.5.0 added the libraries-first
+1.0 release the minor number carries the weight: 0.6.0 added the libraries-first
 architecture statement and a substantially wider workbench over 0.4.0.
 
 No official binary packages are published. Install from source, or use the versioned

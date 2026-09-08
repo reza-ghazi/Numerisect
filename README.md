@@ -2,7 +2,7 @@
 
 **Multi-Engine Integer Factorization and Prime Analysis**
 
-Numerisect 0.5.0 is a local web workbench for integer factorization, primality
+Numerisect 0.6.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
 
@@ -389,6 +389,10 @@ the fundamental solution for `d = 1000099` has 1,128 decimal digits — so neith
 truncates them. Values too wide for a JSON response are abbreviated on screen with their
 exact leading and trailing digits and exact digit count, and every value is written at
 full length to a separate export file named in the response.
+
+Mersenne numbers have their own route: trial factoring over q = 2kp + 1 never builds
+M_p, so it reaches exponents in the millions where no general method can. See
+[Mersenne numbers](docs/MERSENNE.md).
 
 YAFU's number field sieve needs the GGNFS lattice sievers, which Numerisect
 discovers, validates against this CPU and passes to YAFU automatically; see

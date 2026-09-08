@@ -92,6 +92,7 @@ from .exports import (
 from .factor_lab import (
     algorithm_trace,
     batch_certificates,
+    mersenne_factors,
     special_form_analysis,
     squfof,
     strategy_advice,
@@ -4730,6 +4731,29 @@ class RsaChallengeRequest(BaseModel):
     prove_factors: bool = False
     proof_seconds: int = Field(default=60, ge=1, le=3600)
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+class MersenneFactorRequest(BaseModel):
+    exponent: int = Field(default=1061, ge=2, le=10**9)
+    k_limit: int = Field(default=100_000, ge=1, le=50_000_000)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+
+
+@app.post("/api/factor-lab/mersenne-factors")
+def factor_lab_mersenne_factors(request: MersenneFactorRequest) -> dict:
+    """Trial-factor M_p = 2^p - 1 over the progression q = 2kp + 1 without building M_p."""
+
+    try:
+        result = mersenne_factors(
+            request.exponent, request.k_limit, request.timeout_seconds
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "mersenne-factors", f"Mersenne factors of M_{request.exponent}", result
+    )
 
 
 @app.get("/api/factor-lab/sievers")

@@ -1,6 +1,6 @@
 # Arithmetic and distribution tools
 
-Numerisect 0.5.0 also adds the **Extended arithmetic**, **Divisor-sum
+Numerisect 0.6.0 also adds the **Extended arithmetic**, **Divisor-sum
 classification**, **Aliquot sequence**, **Prime-counting approximations**, and
 **Summatory functions** pages. Their arithmetic, factorization, primality, and
 sequence iteration live in `numerisect/number_theory.gp`; Python only validates

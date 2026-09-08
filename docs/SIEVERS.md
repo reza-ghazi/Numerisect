@@ -1,6 +1,6 @@
 # GGNFS lattice sievers
 
-*Numerisect 0.5.0*
+*Numerisect 0.6.0*
 
 YAFU performs the number field sieve by calling the GGNFS lattice sievers, the
 `gnfs-lasieve4I<index>e` programs. It does not contain a lattice siever of its own. Without

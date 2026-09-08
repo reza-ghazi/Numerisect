@@ -1,6 +1,6 @@
 # Reciprocals of primes
 
-Numerisect 0.5.0 preserves the streamed native-output contract described here:
+Numerisect 0.6.0 preserves the streamed native-output contract described here:
 the 100,000-digit browser ceiling is only a preview limit and does not cap the
 complete finite decimal or repetend written directly by PARI/GP to the report.
 

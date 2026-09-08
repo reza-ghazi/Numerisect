@@ -9,4 +9,4 @@ warranty; see [LICENSE](LICENSE).
 Third-party engines and libraries remain under their respective terms. See
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for attribution and the
 remaining redistribution review warning, including the BSD-licensed
-primesieve and primecount additions in Numerisect 0.5.0.
+primesieve and primecount additions in Numerisect 0.6.0.

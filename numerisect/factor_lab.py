@@ -67,6 +67,17 @@ YAFU_ALGORITHMS = frozenset(
 )
 
 MAX_SQUFOF_INPUT = 2**62
+#: Largest Phi_n(b), in decimal digits, whose Aurifeuillean split is attempted.
+#:
+#: Phi_n(b) is the whole input whenever n is prime, so factoring it is factoring the
+#: input. Attempting that inside a metadata routine hung on every large Mersenne number.
+#: Above this cap the split is reported as not attempted, which is inconclusive and never
+#: a claim that no algebraic factor exists; the factoring engines are the tool for that.
+ALGEBRAIC_DIGIT_CAP = 60
+#: Largest k searched when trial-factoring M_p over the progression q = 2kp + 1.
+MAX_MERSENNE_K = 50_000_000
+#: Largest Mersenne exponent accepted. M_p is never built, so this bounds only the work.
+MAX_MERSENNE_EXPONENT = 10**9
 
 
 def _program() -> str:
@@ -235,7 +246,9 @@ def special_form_analysis(expression: str, timeout: int = 120) -> dict[str, Any]
     safe = expression.strip()
     if not re.fullmatch(r"[0-9+\-*^() ]{1,200}", safe):
         raise ValueError("Special-form analysis accepts integer expressions only")
-    lines = _gp_call(f'fl_special_form("{safe}", {timeout})', timeout + 30)
+    lines = _gp_call(
+        f'fl_special_form("{safe}", {timeout}, {ALGEBRAIC_DIGIT_CAP})', timeout + 30
+    )
     forms = []
     for row in _tagged(lines, "FORM"):
         parts = row.split("|")
@@ -579,5 +592,91 @@ def tune_recommendation(parsed: dict[str, Any], current_threshold: int) -> dict[
             "YAFU measured this crossover on this machine with this thread count and "
             "these engine builds. It is a suggestion: Numerisect never rewrites its own "
             "configuration. Set the environment variable yourself if you agree."
+        ),
+    }
+
+
+def mersenne_factors(
+    exponent: int,
+    k_limit: int = 100_000,
+    timeout: int = 300,
+) -> dict[str, Any]:
+    """Trial-factor the Mersenne number M_p = 2^p - 1 over its own progression.
+
+    Every prime factor q of M_p, for prime p, satisfies q = 2kp + 1 and q = +/-1 (mod 8).
+    Those two congruences confine the candidates to a thin arithmetic progression, which
+    is why this finds factors of Mersenne numbers that no general-purpose method can
+    reach.  The membership test is a single modular exponentiation, ``Mod(2, q)^p == 1``.
+
+    **M_p is never constructed.**  Every step happens modulo the candidate, so the
+    exponent may run into the millions.  M_1000151 has 301,076 decimal digits and its
+    factor 2000303 is found at k = 1; building that number to divide by it would be
+    pointless and, for larger exponents, impossible.
+
+    Args:
+        exponent: A prime p.  M_p is the target; it is never materialised.
+        k_limit: Largest k searched in q = 2kp + 1 (1 to 50,000,000).
+        timeout: PARI/GP time limit in seconds.
+
+    Returns:
+        A report dictionary.  ``complete`` is ``False`` when the budget ran out before
+        the whole k range was searched.
+
+    Raises:
+        ValueError: If a bound is violated.
+        PrimeEngineError: If p is not prime, or PARI/GP failed.
+    """
+
+    if not 2 <= exponent <= MAX_MERSENNE_EXPONENT:
+        raise ValueError(
+            f"The Mersenne exponent must be between 2 and {MAX_MERSENNE_EXPONENT:,}"
+        )
+    if not 1 <= k_limit <= MAX_MERSENNE_K:
+        raise ValueError(f"The k limit must be between 1 and {MAX_MERSENNE_K:,}")
+    if not 1 <= timeout <= 3600:
+        raise ValueError("Engine time limit must be between 1 and 3,600 seconds")
+
+    lines = _gp_call(
+        f"fl_mersenne_factors({exponent},{k_limit},{timeout})", timeout + 30
+    )
+    _require_complete(lines)
+    records = [row.split("|") for row in _tagged(lines, "FACTOR")]
+    if any(len(row) != 2 or not all(part.isdigit() for part in row) for row in records):
+        raise PrimeEngineError("PARI/GP returned an invalid Mersenne factor record")
+    if int(_one(lines, "DONE")) != len(records):
+        raise PrimeEngineError("PARI/GP returned an incomplete Mersenne factor search")
+    complete = _one(lines, "TRUNCATED") == "0"
+    digits = int(_one(lines, "MERSENNE_DIGITS"))
+    rows = [[factor, k, str(len(factor))] for factor, k in records]
+    return {
+        "exponent": str(exponent),
+        "mersenne_digits": str(digits),
+        "k_limit": str(k_limit),
+        "complete": complete,
+        "factors": [factor for factor, _ in records],
+        "columns": ["Factor q", "k in q = 2kp + 1", "Digits of q"],
+        "rows": rows,
+        "metrics": {
+            "Exponent p": str(exponent),
+            "M_p decimal digits": f"{digits:,}",
+            "Largest k searched": f"{k_limit:,}",
+            "Largest candidate tested": f"{2 * k_limit * exponent + 1:,}",
+            "Factors found": str(len(records)),
+            "Search complete": "yes" if complete else "no",
+        },
+        "engine": "PARI/GP",
+        "note": (
+            "Every prime factor q of M_p satisfies q = 2kp + 1 and q = ±1 (mod 8), so "
+            "only that progression is tested, by a single modular exponentiation each. "
+            "M_p itself is never constructed, which is why an exponent in the millions "
+            "is workable here and hopeless for any general method. "
+            + (
+                "The whole k range was searched."
+                if complete
+                else "The budget ran out before the whole k range was searched."
+            )
+            + " Finding no factor is inconclusive: it means no factor of the form "
+            "2kp + 1 exists below the bound searched, and says nothing about whether "
+            "M_p is prime. Use the Lucas–Lehmer test for that question."
         ),
     }

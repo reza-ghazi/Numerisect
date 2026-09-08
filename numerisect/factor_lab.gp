@@ -34,12 +34,25 @@ fl_value(expr) =
 \\ multiple of b (b = 1 mod 4) or of 2b (b = 2,3 mod 4). Rather than hard-coding the
 \\ L/M polynomials, the split is found by factoring Phi_n(b) with PARI and reporting
 \\ the parts, then verified by division.
-fl_aurifeuillean(b, n, value) =
+\\ SIZE CAP, AND WHY IT IS HERE
+\\ Phi_n(b) is the whole input whenever n is prime, so factoring it outright is
+\\ factoring the input. Asking PARI to do that inside a metadata routine hung on every
+\\ large Mersenne number: 2^1061 - 1 and 10^101 - 1 both exhausted their budget here and
+\\ returned nothing at all. Above the cap the split is reported as not attempted, which
+\\ is an inconclusive result and never a claim that no Aurifeuillean factor exists.
+\\ Hand such an input to the factoring engines instead; that is their job, not this
+\\ routine's.
+fl_aurifeuillean(b, n, value, digit_cap) =
 {
-  my(found = 0, f, part);
+  my(found = 0, f, part, phi);
   if(b < 2 || n < 1, return(0));
+  phi = polcyclo(n, b);
+  if(#Str(abs(phi)) > digit_cap,
+    print("ALGEBRAIC_SKIPPED:", n, "|", b, "|", #Str(abs(phi)), "|", digit_cap);
+    return(0);
+  );
   \\ Only report a split when Phi_n(b) genuinely factors into more than one part.
-  f = factor(polcyclo(n, b));
+  f = factor(phi);
   if(matsize(f)[1] > 1,
     for(i = 1, matsize(f)[1],
       part = f[i, 1];
@@ -53,7 +66,7 @@ fl_aurifeuillean(b, n, value) =
 };
 
 \\ --- Special-form recognition and SNFS suitability -------------------------------
-fl_special_form(expr, seconds) =
+fl_special_form(expr, seconds, algebraic_cap) =
 {
   my(n, digits, results, forms = 0, algebraic = 0, poly = "", difficulty = 0,
      suitable = 0, complete = 1, r, row);
@@ -73,19 +86,32 @@ fl_special_form(expr, seconds) =
   \\ Bounded search for a^k +/- 1 and cyclotomic values. The whole search is run
   \\ inside one alarm and RETURNS its findings, because GP closures capture by
   \\ value: a counter incremented inside alarm() would not survive the call.
+  \\ n = b^e - 1 exactly when n + 1 is a perfect power, and n = b^e + 1 exactly when
+  \\ n - 1 is. Asking ispower that question directly replaces the old scan over every
+  \\ base up to 1000 and every exponent below it, which cost on the order of a million
+  \\ full-precision exponentiations and timed out on a 320-digit Mersenne number. The
+  \\ answer is also strictly better: ispower has no base limit, so forms with a large
+  \\ base are now found too.
+  \\
+  \\ ispower returns the maximal k with m = r^k. Every divisor d of k gives a further
+  \\ representation m = (r^(k/d))^d, and they are emitted largest exponent first
+  \\ because that is the best SNFS polynomial of the set.
   results = alarm(seconds,
-    my(found = List(), base, exponent, limit);
-    for(base = 2, 1000,
-      exponent = 2;
-      \\ The bound is n + 1 so that n = base^exponent - 1 is itself reachable.
-      while(base^exponent <= n + 1,
-        if(base^exponent - 1 == n,
-          listput(found, ["homogeneous", Str(base), Str(exponent), "-1"]);
+    my(found = List(), m, k, root, dv);
+    for(side = 1, 2,
+      m = if(side == 1, n + 1, n - 1);
+      if(m > 1,
+        k = ispower(m, , &root);
+        if(k > 1,
+          dv = divisors(k);
+          forstep(i = #dv, 1, -1,
+            my(d = dv[i]);
+            if(d > 1,
+              listput(found, ["homogeneous", Str(root^(k/d)), Str(d),
+                              if(side == 1, "-1", "+1")]);
+            );
+          );
         );
-        if(base^exponent + 1 == n,
-          listput(found, ["homogeneous", Str(base), Str(exponent), "+1"]);
-        );
-        exponent++;
       );
     );
     for(base = 2, 200,
@@ -106,14 +132,15 @@ fl_special_form(expr, seconds) =
   for(i = 1, #results,
     row = results[i];
     if(row[1] == "homogeneous",
-      print("FORM:homogeneous|n = ", row[2], "^", row[3], " ", row[4], " 1|1");
+      print("FORM:homogeneous|n = ", row[2], "^", row[3],
+            if(row[4] == "-1", " - 1", " + 1"), "|1");
       forms++;
       if(!suitable,
         poly = concat(concat(concat("x^", row[3]), if(row[4] == "-1", " - ", " + ")), "1");
         difficulty = round(eval(row[3]) * log(eval(row[2])) / log(10));
         suitable = 1;
       );
-      algebraic += fl_aurifeuillean(eval(row[2]), eval(row[3]), n);
+      algebraic += fl_aurifeuillean(eval(row[2]), eval(row[3]), n, algebraic_cap);
     );
     if(row[1] == "cyclotomic",
       print("FORM:cyclotomic|n = Phi_", row[3], "(", row[2], ")|1");
@@ -310,4 +337,58 @@ fl_reconcile(n, candidates) =
   \\ Complete means every reported part is prime, so nothing is left to factor.
   print("COMPLETE:", if(remaining == 1 || isprime(remaining), 1, 0));
   print("DONE:", count);
+};
+
+\\ --- Mersenne trial factoring ----------------------------------------------------
+\\ Every prime factor q of M_p = 2^p - 1, for p prime, satisfies two classical
+\\ congruences:
+\\
+\\   q = 2kp + 1        (Euler / Fermat: the order of 2 modulo q is exactly p)
+\\   q = +/-1 (mod 8)   (2 is a quadratic residue modulo q)
+\\
+\\ Together they confine the candidates to a thin arithmetic progression, which is why
+\\ this finds factors of Mersenne numbers far beyond the reach of any general-purpose
+\\ method. The test itself is Mod(2, q)^p == 1, a single modular exponentiation.
+\\
+\\ M_p IS NEVER CONSTRUCTED. Everything happens modulo q, so p may be in the millions
+\\ and the routine still runs; building 2^p - 1 for such a p would exhaust memory long
+\\ before any factor was found. This is the same reason GIMPS trial-factors before it
+\\ commits to a Lucas-Lehmer test.
+\\
+\\ An exhausted k range is INCONCLUSIVE. It means no factor of the form 2kp + 1 exists
+\\ below the bound searched, and says nothing about whether M_p is prime.
+fl_mersenne_factors(p, k_limit, seconds) =
+{
+  my(found = 0, truncated = 0, q, r, k, deadline);
+  if(p < 2, error("The Mersenne exponent must be at least 2"));
+  if(!isprime(p), error("M_p can only be factored this way for a prime exponent p"));
+  print("EXPONENT:", p);
+  print("K_LIMIT:", k_limit);
+  \\ #digits of 2^p - 1 without building it.
+  print("MERSENNE_DIGITS:", floor(p * log(2) / log(10)) + 1);
+  r = alarm(seconds,
+    my(hits = List(), qq);
+    for(k = 1, k_limit,
+      qq = 2 * k * p + 1;
+      \\ q = +/-1 mod 8 is necessary; it discards three quarters of the progression.
+      if(qq % 8 == 1 || qq % 8 == 7,
+        if(ispseudoprime(qq),
+          if(Mod(2, qq)^p == 1,
+            listput(hits, [k, qq]);
+          );
+        );
+      );
+    );
+    Vec(hits);
+  );
+  if(type(r) == "t_ERROR",
+    truncated = 1;
+    r = [];
+  );
+  for(i = 1, #r,
+    print("FACTOR:", r[i][2], "|", r[i][1]);
+    found++;
+  );
+  print("TRUNCATED:", truncated);
+  print("DONE:", found);
 };

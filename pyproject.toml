@@ -1,6 +1,6 @@
 [project]
 name = "numerisect"
-version = "0.5.0"
+version = "0.6.0"
 description = "Multi-Engine Integer Factorization and Prime Analysis"
 readme = "README.md"
 license = "GPL-3.0-or-later"

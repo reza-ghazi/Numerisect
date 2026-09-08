@@ -132,6 +132,18 @@
           </div>
         </form>
 
+        <form id="factor-lab-mersenne-form">
+          <p class="eyebrow">MERSENNE NUMBERS</p>
+          <h2>Mersenne trial factoring of M<sub>p</sub> = 2<sup>p</sup> − 1</h2>
+          <p>Every prime factor q of M<sub>p</sub>, for prime p, satisfies q = 2kp + 1 and q ≡ ±1 (mod 8). Those two congruences confine the candidates to a thin arithmetic progression, and membership is decided by one modular exponentiation. <strong>M<sub>p</sub> is never constructed</strong>, so an exponent in the millions is workable here and hopeless for any general method: M<sub>1000151</sub> has 301,076 decimal digits and its factor 2000303 appears at k = 1. Finding nothing is inconclusive; it says no factor of this form exists below the bound searched, not that M<sub>p</sub> is prime.</p>
+          <div class="triple-controls">
+            <label>Exponent p (prime)<input id="mersenne-exponent" type="number" min="2" max="1000000000" value="1061" required /></label>
+            <label>Largest k searched<input id="mersenne-k" type="number" min="1" max="50000000" value="100000" required /></label>
+            <label>Timeout (seconds)<input id="mersenne-timeout" type="number" min="1" max="3600" value="300" /></label>
+          </div>
+          <div class="actions"><button class="primary" type="submit"><span>Search for factors</span><span>→</span></button></div>
+        </form>
+
         <form id="factor-lab-sievers-form">
           <p class="eyebrow">LATTICE SIEVERS</p>
           <h2>GGNFS lattice sievers for the number field sieve</h2>

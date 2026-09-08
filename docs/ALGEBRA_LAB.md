@@ -1,6 +1,6 @@
 # Algebra laboratory
 
-Numerisect 0.5.0 adds a modular, arithmetic, and algebraic workbench backed by
+Numerisect 0.6.0 adds a modular, arithmetic, and algebraic workbench backed by
 `numerisect/algebra_lab.gp`. The GP program is a driver over PARI's own routines;
 `numerisect/algebra_lab.py` validates decimal inputs, renders them into a single GP
 call, requires complete tagged output, parses it, and persists a report. Neither

@@ -1,6 +1,6 @@
 # Advanced number-theory workbenches
 
-Numerisect 0.5.0 adds a dedicated PARI/GP computational layer in
+Numerisect 0.6.0 adds a dedicated PARI/GP computational layer in
 `numerisect/number_theory.gp`. Python validates decimal inputs, starts GP,
 requires complete tagged output, parses it, and persists reports. It does not
 reimplement the mathematics. Each operation has one Prime Tools route, and its

@@ -1,7 +1,7 @@
 # Prime classification
 
 Classification remains a distinct 56-class, three-way catalogue. Numerisect
-0.5.0 adds separate pages for comparing probable-prime tests with rigorous
+0.6.0 adds separate pages for comparing probable-prime tests with rigorous
 PARI proof modes, running Lucas–Lehmer/Pépin special-form proofs, and
 independently validating a machine-readable PARI certificate. These additions
 do not change a classifier timeout or catalogue boundary into a negative
