@@ -1,0 +1,104 @@
+name: Platform compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  posix:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            packages: >-
+              pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc g++
+              primesieve gmp-ecm autoconf automake libtool cmake
+          - name: macOS ARM64
+            runner: macos-15
+            packages: >-
+              pari flint gmp mpfr pkg-config autoconf automake libtool libomp
+              primesieve primecount gmp-ecm cmake
+          - name: macOS Intel
+            runner: macos-15-intel
+            packages: >-
+              pari flint gmp mpfr pkg-config autoconf automake libtool libomp
+              primesieve primecount gmp-ecm cmake
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Linux native prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ${{ matrix.packages }}
+      - name: Install macOS native prerequisites
+        if: runner.os == 'macOS'
+        run: brew install ${{ matrix.packages }}
+      - name: Install project test dependencies
+        run: python -m pip install '.[test,dev]'
+      - name: Check installer platform detection
+        run: ./install.sh --check --prefix "$RUNNER_TEMP/numerisect-check"
+      - name: Run complete native test suite
+        run: pytest -q
+      - name: Exercise versioned user installation
+        run: |
+          ./install.sh --no-system-deps --prefix "$RUNNER_TEMP/numerisect-install"
+          "$RUNNER_TEMP/numerisect-install/current/.venv/bin/numerisect" routes --filter /api/ > /dev/null
+
+  wsl:
+    name: Windows WSL (Ubuntu 24.04 x86-64)
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Ubuntu under WSL
+        uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 # v7.0.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 1
+          additional-packages: >-
+            python3 python3-venv python3-pip git make gcc g++ cmake pkg-config
+            pari-gp libflint-dev libgmp-dev libmpfr-dev primesieve gmp-ecm
+            autoconf automake libtool
+      - name: Verify WSL and install test dependencies
+        shell: wsl-bash {0}
+        run: |
+          grep -qi microsoft /proc/version
+          python3 -m venv /tmp/numerisect-test-venv
+          /tmp/numerisect-test-venv/bin/pip install '.[test,dev]'
+      - name: Check installer platform detection
+        shell: wsl-bash {0}
+        run: ./install.sh --check --prefix /tmp/numerisect-check
+      - name: Run complete native test suite
+        shell: wsl-bash {0}
+        run: >-
+          /tmp/numerisect-test-venv/bin/pytest -q
+      - name: Exercise versioned user installation
+        shell: wsl-bash {0}
+        run: |
+          ./install.sh --no-system-deps --prefix /tmp/numerisect-install
+          /tmp/numerisect-install/current/.venv/bin/numerisect routes --filter /api/ > /dev/null
