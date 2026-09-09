@@ -5,8 +5,21 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Literal
+
+# CPython refuses to convert an integer of more than 4,300 digits to or from a string,
+# a denial-of-service guard aimed at untrusted input. Engine output is not untrusted
+# input: it is a number this application asked an engine to compute, and results far
+# past that size are routine here. Lucas-Lehmer on M_19937 returns 6,002 digits, and a
+# Mersenne cofactor or a zeta enclosure can be far longer.
+#
+# The limit was previously lifted only as a side effect of importing the expression
+# evaluator, so the web app and the CLI worked while any direct use of a boundary module
+# raised ValueError on a large result. Every engine boundary parses through this module,
+# so the guard is lifted here, where the conversion actually happens.
+sys.set_int_max_str_digits(0)
 
 
 class PrimeEngineError(RuntimeError):

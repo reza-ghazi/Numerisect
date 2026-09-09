@@ -173,3 +173,37 @@ def test_valuation_cyclotomic_and_divisor_dynamics():
     aliquot = aliquot_sequence("12", 20)
     assert aliquot["complete"] is True
     assert aliquot["rows"][-1] == ["7", "0"]
+
+
+def test_a_result_past_cpython_s_integer_string_limit_is_parsed():
+    """Regression: engine results above 4,300 digits raised ValueError.
+
+    CPython refuses to convert an integer of more than 4,300 digits to or from a string.
+    Engine output routinely exceeds that: Lucas-Lehmer on M_19937 returns 6,002 digits.
+    The guard used to be lifted only as a side effect of importing the expression
+    evaluator, so the web app worked while importing a boundary module directly did not.
+    """
+
+    from numerisect.number_theory import special_form_test
+
+    result = special_form_test("mersenne", "19937", timeout=600)
+    assert result["metrics"]["Rigorous verdict"] == "prime"
+    assert len(result["metrics"]["Number"]) == 6002
+
+
+def test_every_engine_boundary_lifts_the_integer_string_limit():
+    """The guard must not depend on which module a caller happens to import first."""
+
+    import subprocess
+    import sys
+
+    for module in (
+        "primes", "number_theory", "factor_lab", "primality_lab", "forms_lab",
+        "distribution_lab", "algebra_lab", "visual_lab", "zeta_fields", "verification",
+    ):
+        limit = subprocess.run(
+            [sys.executable, "-c",
+             f"import sys, numerisect.{module}; print(sys.get_int_max_str_digits())"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        assert limit == "0", f"numerisect.{module} left the limit at {limit}"

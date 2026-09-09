@@ -5,6 +5,15 @@ binary packages are published.
 
 ## Unreleased
 
+- Fixed engine results above 4,300 decimal digits raising `ValueError` in every boundary
+  module. CPython refuses to convert an integer of more than 4,300 digits to or from a
+  string, a denial-of-service guard aimed at untrusted input, and engine output is not
+  untrusted input. The guard was lifted only as a side effect of importing the expression
+  evaluator, so the web application and the CLI worked while importing any of the ten
+  boundary modules directly failed on a large result. Lucas-Lehmer on M_19937 returns
+  6,002 digits and raised. The guard is now lifted in the module where the conversion
+  happens, and a test asserts every boundary module lifts it regardless of import order.
+
 - Extended the CUDA scanner to two-limb Montgomery arithmetic, so the device now tests
   candidates up to 2^127 instead of stopping at 2^63. At a Mersenne exponent near 10^9
   the old ceiling was reached around k = 4.6 billion, past which the range fell back to
