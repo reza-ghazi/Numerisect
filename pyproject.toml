@@ -36,6 +36,7 @@ dependencies = [
 Homepage = "https://numerisect.com"
 Repository = "https://github.com/reza-ghazi/Numerisect"
 Documentation = "https://docs.numerisect.com"
+Archive = "https://doi.org/10.5281/zenodo.22679026"
 Issues = "https://github.com/reza-ghazi/Numerisect/issues"
 
 [project.optional-dependencies]

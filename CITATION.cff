@@ -15,6 +15,7 @@ url: "https://numerisect.com"
 license: GPL-3.0-or-later
 version: 0.7.0
 date-released: 2026-09-09
+doi: "10.5281/zenodo.22679027"
 keywords:
   - integer factorization
   - prime numbers

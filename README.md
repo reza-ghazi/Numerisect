@@ -2,6 +2,8 @@
 
 **Multi-Engine Integer Factorization and Prime Analysis**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22679026.svg)](https://doi.org/10.5281/zenodo.22679026)
+
 Numerisect 0.7.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
@@ -835,7 +837,10 @@ being reproducible by anyone who clones the repository.
 
 Academic and educational users can cite the software using
 [CITATION.cff](CITATION.cff). GitHub renders this metadata through its
-**Cite this repository** interface after the repository becomes public.
+**Cite this repository** interface. The permanent DOI for all Numerisect versions is
+[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.7.0`
+snapshot specifically as
+[10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027).
 
 ## License
 

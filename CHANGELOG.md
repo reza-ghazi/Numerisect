@@ -5,7 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
-No changes yet.
+- Added the Zenodo archival identifiers issued for the first public source release:
+  concept DOI `10.5281/zenodo.22679026` for all versions and version DOI
+  `10.5281/zenodo.22679027` for the immutable `v0.7.0` snapshot. The README, website,
+  package metadata, and `CITATION.cff` now expose the appropriate identifiers.
 
 ## 0.7.0 — 2026-09-09
 
