@@ -14,19 +14,43 @@ linked or bookmarked.
 ## Prime tools navigation
 
 The 11 groups are: primality and navigation, primality laboratories, prime generation,
-patterns and distribution, analytic prime distribution, prime structures, arithmetic and
-factors, modular and polynomial algebra, algebraic primes, advanced explorations, and
-visualization and education.
+gaps and tuples and Goldbach, analytic distribution and counting, reciprocals and Gaussian
+and digits, divisors and arithmetic functions, modular and polynomial algebra, quadratic
+forms and number fields, digit and sequence explorations, and visualization and education.
 
 Only one operation is visible at a time, and each has a direct hash route such as
 `#primes/prime-check` or `#primes/prime-reciprocal`. On narrow screens a compact selector
 replaces the sidebar.
 
-**Finding a tool by name.** Every sidebar button is labelled with the tool's own name, so
-Pell's equation reads "Pell's equation x² − dy² = 1" and not merely what it does. The
-search box above the sidebar filters on the name, the subtitle and the category at once,
-so typing `pell`, `carmichael` or `continued` narrows the list immediately. Two routes
-worth knowing directly:
+## Finding a tool
+
+133 tools is more than anyone can scan, so the primary route is not the sidebar.
+
+**Press <kbd>Ctrl</kbd>+<kbd>K</kbd>** (or <kbd>⌘</kbd>+<kbd>K</kbd>, or just `/` when you
+are not typing in a field) to open the command palette from anywhere in the application,
+including the factorization and zeta views. Type, use the arrow keys, press Enter. The
+palette switches to Prime Tools and opens the tool for you.
+
+**Search the mathematics, not the label.** A label chosen by this project is rarely the
+word you arrive with. Every tool carries a hidden index of the concepts, notation, and
+mathematicians it relates to, and search matches that alongside the visible text:
+
+| you type | you get |
+| --- | --- |
+| `diophantine`, `chakravala`, `x^2-dy^2` | Pell's equation |
+| `cyclic number` | full-reptend primes |
+| `sum of two squares` | Cornacchia's algorithm |
+| `heegner`, `n^2-n+41` | Euler's prime polynomial |
+| `keygen` | prime generation |
+| `korselt` | Carmichael numbers |
+| `artin` | multiplicative order statistics |
+
+Terms are ranked rather than merely filtered: a match in a tool's name outranks one in its
+description, which outranks one reached only through the concept index. A multi-word query
+is treated as a phrase first, so `cyclic number` finds the tool about cyclic numbers rather
+than everything mentioning both words.
+
+Every tool also has a direct hash route, such as:
 
 ```text
 #primes/pell-equation        Pell's equation x² − dy² = 1

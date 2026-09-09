@@ -9,7 +9,7 @@ routines. `numerisect/forms_lab.py` validates decimal inputs, renders them into 
 GP call, requires complete tagged output, parses it, and persists a report. Neither
 Python nor JavaScript performs arithmetic on a mathematical quantity.
 
-Every operation is reachable from Prime Tools under **Algebraic primes**, has one
+Every operation is reachable from Prime Tools under **Quadratic forms & number fields**, has one
 `POST /api/forms/*` route, and writes its report to `output/<filename>`, which the
 result panel displays.
 

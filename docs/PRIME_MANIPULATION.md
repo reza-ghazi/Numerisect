@@ -18,7 +18,7 @@ operation or arbitrary input has been exhaustively tested.
 | Calculate modulo a prime | `/#primes/prime-modular` | Inverse, power, order, square roots, and a primitive root |
 
 These pages belong to **Primality & navigation**, **Prime generation**, and
-**Arithmetic & factors**, respectively. The complete Prime Tools catalogue has
+**Divisors & arithmetic functions**, respectively. The complete Prime Tools catalogue has
 133 pages in 11 groups. On mobile, the operation selector replaces the desktop sidebar.
 
 ## Indexed navigation before or after an integer

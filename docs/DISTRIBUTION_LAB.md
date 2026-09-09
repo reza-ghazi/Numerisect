@@ -8,7 +8,7 @@ evaluate a single mathematical quantity, and neither does the browser layer:
 JavaScript converts the returned strings to canvas coordinates and colours and
 nothing else.
 
-Each operation has one Prime Tools route in the **Analytic prime distribution**
+Each operation has one Prime Tools route in the **Analytic distribution & counting**
 group, and its result appears directly below the submitted form together with
 the exact `output/<filename>` path of the saved report.
 

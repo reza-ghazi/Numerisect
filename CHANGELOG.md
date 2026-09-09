@@ -5,6 +5,33 @@ binary packages are published.
 
 ## Unreleased
 
+- Redesigned how a tool is found. 133 operations in a scrollable sidebar is more than
+  anyone can survey, and the labels were the only thing search could match, so a tool was
+  reachable only by guessing the words this project happened to choose. This was not
+  theoretical: the author of the interface could not find Pell's equation in it.
+- Added a command palette. `Ctrl`/`Cmd`+`K` from anywhere, or `/` when not typing in a
+  field, opens a ranked search over every tool and switches views to open the one chosen.
+  It works from the factorization and zeta views as well as Prime Tools.
+- Added a concept index covering all 133 tools: the notation, alternative names, related
+  problems and mathematicians each one relates to. Search matches it alongside the visible
+  text, so `diophantine`, `chakravala` and `x^2-dy^2` all find Pell's equation, `cyclic
+  number` finds full-reptend primes, `korselt` finds Carmichael numbers, `heegner` finds
+  Euler's prime polynomial, and `keygen` finds prime generation. Seventeen such queries
+  are asserted in the test suite, which executes the interface's own scoring code rather
+  than a copy of it.
+- Replaced the substring filter with ranked scoring. A query like `prime` previously
+  matched nearly every tool with no ordering. A match in a tool's name now outranks one in
+  its description, which outranks one reached only through the concept index, and a
+  multi-word query is treated as a phrase first. Terms must begin at a word boundary,
+  because a plain substring test matched `artin` inside `starting`.
+- Renamed six navigation groups that did not predict their contents. "Advanced
+  explorations" is now "Digit & sequence explorations", "Arithmetic & factors" is
+  "Divisors & arithmetic functions", and the confusable pair "Patterns & distribution" and
+  "Analytic prime distribution" are now "Gaps, tuples & Goldbach" and "Analytic
+  distribution & counting". A test rejects the vague names returning.
+- The sidebar search now says when nothing matched instead of silently emptying, and
+  reports the tool count from the registry rather than a hard-coded number.
+
 - Removed a Python reimplementation of engine mathematics from the test suite. A GPU test
   built its own candidate set with a full sieve of Eratosthenes and Fermat modular
   inverses written in Python, duplicating what the C helper does. Checking an engine

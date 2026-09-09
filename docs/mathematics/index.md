@@ -30,7 +30,7 @@ bound is worth less than one telling you where the bound comes from.
 
     [:octicons-arrow-right-24: Read](factorization.md)
 
--   **Prime structures**
+-   **Reciprocals, Gaussian & digits**
 
     ---
 

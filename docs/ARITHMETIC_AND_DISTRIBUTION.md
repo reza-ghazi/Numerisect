@@ -33,12 +33,12 @@ the results and charts. Neither layer performs the number-theory calculation.
 
 ## Finding these operations
 
-Use **Arithmetic & factors** for integer profiles (`/#primes/integer-profile`),
+Use **Divisors & arithmetic functions** for integer profiles (`/#primes/integer-profile`),
 coprimes (`/#primes/coprime-profile`), factor counts
 (`/#primes/factor-count-distribution`), and the indicator constant
-(`/#primes/prime-constant`). **Patterns & distribution** contains prime density
+(`/#primes/prime-constant`). **Gaps, tuples & Goldbach** contains prime density
 (`/#primes/prime-distribution`); **Prime generation** contains digit constraints
-(`/#primes/digit-constrained`); **Advanced explorations** contains polynomials
+(`/#primes/digit-constrained`); **Digit & sequence explorations** contains polynomials
 (`/#primes/prime-polynomial`) and palindrome-derived values
 (`/#primes/palindrome-derived`). Each page displays only its own operation.
 

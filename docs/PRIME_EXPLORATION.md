@@ -20,10 +20,10 @@ results.
 
 ## Navigation
 
-Use **Patterns & distribution** for gap statistics (`/#primes/gap-statistics`)
+Use **Gaps, tuples & Goldbach** for gap statistics (`/#primes/gap-statistics`)
 and Goldbach (`/#primes/goldbach`), **Prime generation** for primorials
 (`/#primes/primorial`) and random-range sampling (`/#primes/random-range`),
-and **Advanced explorations** for contiguous digits (`/#primes/contiguous-digits`)
+and **Digit & sequence explorations** for contiguous digits (`/#primes/contiguous-digits`)
 and bounded problems (`/#primes/prime-problem`). Each operation occupies one
 page with its result and saved-report path immediately below the form.
 

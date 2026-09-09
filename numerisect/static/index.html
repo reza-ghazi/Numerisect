@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20260907-named-tools" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260908-mersenne-orders" />
+    <link rel="icon" href="/assets/favicon.svg?v=20260909-command-palette" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260909-command-palette" />
   </head>
   <body>
     <header class="topbar">
@@ -364,7 +364,9 @@
               <p id="prime-operation-total">Native-engine analyses</p>
             </header>
             <label class="tool-search-label" for="prime-tool-search">Find an operation</label>
-            <input id="prime-tool-search" class="tool-search" type="search" placeholder="Search prime tools" autocomplete="off" />
+            <input id="prime-tool-search" class="tool-search" type="search" placeholder="Search by name, concept or notation" autocomplete="off" />
+            <p class="tool-search-hint">Press <kbd>Ctrl</kbd><kbd>K</kbd> to search every tool from anywhere.</p>
+            <p id="prime-tool-empty" class="tool-search-empty hidden" role="status"></p>
             <nav id="prime-tool-navigation" class="tool-navigation" aria-label="Prime operations"></nav>
           </aside>
 
@@ -2586,6 +2588,21 @@
     <footer>
       Local-only by default · <a href="/api/docs">API documentation</a>
     </footer>
-    <script src="/assets/app.js?v=20260908-mersenne-orders" defer></script>
+    <div id="command-palette" class="command-palette hidden" role="dialog" aria-modal="true" aria-label="Find a tool">
+      <div class="command-palette-backdrop" data-command-close="1"></div>
+      <div class="command-palette-panel">
+        <input id="command-palette-input" class="command-palette-input" type="text"
+               placeholder="Search by name, concept or notation…"
+               autocomplete="off" spellcheck="false" role="combobox"
+               aria-expanded="true" aria-controls="command-palette-results" />
+        <ul id="command-palette-results" class="command-palette-results" role="listbox"></ul>
+        <p class="command-palette-footer">
+          <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+          <span><kbd>Enter</kbd> open</span>
+          <span><kbd>Esc</kbd> close</span>
+        </p>
+      </div>
+    </div>
+    <script src="/assets/app.js?v=20260909-command-palette" defer></script>
   </body>
 </html>

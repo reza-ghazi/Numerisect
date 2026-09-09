@@ -14,8 +14,8 @@ tagged output, parses it and persists reports. It does not evaluate a single
 mathematical quantity, and neither does the browser layer.
 
 Each operation has one Prime Tools route: the three counting pages in the
-**Analytic prime distribution** group and the three structure pages in the
-**Arithmetic & factors** group. Every result appears directly below the
+**Analytic distribution & counting** group and the three structure pages in the
+**Divisors & arithmetic functions** group. Every result appears directly below the
 submitted form together with the exact `output/<filename>` path of the saved
 report.
 

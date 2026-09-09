@@ -1,5 +1,10 @@
+import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).parents[1]
 INDEX = (ROOT / "numerisect" / "static" / "index.html").read_text(encoding="utf-8")
@@ -181,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260908-mersenne-orders' in INDEX
-    assert '/assets/app.js?v=20260908-mersenne-orders' in INDEX
-    assert '/assets/favicon.svg?v=20260907-named-tools' in INDEX
+    assert '/assets/styles.css?v=20260909-command-palette' in INDEX
+    assert '/assets/app.js?v=20260909-command-palette' in INDEX
+    assert '/assets/favicon.svg?v=20260909-command-palette' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260908-mersenne-orders#primes/prime-check' in RUNNER
+    assert '?ui=20260909-command-palette#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -250,3 +255,99 @@ def test_documentation_check_runs_for_dependency_and_workflow_updates():
     pull_request_paths = workflow.split("pull_request:", 1)[1].split("workflow_dispatch:", 1)[0]
     assert '"pyproject.toml"' in pull_request_paths
     assert '".github/workflows/docs.yml"' in pull_request_paths
+
+
+# --- Finding a tool among 133 -------------------------------------------------------
+
+CONCEPT_CASES = [
+    # A label chosen by this project is rarely the word someone arrives with.
+    ("pell", "pell-equation"),
+    ("diophantine", "pell-equation"),
+    ("chakravala", "pell-equation"),
+    ("x^2-dy^2", "pell-equation"),
+    ("cyclic number", "reptend-prime"),
+    ("sum of two squares", "cornacchia"),
+    ("heegner", "prime-polynomial"),
+    ("n^2-n+41", "prime-polynomial"),
+    ("korselt", "carmichael-analysis"),
+    ("keygen", "prime-generate"),
+    ("mertens", "summatory-functions"),
+    ("tonelli", "tonelli-shanks"),
+    ("amicable", "sociable-cycle"),
+    ("ulam", "visual-spiral"),
+    ("chebyshev bias", "prime-race"),
+    ("goldbach", "goldbach"),
+    # Regression: a plain substring test matched "artin" inside "starting", which put
+    # unrelated tools above the one about multiplicative order.
+    ("artin", "order-distribution"),
+]
+
+
+def test_every_tool_has_a_concept_index_entry():
+    """Search must cover the vocabulary of the subject, not only our labels.
+
+    A tool with no entry is reachable only by guessing the words we happened to choose,
+    which is exactly the problem the index exists to solve.
+    """
+
+    aliased = set(re.findall(r"^  '([a-z0-9-]+)':", APP, re.M))
+    grid = APP.split("const primeSections", 1)[1].split("const zetaSections", 1)[0]
+    tools = {form[:-5] for form in re.findall(r"'([a-z0-9-]+-form)'", grid)}
+    assert tools, "no prime tools found"
+    missing = sorted(tools - aliased)
+    assert not missing, f"tools with no concept-index entry: {missing}"
+
+
+def test_the_command_palette_is_wired():
+    """The sidebar is not the primary route at this scale; the palette is."""
+
+    for element in (
+        'id="command-palette"',
+        'id="command-palette-input"',
+        'id="command-palette-results"',
+        'role="dialog"',
+        'aria-modal="true"',
+    ):
+        assert element in INDEX, f"the palette markup is missing {element}"
+    # Opened by Ctrl/Cmd+K from anywhere, and by "/" when not typing in a field.
+    assert "(event.metaKey || event.ctrlKey) && key === 'k'" in APP
+    assert "key === '/'" in APP
+    assert "function initializeCommandPalette" in APP
+    assert "initializeCommandPalette();" in APP
+
+
+def test_search_ranks_rather_than_filters():
+    """A substring filter is useless here: "prime" matches nearly every tool."""
+
+    assert "function scoreTool" in APP
+    assert "function searchTools" in APP
+    # Word-boundary matching, so "artin" cannot match inside "starting".
+    assert "function termPattern" in APP
+    assert "(^|[^a-z0-9])" in APP
+
+
+def test_concept_queries_reach_the_intended_tool():
+    """Runs the interface's own scoring code over the shipped concept index."""
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is required to exercise the interface search")
+    harness = ROOT / "tests" / "search_ranking.js"
+    assert harness.is_file()
+    result = subprocess.run(
+        [node, str(harness), json.dumps(CONCEPT_CASES)],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"cases={len(CONCEPT_CASES)}" in result.stdout
+    assert "failures=0" in result.stdout
+
+
+def test_navigation_group_names_predict_their_contents():
+    """A group called "Advanced explorations" tells a reader nothing about what is in it."""
+
+    labels = re.findall(r"label: '([^']+)'", APP.split("const primeSections", 1)[1]
+                        .split("const zetaSections", 1)[0])
+    assert len(labels) == 11
+    for vague in ("Advanced explorations", "Arithmetic & factors", "Patterns & distribution"):
+        assert vague not in labels, f"{vague!r} does not say what it holds"

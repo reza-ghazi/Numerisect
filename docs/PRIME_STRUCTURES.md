@@ -15,11 +15,11 @@ Python and JavaScript remain orchestration and presentation layers.
 ## Navigation and results
 
 Each tool has a dedicated page in the searchable Prime Tools navigation.
-**Prime structures** includes `/#primes/absolute-prime`,
+**Reciprocals, Gaussian & digits** includes `/#primes/absolute-prime`,
 `/#primes/gaussian-check`, `/#primes/gaussian-range`, `/#primes/modular-wheel`,
 `/#primes/paterson-prime`, and `/#primes/reptend-prime`.
 Perfect numbers are under **Prime generation**, pyramids and related sequences
-under **Advanced explorations**, and witnesses under **Arithmetic & factors**.
+under **Digit & sequence explorations**, and witnesses under **Divisors & arithmetic functions**.
 Results and explicit `output/<filename>` confirmations appear below their form.
 
 The same native GP file also implements the newer batch, residue-class, and

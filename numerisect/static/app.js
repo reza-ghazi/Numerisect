@@ -390,6 +390,149 @@ $('#expression').addEventListener('input', (event) => {
     : 'Expression will be evaluated safely';
 });
 
+// Concept index: what a person might search for, mapped to the tool that answers it.
+//
+// The tool list is long, and a label chosen by this project is not the words someone
+// arrives with. Somebody wanting Pell's equation may type 'diophantine', 'x^2-dy^2',
+// 'chakravala' or 'fundamental unit'; none of those appear in its heading. Search
+// matches this index as well as the visible text, so the vocabulary of the subject
+// finds the tool rather than the vocabulary of the interface.
+const toolAliases = {
+  'prime-check': 'is prime primality test bpsw baillie psw miller rabin isprime probable',
+  'prime-batch': 'bulk many list batch primality',
+  'prime-classify': 'what kind of prime taxonomy 56 classes category catalogue',
+  'prime-nearby': 'next prime previous prime nextprime precprime neighbour successor',
+  'prime-range': 'primes between interval list enumerate',
+  'prime-nth': 'nth prime p_n index ordinal 1000th millionth',
+  'prime-count': 'pi(x) prime counting function primecount how many primes below',
+  'verify-count': 'cross check pi(x) independent agreement disagreement verify counting',
+  'verify-primality': 'cross check primality independent second opinion verify',
+  'sieve-interval': 'large interval above 2^64 huge range segmented sieve enumerate',
+  'certificate-verify': 'check a certificate primecertisvalid validate proof',
+  'primality-lab': 'compare tests laboratory side by side',
+  'special-form-test': 'mersenne fermat lucas lehmer pepin 2^p-1 2^2^n+1',
+  'primality-compare': 'eight tests compare fermat solovay strassen lucas',
+  'deterministic-witness': 'miller rabin witness set deterministic bases sprp jaeschke',
+  'pocklington-proof': 'n-1 proof pocklington lehmer brillhart selfridge',
+  'pratt-certificate': 'pratt tree recursive certificate primality proof',
+  'primality-certificate': 'verify pocklington pratt certificate check proof',
+  'proth-test': 'proth k*2^n+1 k*b^n+1 proth theorem',
+  'lucas-sequence': 'lucas frobenius morrison n+1 fibonacci sequence test',
+  'pseudoprime-taxonomy': 'pseudoprime fermat liar strong carmichael euler classify',
+  'carmichael-analysis': 'carmichael korselt absolute pseudoprime 561',
+  'covering-set': 'covering set sierpinski riesel proof cover',
+  'lucas-lehmer-steps': 'lucas lehmer iteration steps mersenne proof viewer s_i',
+  'ecpp-steps': 'ecpp elliptic curve primality proving atkin morain certificate',
+  'prime-generate': 'generate random prime fixed size bits digits keygen',
+  'prime-special': 'structured prime special shape generate',
+  'special-prime-family': 'families sophie germain safe twin cousin sexy chen wilson wieferich',
+  'ntt-primes': 'ntt number theoretic transform fft friendly proth modulus convolution',
+  'prime-progression': 'arithmetic progression residue class dirichlet ap primes',
+  'random-range': 'sample random primes from range proven',
+  'digit-constrained': 'digit alphabet only digits allowed characters restricted',
+  'perfect-number': 'perfect number euclid euler 6 28 496 mersenne perfect',
+  'primorial': 'primorial p# product of primes primorial prime',
+  'proth-search': 'search proth k*b^n+1 exponent range',
+  'chernick-carmichael': 'chernick carmichael universal form construct',
+  'repunit-search': 'repunit 111 111 base b (b^n-1)/(b-1) generalized',
+  'sierpinski-riesel': 'sierpinski riesel k*2^n+1 k*2^n-1 covering',
+  'bitwin-chain': 'bi-twin chain twin cunningham combined',
+  'prime-ladder': 'prime ladder change one digit word ladder path',
+  'constrained-prime': 'generate to specification constrained experimental keygen',
+  'prime-gaps': 'gap between primes difference consecutive',
+  'prime-tuples': 'twin primes cousin sexy constellation k-tuple admissible pattern',
+  'cunningham-chain': 'cunningham chain first second kind safe sophie germain',
+  'gap-statistics': 'gap distribution merit statistics histogram cramer',
+  'prime-distribution': 'density residue distribution how primes spread',
+  'goldbach': 'goldbach conjecture even sum of two primes partition',
+  'prime-approximation': 'li x/log x riemann r approximation asymptotic compare',
+  'summatory-functions': 'mertens M(x) liouville L(x) chebyshev theta psi summatory',
+  'approximation-error': 'error chart pi(x) approximation deviation',
+  'pnt-convergence': 'prime number theorem convergence pi(x)/li(x) ratio',
+  'nth-prime-bounds': 'rosser schoenfeld dusart explicit bounds nth prime',
+  'prime-race': 'chebyshev bias prime race residue class lead 4k+3',
+  'progression-deviation': 'primes in progressions dirichlet deviation li(x)/phi(q)',
+  'singular-series': 'hardy littlewood singular series constant k-tuple twin constant',
+  'tuple-prediction': 'predicted observed twin constellation count hardy littlewood',
+  'bateman-horn': 'bateman horn conjecture polynomial prime values',
+  'maximal-gap': 'record gap maximal gap largest gap merit',
+  'short-interval': 'maier matrix short interval irregularity',
+  'density-surface': 'density surface map position residue heat',
+  'counting-comparison': 'compare counting algorithms legendre meissel lehmer lmo deleglise rivat gourdon',
+  'counting-phi': 'legendre phi partial sieve phi(x,a)',
+  'counting-inverse': 'inverse li riemann r nth prime inverse approximation',
+  'prime-reciprocal': '1/p decimal expansion period repetend recurring decimal',
+  'absolute-prime': 'circular prime permutable absolute rotation',
+  'paterson-prime': 'paterson base 4 form',
+  'reptend-prime': 'full reptend long prime cyclic number primitive root 10 period',
+  'gaussian-check': 'gaussian integer a+bi complex prime norm',
+  'gaussian-range': 'gaussian primes lattice complex plane',
+  'modular-wheel': 'wheel residue structure spokes modulus visual',
+  'factor-strategy': 'which algorithm should i use adviser strategy before factoring engine choice',
+  'integer-profile': 'arithmetic functions phi sigma tau omega mobius profile',
+  'extended-arithmetic': 'divisors kernel radical representations arithmetic functions',
+  'divisor-classification': 'abundant deficient perfect divisor sum sigma classify',
+  'aliquot-sequence': 'aliquot sequence trajectory catalan dickson 276',
+  'perfect-power': 'perfect power square cube a^k ispower detect',
+  'prime-modular': 'modulo a prime arithmetic mod p field',
+  'coprime-profile': 'coprime relatively prime totient gcd navigator',
+  'factor-count-distribution': 'omega big omega number of prime factors erdos kac hardy ramanujan',
+  'witness': 'miller rabin witness liar base strong pseudoprime',
+  'prime-constant': 'prime constant binary indicator copeland erdos',
+  'divisor-lattice': 'all divisors divisor pairs lattice enumerate',
+  'smoothness-profile': 'smooth rough b-smooth friable largest prime factor',
+  'record-numbers': 'highly composite colossally abundant ramanujan superior record divisors',
+  'weird-number': 'weird abundant multiperfect semiperfect 70 pseudoperfect',
+  'sociable-cycle': 'amicable pair sociable chain 220 284 aliquot cycle',
+  'cornacchia': 'cornacchia x^2+dy^2=n represent sum of two squares binary quadratic',
+  'integer-structure': 'isprimepower ispowerful istotient isfundamental ispolygonal predicates',
+  'lenstra-divisors': 'lenstra divisors in residue class coppersmith',
+  'factorint-strategy': 'factorint flags strategy masks pari factoring methods compare',
+  'character-symbol': 'legendre symbol jacobi kronecker quadratic residue character',
+  'tonelli-shanks': 'modular square root tonelli shanks sqrt mod p',
+  'crt': 'chinese remainder theorem crt simultaneous congruences system',
+  'modular-roots': 'x^k = a mod p kth root power congruence',
+  'hensel-roots': 'hensel lifting p-adic root lift newton',
+  'discrete-log': 'discrete logarithm dlog index g^x=a baby step giant step pollard rho',
+  'unit-group': 'multiplicative group units z/nz structure primitive root',
+  'order-distribution': 'multiplicative order distribution statistics artin',
+  'power-residues': 'kth power residues finite field count',
+  'p-adic-valuation': 'p-adic valuation v_p exponent of p in n legendre formula',
+  'polynomial-factor': 'factor polynomial over q f_p berlekamp cantor zassenhaus',
+  'cyclotomic': 'cyclotomic polynomial phi_n roots of unity',
+  'reciprocity-trace': 'quadratic reciprocity jacobi symbol gauss law',
+  'congruence-solver': 'solve polynomial congruence composite modulus p(x)=0 mod m',
+  'dlog-lab': 'discrete logarithm methods compare pohlig hellman baby step kangaroo',
+  'finite-field': 'finite field galois gf(p^m) f_p extension arithmetic',
+  'eisenstein-prime': 'eisenstein integer omega hexagonal a+bw cube root unity',
+  'quadratic-decomposition': 'prime ideal split inert ramified quadratic field',
+  'quadratic-ring': 'quadratic integer ring norm unit q(sqrt d) fundamental unit',
+  'number-field': 'number field prime ideal decomposition splitting nfinit',
+  'chebotarev': 'chebotarev density frobenius galois splitting statistics',
+  'quadratic-form-reduce': 'reduce binary quadratic form gauss reduction qfbred',
+  'quadratic-form-compose': 'gauss composition compose forms qfbcomp group law',
+  'quadratic-form-primeform': 'prime form qfbprimeform discriminant',
+  'quadratic-form-class-group': 'class number class group h(d) structure quadclassunit',
+  'quadratic-form-enumerate': 'reduced forms enumerate list discriminant ambiguous',
+  'quadratic-form-represent': 'represent integer by form qfbsolve which integers',
+  'continued-fraction': 'continued fraction convergents partial quotients periodic surd best rational approximation',
+  'pell-equation': 'pell equation x^2-dy^2=1 diophantine fundamental solution brahmagupta chakravala negative pell fundamental unit',
+  'prime-pyramid': 'pyramid triangle construct digits tower',
+  'special-number': 'special numbers sequences oeis related explore',
+  'contiguous-digits': 'substring digits primes inside a number embedded',
+  'prime-problem': 'equation search bounded diophantine puzzle',
+  'prime-polynomial': 'euler polynomial n^2-n+41 prime generating quadratic heegner',
+  'palindrome-derived': 'palindrome reverse and add lychrel 196',
+  'visual-spiral': 'ulam spiral sacks spiral polar prime spiral picture',
+  'visual-eisenstein': 'eisenstein lattice hexagonal plot visual',
+  'visual-wheel': 'modular wheel spin interactive base visual',
+  'visual-heatmap': 'heatmap residue class grid colour density',
+  'visual-gap-timeline': 'gap timeline record gaps chart visual',
+  'visual-prime-race': 'prime race animation chebyshev bias animated',
+  'visual-sieve': 'sieve of eratosthenes animation step by step atkin sundaram',
+  'visual-complexity': 'complexity big o memory dashboard asymptotics benchmark',
+};
+
 const primeSections = {
   essentials: {
     label: 'Primality & navigation',
@@ -404,19 +547,19 @@ const primeSections = {
     forms: ['prime-generate-form', 'prime-special-form', 'special-prime-family-form', 'ntt-primes-form', 'prime-progression-form', 'random-range-form', 'digit-constrained-form', 'perfect-number-form', 'primorial-form', 'proth-search-form', 'chernick-carmichael-form', 'repunit-search-form', 'sierpinski-riesel-form', 'bitwin-chain-form', 'prime-ladder-form', 'constrained-prime-form'],
   },
   patterns: {
-    label: 'Patterns & distribution',
+    label: 'Gaps, tuples & Goldbach',
     forms: ['prime-gaps-form', 'prime-tuples-form', 'cunningham-chain-form', 'gap-statistics-form', 'prime-distribution-form', 'goldbach-form'],
   },
   analytic: {
-    label: 'Analytic prime distribution',
+    label: 'Analytic distribution & counting',
     forms: ['prime-approximation-form', 'summatory-functions-form', 'approximation-error-form', 'pnt-convergence-form', 'nth-prime-bounds-form', 'prime-race-form', 'progression-deviation-form', 'singular-series-form', 'tuple-prediction-form', 'bateman-horn-form', 'maximal-gap-form', 'short-interval-form', 'density-surface-form', 'counting-comparison-form', 'counting-phi-form', 'counting-inverse-form'],
   },
   structures: {
-    label: 'Prime structures',
+    label: 'Reciprocals, Gaussian & digits',
     forms: ['prime-reciprocal-form', 'absolute-prime-form', 'paterson-prime-form', 'reptend-prime-form', 'gaussian-check-form', 'gaussian-range-form', 'modular-wheel-form'],
   },
   arithmetic: {
-    label: 'Arithmetic & factors',
+    label: 'Divisors & arithmetic functions',
     forms: ['factor-strategy-form', 'integer-profile-form', 'extended-arithmetic-form', 'divisor-classification-form', 'aliquot-sequence-form', 'perfect-power-form', 'prime-modular-form', 'coprime-profile-form', 'factor-count-distribution-form', 'witness-form', 'prime-constant-form', 'divisor-lattice-form', 'smoothness-profile-form', 'record-numbers-form', 'weird-number-form', 'sociable-cycle-form', 'cornacchia-form', 'integer-structure-form', 'lenstra-divisors-form', 'factorint-strategy-form'],
   },
   modular: {
@@ -424,11 +567,11 @@ const primeSections = {
     forms: ['character-symbol-form', 'tonelli-shanks-form', 'crt-form', 'modular-roots-form', 'hensel-roots-form', 'discrete-log-form', 'unit-group-form', 'order-distribution-form', 'power-residues-form', 'p-adic-valuation-form', 'polynomial-factor-form', 'cyclotomic-form', 'reciprocity-trace-form', 'congruence-solver-form', 'dlog-lab-form', 'finite-field-form'],
   },
   algebraic: {
-    label: 'Algebraic primes',
+    label: 'Quadratic forms & number fields',
     forms: ['eisenstein-prime-form', 'quadratic-decomposition-form', 'quadratic-ring-form', 'number-field-form', 'chebotarev-form', 'quadratic-form-reduce-form', 'quadratic-form-compose-form', 'quadratic-form-primeform-form', 'quadratic-form-class-group-form', 'quadratic-form-enumerate-form', 'quadratic-form-represent-form', 'continued-fraction-form', 'pell-equation-form'],
   },
   explorations: {
-    label: 'Advanced explorations',
+    label: 'Digit & sequence explorations',
     forms: ['prime-pyramid-form', 'special-number-form', 'contiguous-digits-form', 'prime-problem-form', 'prime-polynomial-form', 'palindrome-derived-form'],
   },
   visual: {
@@ -445,6 +588,174 @@ const legacyPrimeRoutes = {
 
 function primeToolSlug(formId) {
   return formId.replace(/-form$/, '');
+}
+
+
+// Rank a tool against a query. Substring presence is not enough on its own: with this
+// many tools a query like "prime" matches almost everything, so a match in the name
+// outranks one in the description, which outranks one in the concept index. Every term
+// must appear somewhere, so "pell equation" does not match everything containing
+// "equation".
+//
+// Terms must also begin at a word boundary. A plain substring test made "artin" match
+// "starting", which put the wrong tools above the one about multiplicative order. The
+// boundary is expressed as "not preceded by a letter or digit" rather than \b, because a
+// term may legitimately begin with punctuation or a symbol: "π(x)" and "x^2-dy^2" are
+// both things people type.
+function termPattern(term) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${escaped}`, 'i');
+}
+
+function scoreTool(tool, patterns, phrase) {
+  if (!patterns.length) return 0;
+  let score = 0;
+  // A multi-word query is usually a phrase, not loose terms. "cyclic number" should
+  // find full-reptend primes rather than anything mentioning both words apart.
+  if (phrase && tool.haystack.includes(phrase)) {
+    score += tool.title.toLocaleLowerCase().includes(phrase) ? 90 : 45;
+  }
+  const title = tool.title.toLocaleLowerCase();
+  const eyebrow = tool.eyebrow.toLocaleLowerCase();
+  const description = tool.description.toLocaleLowerCase();
+  for (const { term, pattern } of patterns) {
+    if (!pattern.test(tool.haystack)) return -1;
+    if (title === term) score += 100;
+    else if (title.startsWith(term)) score += 60;
+    else if (pattern.test(title)) score += 40;
+    else if (pattern.test(eyebrow)) score += 25;
+    else if (pattern.test(description)) score += 12;
+    else score += 6;                       // matched only via the concept index
+  }
+  return score;
+}
+
+function searchTools(query) {
+  const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [...primeTools.values()];
+  const patterns = terms.map((term) => ({ term, pattern: termPattern(term) }));
+  const phrase = terms.length > 1 ? terms.join(' ') : '';
+  return [...primeTools.values()]
+    .map((tool) => ({ tool, score: scoreTool(tool, patterns, phrase) }))
+    .filter((row) => row.score >= 0)
+    .sort((a, b) => b.score - a.score || a.tool.index - b.tool.index)
+    .map((row) => row.tool);
+}
+
+
+// --- Command palette -------------------------------------------------------------
+// With this many tools, a sidebar you have to scroll is the wrong primary route. The
+// palette opens from anywhere with Ctrl/Cmd+K, searches names, descriptions, categories
+// and the concept index together, and reaches any tool in two keystrokes and a word.
+const commandPalette = {
+  open: false,
+  matches: [],
+  active: 0,
+};
+
+function renderPalette() {
+  const list = $('#command-palette-results');
+  if (!list) return;
+  if (!commandPalette.matches.length) {
+    list.innerHTML = '<li class="command-palette-none">No tool matches. Try a concept, a mathematician, or the notation.</li>';
+    return;
+  }
+  list.innerHTML = commandPalette.matches
+    .map((tool, position) => `
+      <li role="option" id="command-option-${position}"
+          class="command-palette-item${position === commandPalette.active ? ' is-active' : ''}"
+          aria-selected="${position === commandPalette.active}" data-position="${position}">
+        <span class="command-palette-title">${escapeHtml(tool.title)}</span>
+        <span class="command-palette-group">${escapeHtml(tool.group)}</span>
+        <span class="command-palette-description">${escapeHtml(tool.description)}</span>
+      </li>`)
+    .join('');
+  const active = list.querySelector('.is-active');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function updatePalette(query) {
+  // An empty query is an invitation, not a dump of 133 rows.
+  commandPalette.matches = searchTools(query).slice(0, query.trim() ? 40 : 12);
+  commandPalette.active = 0;
+  renderPalette();
+}
+
+function openPalette(seed = '') {
+  const root = $('#command-palette');
+  const input = $('#command-palette-input');
+  if (!root || !input) return;
+  commandPalette.open = true;
+  root.classList.remove('hidden');
+  input.value = seed;
+  updatePalette(seed);
+  input.focus();
+  input.select();
+}
+
+function closePalette() {
+  const root = $('#command-palette');
+  if (!root) return;
+  commandPalette.open = false;
+  root.classList.add('hidden');
+}
+
+function choosePalette(position) {
+  const tool = commandPalette.matches[position];
+  if (!tool) return;
+  closePalette();
+  // The palette reaches tools from any view, so switch to Prime Tools first.
+  const button = document.querySelector('[data-view="prime-view"]');
+  if (button && $('#prime-view').classList.contains('hidden')) activateView(button, false);
+  activatePrimeTool(tool.slug, true, true);
+}
+
+function initializeCommandPalette() {
+  const root = $('#command-palette');
+  const input = $('#command-palette-input');
+  if (!root || !input) return;
+
+  document.addEventListener('keydown', (event) => {
+    const key = event.key.toLowerCase();
+    if ((event.metaKey || event.ctrlKey) && key === 'k') {
+      event.preventDefault();
+      commandPalette.open ? closePalette() : openPalette();
+      return;
+    }
+    if (!commandPalette.open) {
+      // "/" is a search shortcut everywhere except inside a field someone is typing in.
+      const tag = (event.target.tagName || '').toLowerCase();
+      const editing = tag === 'input' || tag === 'textarea' || tag === 'select'
+        || event.target.isContentEditable;
+      if (key === '/' && !editing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        openPalette();
+      }
+      return;
+    }
+    if (key === 'escape') { event.preventDefault(); closePalette(); return; }
+    if (key === 'arrowdown' || (key === 'n' && event.ctrlKey)) {
+      event.preventDefault();
+      commandPalette.active = Math.min(commandPalette.active + 1, commandPalette.matches.length - 1);
+      renderPalette();
+    } else if (key === 'arrowup' || (key === 'p' && event.ctrlKey)) {
+      event.preventDefault();
+      commandPalette.active = Math.max(commandPalette.active - 1, 0);
+      renderPalette();
+    } else if (key === 'enter') {
+      event.preventDefault();
+      choosePalette(commandPalette.active);
+    }
+  });
+
+  input.addEventListener('input', (event) => updatePalette(event.target.value));
+  $('#command-palette-results').addEventListener('click', (event) => {
+    const item = event.target.closest('.command-palette-item');
+    if (item) choosePalette(Number(item.dataset.position));
+  });
+  root.querySelectorAll('[data-command-close]').forEach((node) => {
+    node.addEventListener('click', closePalette);
+  });
 }
 
 function initializePrimeTools() {
@@ -470,7 +781,13 @@ function initializePrimeTools() {
       const title = form.querySelector('h2').textContent.trim();
       const description = form.querySelector(':scope > p:not(.eyebrow)')?.textContent.trim() || '';
       const eyebrow = form.querySelector(':scope > .eyebrow')?.textContent.trim() || details.label;
-      const tool = { slug, formId, title, description, eyebrow, section, index };
+      const aliases = toolAliases[slug] || '';
+      const haystack = `${title} ${description} ${eyebrow} ${details.label} ${aliases}`
+        .toLocaleLowerCase();
+      const tool = {
+        slug, formId, title, description, eyebrow, section, index, aliases, haystack,
+        group: details.label,
+      };
       primeTools.set(slug, tool);
       form.dataset.primeTool = slug;
       grid.appendChild(form);
@@ -494,18 +811,29 @@ function initializePrimeTools() {
   });
 
   $('#prime-operation-total').textContent = `${primeTools.size} native-engine analyses`;
+  const paletteInput = $('#command-palette-input');
+  if (paletteInput) {
+    paletteInput.placeholder = `Search ${primeTools.size} tools by name, concept or notation…`;
+  }
   $('#prime-tool-search').addEventListener('input', (event) => {
-    const query = event.target.value.trim().toLocaleLowerCase();
+    const query = event.target.value.trim();
+    const allowed = new Set(searchTools(query).map((tool) => tool.slug));
+    let total = 0;
     document.querySelectorAll('.tool-nav-group').forEach((group) => {
       let visible = 0;
       group.querySelectorAll('.prime-tool-link').forEach((button) => {
-        const tool = primeTools.get(button.dataset.primeTool);
-        const match = !query || `${tool.title} ${tool.description} ${tool.eyebrow}`.toLocaleLowerCase().includes(query);
+        const match = !query || allowed.has(button.dataset.primeTool);
         button.classList.toggle('prime-page-hidden', !match);
         if (match) visible += 1;
       });
       group.classList.toggle('prime-page-hidden', visible === 0);
+      total += visible;
     });
+    const empty = $('#prime-tool-empty');
+    if (empty) {
+      empty.textContent = total ? '' : `Nothing matches “${query}”. Try a concept, a name, or the notation.`;
+      empty.classList.toggle('hidden', Boolean(total));
+    }
   });
 
   select.addEventListener('change', (event) => activatePrimeTool(event.target.value, true, true));
@@ -654,6 +982,7 @@ function applyHashRoute() {
 }
 
 initializePrimeTools();
+initializeCommandPalette();
 initializeZetaTools();
 applyHashRoute();
 window.addEventListener('hashchange', applyHashRoute);

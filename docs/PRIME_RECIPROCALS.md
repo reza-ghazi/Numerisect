@@ -38,7 +38,7 @@ as `output/<generated-filename>.txt` as well as the download button.
 Composite inputs are rejected after a rigorous PARI/GP `isprime` test.
 
 The **Full-reptend primes and maximal decimal periods** page (`/#primes/reptend-prime`), in the
-same **Prime structures** navigation group, searches an interval for
+same **Reciprocals, Gaussian & digits** navigation group, searches an interval for
 full-reptend primes. It rigorously proves each candidate prime and requires the
 exact order `ord_p(10)=p-1`; this replaces the prototype's repeated modular
 multiplication loop with PARI/GP's native multiplicative-order implementation.
@@ -90,7 +90,7 @@ bytes and may take a very long time even though Numerisect does not truncate it.
 
 For multiplicative orders in other bases, modular inverses, square roots, or
 a primitive root, use [Calculate modulo a prime](PRIME_MANIPULATION.md) in the
-**Arithmetic & factors** group. This does not change reciprocal export limits.
+**Divisors & arithmetic functions** group. This does not change reciprocal export limits.
 
 ## API
 
