@@ -55,8 +55,10 @@ jobs:
           # hash did not match its Release file, so apt-get update exited non-zero and
           # took the whole build with it. Every package below comes from the Ubuntu
           # archives, so drop those sources rather than depend on their availability.
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
-                     /etc/apt/sources.list.d/microsoft-prod.list
+          # Ubuntu 24.04 uses deb822 ".sources" files as well as legacy ".list" ones, so
+          # match on the host the entry points at rather than on a file name.
+          sudo grep -rlE 'dl\.google\.com|packages\.microsoft\.com' \
+            /etc/apt/sources.list.d/ 2>/dev/null | sudo xargs -r rm -f
           sudo apt-get update
           sudo apt-get install --yes ${{ matrix.packages }}
       - name: Install macOS native prerequisites
