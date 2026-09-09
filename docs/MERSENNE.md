@@ -68,7 +68,7 @@ There is no formula that predicts the smallest factor—and therefore no mathema
 correct fixed value of \(k\) that can be inferred from \(p\). The application's
 **Automatic** mode handles this honestly: the native search advances \(k\) until it finds
 the first factor, reaches the 50,000,000 safety ceiling, or consumes the selected time
-budget. It reports the largest (k) actually tested. **Manual** mode instead checks every
+budget. It reports the largest \(k\) actually tested. **Manual** mode instead checks every
 candidate through the bound supplied by the user and reports every factor in that finite
 range. Factors found before a timeout are retained in either mode.
 
@@ -113,7 +113,7 @@ below the bound searched. For composite \(p\), it means every selected
 evidence that \(M_p\) is prime.
 
 Finding one or several trial factors is still not a complete factorization. Dividing them
-out can leave a cofactor almost as large as (M_p): for (M_{87083}), the displayed
+out can leave a cofactor almost as large as \(M_p\): for \(M_{87083}\), the displayed
 eight-digit factor leaves a cofactor of roughly 26,207 decimal digits. Completely
 factoring a cofactor of that size is not currently practical. Numerisect therefore says
 **factors found**, never **all factors**, unless an engine has actually resolved and

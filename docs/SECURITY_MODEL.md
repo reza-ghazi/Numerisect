@@ -19,6 +19,27 @@ includes state-changing operations, installation, logs, and downloads. The
 token changes each time the Python process starts and is never committed to
 the repository.
 
+## Understanding local `403 Forbidden` responses
+
+The browser polls `/api/jobs` and `/api/setup` while the application is open.
+If Numerisect is restarted, an older tab can continue polling with the token
+from the previous process. Those requests are deliberately rejected with HTTP
+403 until the page obtains the current token. Several changing client ports in
+the Uvicorn log indicate browser connections, not additional Numerisect servers.
+
+Close obsolete Numerisect tabs and reload the active page after a restart. A
+sequence of `403 Forbidden` entries followed by `200 OK` on the same routes is
+normally a stale session recovering, not a failed calculation or native-engine
+error. If a freshly loaded, sole tab continues to receive 403 responses, check
+that it uses the exact loopback URL printed by the launcher and that only one
+Numerisect server is running.
+
+The two intentional 403 responses are distinguishable by their JSON `detail`:
+
+- `A valid local session token is required` means the token is missing or stale.
+- `Cross-site requests are not permitted` means the request carries a foreign
+  origin, referrer, or Fetch Metadata context.
+
 ## Command-line API use
 
 The browser interface handles authorization automatically. For deliberate

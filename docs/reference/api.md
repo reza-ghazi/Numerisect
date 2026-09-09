@@ -25,7 +25,9 @@ in-process. See the [command-line reference](cli.md).
 
 - Invalid input returns **422** with a `detail` message naming the problem.
 - A missing engine returns **503**.
-- A refused network action returns **403**.
+- A missing, stale, or cross-site local session and a refused optional network action
+  return **403**, with the cause in `detail`. Since tokens are per process, a client must
+  repeat `GET /api/session` after every server restart.
 - Operations that produce a result save a report and return its exact
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.

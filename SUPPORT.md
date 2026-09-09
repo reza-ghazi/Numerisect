@@ -11,6 +11,12 @@ Before opening an issue:
 3. Confirm the problem still occurs on the current `main` revision.
 4. Record the operating system, Python version, Numerisect revision, and relevant native-engine versions.
 
+If the terminal shows intermittent `403 Forbidden` responses for `/api/jobs` or
+`/api/setup` after a restart, first close old Numerisect tabs and reload the active page.
+The per-launch session token changes whenever the server starts; subsequent `200 OK`
+responses mean the browser recovered normally. Persistent 403 responses from a fresh,
+sole tab are covered by the [localhost security model](docs/SECURITY_MODEL.md).
+
 Use the **Question or support request** issue form for installation and usage questions. Use the bug-report form only for reproducible defects.
 
 Do not publish session tokens, credentials, databases, complete engine logs, confidential integer inputs, or personal filesystem paths. Provide the smallest redacted excerpt needed to understand the problem.

@@ -59,6 +59,15 @@ core you give them. Running two halves the threads available to each.
 
 ## About privacy and safety
 
+### Why do `/api/jobs` or `/api/setup` sometimes return 403 in the terminal?
+
+Numerisect creates a new local-session token whenever its server starts. A browser tab
+left open across a restart can keep polling with the old token, and the security layer
+correctly rejects those requests. Close obsolete tabs or reload the active page. If the
+log subsequently shows `200 OK`, the current session is healthy and no mathematical
+engine failed. See the [localhost security model](../SECURITY_MODEL.md) if 403 responses
+continue from a freshly loaded, sole tab.
+
 ### Does Numerisect send anything anywhere?
 
 Not during calculations. There is no telemetry, no analytics and no update check. Three

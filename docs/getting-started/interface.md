@@ -65,4 +65,6 @@ Only one CPU-heavy job runs at a time unless you raise
 
 Restart the server and reload the page. The application shell and its assets are served
 with `no-store`, but a document already open in a tab is not replaced by restarting the
-server behind it.
+server behind it. A tab left open across the restart also holds the previous process's
+session token and may produce transient 403 entries while polling `/api/jobs` or
+`/api/setup`. Close obsolete tabs or reload the active one to establish a new session.

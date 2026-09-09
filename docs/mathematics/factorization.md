@@ -118,10 +118,23 @@ about primality of \(M_p\). Lucas–Lehmer answers that different question.
 The exceptional exponent \(p=2\) gives the already-prime value \(M_2=3\) and does not
 belong to the \(2kp+1\) search.
 
+For an odd composite exponent \(p\), the order need not equal \(p\). It may be any
+divisor \(d>1\) of \(p\), so Numerisect first factors the exponent natively and searches
+every progression
+
+\[
+q=2kd+1,\qquad d\mid p,\quad d>1.
+\]
+
+This is required to find inherited algebraic factors: because \(1603=7\cdot229\),
+\(M_7\mid M_{1603}\), and the \(d=7\) progression finds the factor 127. Restricting the
+search to \(q=2kp+1\) would miss it.
+
 **In Numerisect.** `POST /api/factor-lab/mersenne-factors`, documented in
-[Mersenne numbers](../MERSENNE.md). PARI/GP screens candidates with `ispseudoprime` and
-performs the exact modular divisibility test. The separately pinned examples are
-rechecked with `isprime` in the test suite.
+[Mersenne numbers](../MERSENNE.md). PARI/GP factors composite exponents, enumerates the
+order divisors, screens candidates with `ispseudoprime`, proves returned candidates with
+`isprime`, and performs the exact modular divisibility test. Separately pinned examples
+are rechecked in the test suite.
 
 ## Fermat's method, and when the factors are close
 

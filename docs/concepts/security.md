@@ -16,6 +16,13 @@ The server binds `127.0.0.1:8765`. Three protections apply to every request:
 3. **Origin and Fetch Metadata checks.** Explicit foreign `Origin` or `Referer` values
    and cross-site fetch metadata are rejected.
 
+Because the token is per launch, restarting the server invalidates the session held by
+an already-open tab. Its background `/api/jobs` or `/api/setup` polls can briefly appear
+as HTTP 403 in the terminal. Reload or close the stale tab; later `200 OK` entries mean
+the current page has recovered. This is an authorization rejection, not an engine
+failure. The [full security model](../SECURITY_MODEL.md) documents the two 403 messages
+and troubleshooting steps.
+
 !!! danger "Do not bind a public interface"
 
     Changing the bind address to `0.0.0.0` exposes an API that can start processes and

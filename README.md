@@ -502,6 +502,10 @@ Interactive OpenAPI documentation is available at
 All API routes except `/api/session` require a cryptographically random
 per-launch session token. The browser manages it automatically; command-line
 clients should follow [the localhost security model](docs/SECURITY_MODEL.md).
+Restarting Numerisect invalidates tokens held by already-open tabs. A stale tab
+may therefore produce transient `403 Forbidden` entries for polling routes such
+as `/api/jobs` and `/api/setup`; close or reload that tab so it bootstraps a new
+session. Later `200 OK` entries show that the active page has recovered.
 
 The installed `numerisect` command starts the web application by default
 (equivalently `numerisect serve`). Its native-backed headless commands include `factor`, `prime`, `nth-prime`,

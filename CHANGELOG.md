@@ -5,6 +5,13 @@ binary packages are published.
 
 ## Unreleased
 
+- Audited the public documentation after the Mersenne and local-session changes. The
+  factorization mathematics now covers odd composite exponents and their order-divisor
+  progressions consistently. The README, interface guide, FAQ, API reference, and both
+  security guides now explain that already-open tabs can briefly receive HTTP 403 after
+  a server restart because the per-process token changed, and distinguish that expected
+  stale-session rejection from a native-engine failure.
+
 - Extended both Mersenne tools to odd composite exponents. PARI/GP factors the exponent
   and searches every order-divisor progression `q = 2kd + 1`, so algebraic divisors such
   as `127 | M_1603` are no longer rejected or missed. Results identify the exponent
