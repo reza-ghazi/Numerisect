@@ -479,7 +479,12 @@ def build_mfactor_cuda_tool() -> Path | None:
             return destination
         TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
-        command = [compiler, "-O3", "-arch=native", str(source), "-o", str(temporary)]
+        # The host half sieves the k range and must use every core, so OpenMP is
+        # passed through to the host compiler.
+        command = [
+            compiler, "-O3", "-arch=native", "-Xcompiler", "-fopenmp",
+            str(source), "-o", str(temporary),
+        ]
         result = subprocess.run(
             command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             check=False,

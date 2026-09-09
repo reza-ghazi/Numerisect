@@ -36,6 +36,7 @@
  */
 
 #include <algorithm>
+#include <omp.h>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -104,20 +105,28 @@ int main(int argc, char **argv) {
   const uint64_t montgomery_k = ((1ULL << 63) - 1) / (2 * order);
 
   std::vector<unsigned char> dead(SEGMENT);
-  std::vector<uint64_t> survivors;
+  // Buffers handed to the kernel use the kernel's own type. uint64_t is
+  // unsigned long on LP64: identical width, distinct type, and nvcc rejects the
+  // mismatch at the launch site.
+  std::vector<numerisect_u64> survivors;
   uint64_t candidates = 0, deferred = 0, found_total = 0;
   std::vector<std::pair<uint64_t, uint64_t>> all_hits;
 
-  uint64_t *d_ks = nullptr, *d_hits = nullptr;
+  numerisect_u64 *d_ks = nullptr, *d_hits = nullptr;
   uint32_t *d_count = nullptr;
-  cudaMalloc(&d_ks, (size_t)SEGMENT * sizeof(uint64_t));
-  cudaMalloc(&d_hits, (size_t)MAX_HITS * 2 * sizeof(uint64_t));
+  cudaMalloc(&d_ks, (size_t)SEGMENT * sizeof(numerisect_u64));
+  cudaMalloc(&d_hits, (size_t)MAX_HITS * 2 * sizeof(numerisect_u64));
   cudaMalloc(&d_count, sizeof(uint32_t));
 
   for (uint64_t base = k_start; base <= k_end; base += SEGMENT) {
     const uint64_t length = (k_end - base + 1) < SEGMENT ? (k_end - base + 1) : SEGMENT;
     std::memset(dead.data(), 0, length);
-    for (uint32_t r : primes) {
+    // The sieve is the bottleneck once the device does the testing, so it must use
+    // every core. Left single-threaded, this build measured about half the speed of
+    // the pure-CPU helper despite a far faster test phase.
+#pragma omp parallel for schedule(dynamic, 256)
+    for (size_t pi = 0; pi < primes.size(); pi++) {
+      const uint64_t r = primes[pi];
       const uint64_t a = (2 % r) * (order % r) % r;
       if (a == 0) continue;
       const uint64_t k0 = (r - modinv_host(a, r)) % r;
@@ -141,7 +150,7 @@ int main(int argc, char **argv) {
     if (survivors.empty()) continue;
     candidates += survivors.size();
 
-    cudaMemcpy(d_ks, survivors.data(), survivors.size() * sizeof(uint64_t),
+    cudaMemcpy(d_ks, survivors.data(), survivors.size() * sizeof(numerisect_u64),
                cudaMemcpyHostToDevice);
     cudaMemset(d_count, 0, sizeof(uint32_t));
     const uint32_t blocks = (uint32_t)((survivors.size() + BLOCK - 1) / BLOCK);
@@ -155,8 +164,8 @@ int main(int argc, char **argv) {
     cudaMemcpy(&count, d_count, sizeof(uint32_t), cudaMemcpyDeviceToHost);
     if (count) {
       const uint32_t take = count < MAX_HITS ? count : MAX_HITS;
-      std::vector<uint64_t> host(2 * take);
-      cudaMemcpy(host.data(), d_hits, 2 * take * sizeof(uint64_t),
+      std::vector<numerisect_u64> host(2 * take);
+      cudaMemcpy(host.data(), d_hits, 2 * take * sizeof(numerisect_u64),
                  cudaMemcpyDeviceToHost);
       for (uint32_t i = 0; i < take; i++)
         all_hits.emplace_back(host[2 * i + 1], host[2 * i]);

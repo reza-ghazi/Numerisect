@@ -153,17 +153,30 @@ returns the published factorizations for every case tested, and agrees exactly w
 compiled CPU helper on the same sieved candidate set. The suite skips these tests cleanly
 where there is no device.
 
-**What it is worth, measured honestly:**
+**What it is worth, measured honestly: on this hardware, nothing.**
 
-| | candidates tested per second |
+With a CUDA toolkit installed the standalone GPU build was benchmarked against the C
+helper on the same range, an order of \(999{,}999{,}001\) with \(k \le 2 \times 10^9\):
+
+| | wall clock |
 |---|---|
-| C helper, 24 cores | 7.4 million |
-| RTX 5090 through this path | 16.5 million |
+| C helper, 24 cores | 11.3 s |
+| GPU build, RTX 5090 | 13.5 s |
 
-About **2.2x**, not the order of magnitude the hardware suggests. The kernel is not the
-limit; moving candidate lists from host to device is. A pipeline that generated
-candidates on the device would do much better, and this is not that. It is offered as a
-real, verified option rather than as the fast path, and the C helper remains the default.
+The GPU build is **slower**, by about 20%. This is not a defect in the kernel, which tests
+candidates faster than the CPU does. The work per candidate is roughly thirty 64-bit
+Montgomery squarings, which is small, and the pipeline must first sieve the range, gather
+the survivors, and copy them to the device. The C helper tests each survivor in place, in
+the same parallel loop that found it, and moves nothing.
+
+Parallelising the GPU build's host-side sieve took it from about half the CPU's speed to
+about four fifths, which shows where the time actually goes. Closing the remaining gap
+means sieving on the device so candidates are never transferred at all, and that is a
+different program from this one.
+
+**So the C helper remains the default, and the GPU is not the fast path.** The kernel is
+correct, verified, and available for anyone who wants it or who has a weaker CPU relative
+to their GPU. It is not an improvement on 24 cores for this particular workload.
 
 !!! note "A hit is a divisor, not a prime factor"
 

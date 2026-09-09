@@ -5,6 +5,30 @@ binary packages are published.
 
 ## Unreleased
 
+- Built and verified the offline CUDA path now that a toolkit is installed. `nvcc` 13.4
+  compiles the helper, it recovers every published Mersenne factorization on an RTX 5090,
+  and it defers candidates at or above 2^63 rather than skipping them, so an untested
+  range never reads as an absence of factors. Two tests cover it and skip without a
+  toolkit.
+- Fixed a type error that only an offline build could expose: the kernel takes
+  `unsigned long long` while the host code used `uint64_t`, which is `unsigned long` on
+  LP64. Same width, distinct type, and nvcc rejects the launch. NVRTC never saw it
+  because it compiles the kernel alone.
+- **Corrected the GPU performance claim again, downward.** The earlier entry reported
+  about 2.2x from the runtime-compiled path. Benchmarked properly as a standalone binary
+  against the C helper on the same range, the GPU build is **slower**: 13.5 seconds
+  against 11.3 for two billion candidates. The kernel is not at fault. The work per
+  candidate is roughly thirty 64-bit Montgomery squarings, and the pipeline must sieve,
+  gather survivors and copy them to the device, while the C helper tests each survivor in
+  place in the loop that found it.
+- Parallelised the GPU build's host-side sieve, which had been single-threaded and made
+  that build about half the speed of the pure-CPU helper. It is now about four fifths,
+  which locates the remaining cost in data movement rather than arithmetic. Closing the
+  gap would mean sieving on the device so candidates are never transferred, which is a
+  different program.
+- The C helper stays the default. The GPU path is correct, verified and available, and it
+  is not an improvement on 24 cores for this workload.
+
 - **Correction: the CUDA path is verified on hardware, and no CUDA toolkit is needed.**
   The previous entry said the device path had never been executed because no machine had
   a toolkit. The toolkit is indeed absent, but that conclusion was wrong: this workstation

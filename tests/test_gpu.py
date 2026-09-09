@@ -4,9 +4,12 @@ Every test here skips cleanly with no device, because the CPU helper is complete
 own and a machine without a GPU must not fail the suite.
 """
 
+import subprocess
+
 import pytest
 
 from numerisect import gpu
+from numerisect.native_tools import build_mfactor_cuda_tool, cuda_compiler
 
 DEVICE = gpu.available()
 needs_gpu = pytest.mark.skipif(DEVICE is None, reason="no usable CUDA device")
@@ -16,6 +19,46 @@ def test_absence_of_a_device_is_reported_not_raised():
     """Detection must never throw. Missing bindings, driver or device are all normal."""
 
     assert DEVICE is None or isinstance(DEVICE, gpu.Device)
+
+
+NVCC = cuda_compiler()
+needs_nvcc = pytest.mark.skipif(NVCC is None, reason="no CUDA toolkit installed")
+
+
+@needs_nvcc
+def test_the_nvcc_build_produces_a_working_binary():
+    """With a toolkit present the offline build must work and agree with everything else."""
+
+    tool = build_mfactor_cuda_tool()
+    assert tool is not None and tool.is_file()
+    output = subprocess.run(
+        [str(tool), "43", "1", "30000", "100000"], capture_output=True, text=True
+    ).stdout
+    assert "DONE:1" in output
+    assert "STATUS:complete" in output
+    found = sorted(
+        int(line.split(":", 1)[1].split("|")[0])
+        for line in output.splitlines() if line.startswith("FACTOR:")
+    )
+    assert found == [431, 9719, 2099863]
+
+
+@needs_nvcc
+def test_the_nvcc_build_defers_wide_candidates_rather_than_skipping_them():
+    """Beyond 2^63 Montgomery cannot run, and an untested range must not read as empty."""
+
+    tool = build_mfactor_cuda_tool()
+    output = subprocess.run(
+        [str(tool), "384307168202282327", "1", "60", "100000"],
+        capture_output=True, text=True,
+    ).stdout
+    assert "STATUS:deferred-wide" in output
+    deferred = int(
+        [line for line in output.splitlines() if line.startswith("DEFERRED:")][0][9:]
+    )
+    assert deferred >= 1
+    # It reports nothing found, which is not the same as reporting no factor exists.
+    assert "COUNT:0" in output
 
 
 def test_detection_does_not_require_a_cuda_toolkit(monkeypatch):
