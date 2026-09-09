@@ -105,6 +105,56 @@ is never built. That timing describes one machine and build, not a portable benc
 Two known Mersenne prime exponents, 6,972,593 and 20,996,011, were searched as controls
 and correctly yielded nothing.
 
+### How the search is made fast
+
+PARI/GP searched this progression correctly but at about **1.1 million candidates a
+second**, using generic arbitrary-precision arithmetic on one core. A compiled helper,
+`numerisect-mfactor`, now does the scanning for any finite range and sustains about
+**1.3 billion**. Three things account for it:
+
+1. **The progression is sieved first.** \(q = 2kd+1\) is divisible by a small prime \(r\)
+   exactly when \(k \equiv -(2d)^{-1} \pmod r\), an arithmetic progression in \(k\), so a
+   sieve removes those \(k\) with no modular exponentiation at all. About 96% of the range
+   goes this way at the default bound.
+2. **Candidates below \(2^{64}\) use 64-bit arithmetic** with a 128-bit intermediate,
+   instead of arbitrary precision. This is where nearly all the work lands.
+3. **Every core is used.** The surviving tests are independent.
+
+**Above \(2^{64}\) the helper falls back to GMP.** That path is slower but correct, and
+the report counts how many candidates needed it, so a caller can see which ran.
+
+**PARI/GP keeps both jobs it should keep.** It factors the exponent and enumerates the
+order divisors before the scan, and it confirms afterwards that every reported \(q\) is
+prime and genuinely divides \(2^d - 1\). The helper is a scanner, not an authority:
+\(2^d \equiv 1 \pmod q\) makes \(q\) a divisor and says nothing about it being prime.
+Nothing reaches a report on the scanner's word alone.
+
+Automatic mode, which stops at the first factor and preserves findings when its budget
+expires, still runs in PARI/GP. If no C compiler is available the whole search falls back
+there too, and the answers are the same.
+
+### The optional GPU accelerator
+
+The modular exponentiations are perfectly independent, which is what a GPU is for.
+`numerisect_mfactor_cuda.cu` moves them to the device using Montgomery multiplication,
+which replaces a 128-bit division per multiply with two 64-bit multiplies and a shift.
+The usual REDC bound applies, so it handles \(q < 2^{63}\) and defers anything wider back
+to the CPU helper rather than skipping it.
+
+!!! warning "Not exercised by this project yet"
+
+    The CUDA helper is **optional and unverified on hardware**. It was written and its
+    arithmetic was checked on the host against plain modular exponentiation, three
+    million random cases with no disagreement and all 21 known Mersenne factors accepted,
+    but no machine available to the project has a CUDA toolkit installed, so the device
+    path itself has never been executed. A GPU driver is not enough; `nvcc` ships with
+    the toolkit. Numerisect detects this by asking the compiler to identify itself rather
+    than trusting its presence on `PATH`, because a wrapper script can exist while the
+    compiler it calls does not.
+
+    Nothing depends on it. If no working `nvcc` is found, the build is skipped silently
+    and the C helper does the work.
+
 ### Finding nothing is inconclusive
 
 For prime \(p\), an exhausted \(k\) range means no factor of the form \(2kp+1\) exists

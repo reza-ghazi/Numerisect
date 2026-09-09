@@ -29,6 +29,8 @@ that justification in its own source header.
 | `numerisect_zeta.c` | Drives FLINT/Arb for zeta, Hardy Z, Gram points, Turing counts, Dirichlet L-functions and plot sampling, with OpenMP parallelism. |
 | `numerisect_squfof.c` | Shanks' square forms factorization. Absent from every installed engine: YAFU has no `squfof` function, PARI implements it internally but exposes no standalone entry point, Msieve is QS/NFS only, and GMP-ECM is ECM/P−1/P+1 only. |
 | `numerisect_bigsieve.c` | Prime enumeration above \(2^{64}\). primesieve refuses such inputs outright, and PARI's `forprime` is single-threaded and far slower there. |
+| `numerisect_mfactor.c` | Mersenne trial factoring over \(q = 2kd + 1\). PARI/GP searches the same progression correctly, but with generic arbitrary-precision arithmetic on one core; measured here at about 1.1 million candidates a second against this helper's 1.3 billion. It sieves the progression by small primes, uses a 64-bit modular exponentiation below \(2^{64}\) with a GMP fallback above, and runs across every core. |
+| `numerisect_mfactor_cuda.cu` | **Optional** CUDA accelerator for the same scan, using Montgomery arithmetic on the device. It computes nothing the C helper cannot and is built only when a working `nvcc` is present. |
 
 ## Which engine answers which question
 

@@ -469,3 +469,40 @@ fl_mersenne_factors(p, k_limit, seconds, stop_after_first) =
   print("TRUNCATED:", truncated);
   print("DONE:", found);
 };
+
+\\ --- Mersenne metadata and confirmation for the native scanner ---------------------
+\\ The compiled helper numerisect-mfactor scans one order divisor's progression very
+\\ fast, but it is a scanner, not an authority: it reports q with 2^d = 1 (mod q), which
+\\ makes q a divisor of 2^d - 1 but says nothing about q being prime. PARI/GP keeps both
+\\ jobs it should keep. These two routines supply the exponent's structure before the
+\\ scan and confirm every candidate after it, so no claim reaches a user unverified.
+fl_mersenne_orders(p) =
+{
+  my(pf, pf_text = "", orders);
+  if(p < 3 || p % 2 == 0, error("Mersenne progression factoring needs an odd exponent p >= 3; M_2 = 3 is the trivial exception"));
+  pf = factor(p);
+  for(i = 1, matsize(pf)[1],
+    pf_text = concat(pf_text, if(i > 1, " * ", ""));
+    pf_text = concat(pf_text, Str(pf[i, 1]));
+    if(pf[i, 2] > 1, pf_text = concat(pf_text, concat("^", Str(pf[i, 2]))));
+  );
+  print("EXPONENT_PRIME:", isprime(p));
+  print("EXPONENT_FACTORIZATION:", pf_text);
+  print("MERSENNE_DIGITS:", floor(p * log(2) / log(10)) + 1);
+  orders = select(x -> x > 1, divisors(p));
+  for(i = 1, #orders, print("ORDER:", orders[i]));
+  print("DONE:", #orders);
+};
+
+\\ Confirm each scanned candidate: q must be prime and must genuinely divide 2^d - 1.
+fl_mersenne_confirm(candidates, orders) =
+{
+  my(q, d, ok);
+  if(#candidates != #orders, error("Each candidate needs its order"));
+  for(i = 1, #candidates,
+    q = candidates[i]; d = orders[i];
+    ok = if(q > 1 && Mod(2, q)^d == 1 && isprime(q), 1, 0);
+    print("CONFIRM:", q, "|", d, "|", ok);
+  );
+  print("DONE:", #candidates);
+};

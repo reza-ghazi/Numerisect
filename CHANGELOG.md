@@ -5,6 +5,34 @@ binary packages are published.
 
 ## Unreleased
 
+- Added `numerisect_mfactor.c`, a compiled Mersenne trial-factoring scanner, and made it
+  the engine for any finite k range. PARI/GP searched the same progression correctly but
+  with generic arbitrary-precision arithmetic on one core, measured here at about 1.1
+  million candidates a second for p = 999999001; the helper sustains about 1.3 billion.
+  It sieves each progression by small primes first, which removes roughly 96% of the
+  range with no modular exponentiation, uses 64-bit arithmetic below 2^64, and runs
+  across every core. A search of two billion k now takes under twelve seconds end to end
+  where the previous ceiling was fifty million.
+- Raised the k ceiling from 50,000,000 to 100,000,000,000 to match. The old bound was
+  about a minute of PARI's work and is now a fraction of a second.
+- Candidates at or above 2^64 fall back to GMP inside the same helper. The path is
+  slower but correct, and the report counts how many candidates needed it. This is
+  covered by a test built from a constructed factor above 2^64: q = 18446744073709551697
+  at k = 24 of its order's progression.
+- PARI/GP keeps the mathematics either side of the scan. It factors the exponent and
+  enumerates the order divisors first, and afterwards confirms every reported q is prime
+  and genuinely divides 2^d - 1. The scanner reports divisors, which is not the same
+  claim, so nothing reaches a report on its word alone. Automatic mode, and any machine
+  without a C compiler, still run entirely in PARI/GP.
+- Added `numerisect_mfactor_cuda.cu`, an **optional** CUDA accelerator using Montgomery
+  arithmetic on the device. It computes nothing the C helper cannot. Its arithmetic was
+  verified on the host against plain modular exponentiation over three million random
+  cases with no disagreement, and it accepts all 21 known Mersenne factors, but **the
+  device path has never been executed**: no machine available to the project has a CUDA
+  toolkit, only a driver. This is documented rather than glossed. Compiler detection asks
+  nvcc to identify itself instead of trusting PATH, because the `nvcc-gpp15` wrapper
+  exists on this workstation while the compiler it calls does not.
+
 - Added the Zenodo archival identifiers issued for the first public source release:
   concept DOI `10.5281/zenodo.22679026` for all versions and version DOI
   `10.5281/zenodo.22679027` for the immutable `v0.7.0` snapshot. The README, website,

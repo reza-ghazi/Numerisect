@@ -37,7 +37,7 @@ from typing import Any
 
 from .config import PACKAGE_DIR
 from .engines import parse_ecm_output
-from .native_tools import squfof_tool_path
+from .native_tools import mfactor_tool_path, squfof_tool_path
 from .primes import PrimeEngineError, _run_gp
 
 PROGRAM = PACKAGE_DIR / "factor_lab.gp"
@@ -77,7 +77,14 @@ MAX_SQUFOF_INPUT = 2**62
 #: a claim that no algebraic factor exists; the factoring engines are the tool for that.
 ALGEBRAIC_DIGIT_CAP = 60
 #: Largest k searched when trial-factoring M_p over the progression q = 2kp + 1.
-MAX_MERSENNE_K = 50_000_000
+#: Largest k searched over q = 2kd + 1.
+#:
+#: This was 50,000,000 when PARI/GP walked the progression at about a million k a
+#: second, where the ceiling was roughly a minute of work. The compiled scanner
+#: sustains about a thousand times that, so the old ceiling is now a fraction of a
+#: second and the bound is raised to match. Automatic mode is governed by its time
+#: budget rather than by this number.
+MAX_MERSENNE_K = 100_000_000_000
 #: Largest Mersenne exponent accepted. M_p is never built, so this bounds only the work.
 MAX_MERSENNE_EXPONENT = 10**9
 #: The staged hunt constructs M_p in PARI/GP so that native engines can work on the
@@ -713,6 +720,163 @@ def tune_recommendation(parsed: dict[str, Any], current_threshold: int) -> dict[
     }
 
 
+#: Small-prime bound used when the compiled scanner sieves the k progression.
+MFACTOR_SIEVE_BOUND = 1_000_000
+
+
+def _mersenne_metadata(exponent: int, timeout: int) -> dict[str, Any]:
+    """Exponent structure and order divisors, decided by PARI/GP."""
+
+    lines = _gp_call(f"fl_mersenne_orders({exponent})", timeout)
+    _require_complete(lines)
+    orders = [int(value) for value in _tagged(lines, "ORDER")]
+    if int(_one(lines, "DONE")) != len(orders):
+        raise PrimeEngineError("PARI/GP returned an incomplete order-divisor list")
+    return {
+        "orders": orders,
+        "prime": _one(lines, "EXPONENT_PRIME") == "1",
+        "factorization": _one(lines, "EXPONENT_FACTORIZATION"),
+        "digits": int(_one(lines, "MERSENNE_DIGITS")),
+    }
+
+
+def _mersenne_native_scan(
+    orders: list[int], k_limit: int, timeout: int, threads: int | None
+) -> list[tuple[str, int, int]]:
+    """Scan every order's progression with the compiled helper.
+
+    The helper is a scanner, not an authority. It reports q with 2^d = 1 (mod q), which
+    makes q a divisor of 2^d - 1 and nothing more; PARI/GP confirms primality afterwards.
+    """
+
+    tool = mfactor_tool_path()
+    hits: list[tuple[str, int, int]] = []
+    deadline = max(1, timeout)
+    for order in orders:
+        command = [
+            str(tool), str(order), "1", str(k_limit), str(MFACTOR_SIEVE_BOUND),
+        ]
+        if threads:
+            command.append(str(threads))
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            timeout=deadline, check=False,
+        )
+        if result.returncode != 0:
+            raise PrimeEngineError(
+                f"The Mersenne scanner failed for order {order}: "
+                f"{result.stderr.strip() or 'no diagnostic'}"
+            )
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if not any(line.startswith("DONE:") for line in lines):
+            raise PrimeEngineError(
+                "The Mersenne scanner did not return a completion marker"
+            )
+        for row in _tagged(lines, "FACTOR"):
+            parts = row.split("|")
+            if len(parts) != 2 or not all(part.isdigit() for part in parts):
+                raise PrimeEngineError("The Mersenne scanner returned an invalid record")
+            hits.append((parts[0], int(parts[1]), order))
+    return hits
+
+
+def _mersenne_confirm(
+    hits: list[tuple[str, int, int]], timeout: int
+) -> list[tuple[str, int, int]]:
+    """Keep only candidates PARI/GP confirms are prime divisors."""
+
+    if not hits:
+        return []
+    candidates = "[" + ",".join(q for q, _, _ in hits) + "]"
+    orders = "[" + ",".join(str(d) for _, _, d in hits) + "]"
+    lines = _gp_call(f"fl_mersenne_confirm({candidates},{orders})", timeout)
+    _require_complete(lines)
+    verdicts = [row.split("|") for row in _tagged(lines, "CONFIRM")]
+    if len(verdicts) != len(hits):
+        raise PrimeEngineError("PARI/GP did not confirm every scanned candidate")
+    kept: list[tuple[str, int, int]] = []
+    for (q, k, d), verdict in zip(hits, verdicts, strict=True):
+        if len(verdict) != 3 or verdict[0] != q:
+            raise PrimeEngineError("PARI/GP returned a mismatched confirmation")
+        if verdict[2] == "1":
+            kept.append((q, k, d))
+    return kept
+
+
+def _mersenne_factors_native(
+    exponent: int, k_limit: int, timeout: int, threads: int | None = None
+) -> dict[str, Any]:
+    """The compiled-scanner path for a finite k range.
+
+    PARI/GP still owns the mathematics either side of the scan: it factors the exponent
+    and enumerates the order divisors before, and confirms every candidate is a prime
+    divisor after. The helper only walks the progression.
+    """
+
+    meta = _mersenne_metadata(exponent, timeout)
+    hits = _mersenne_native_scan(meta["orders"], k_limit, timeout, threads)
+    confirmed = _mersenne_confirm(hits, timeout)
+
+    # The same q can surface under several order divisors; keep the smallest order.
+    best: dict[str, tuple[str, int, int]] = {}
+    for q, k, d in confirmed:
+        if q not in best or d < best[q][2]:
+            best[q] = (q, k, d)
+    records = sorted(best.values(), key=lambda row: (row[1], int(row[0])))
+
+    largest_candidate = 2 * k_limit * max(meta["orders"]) + 1
+    digits = meta["digits"]
+    rows = [[q, str(k), str(d), str(len(q))] for q, k, d in records]
+    return {
+        "exponent": str(exponent),
+        "mersenne_digits": str(digits),
+        "k_limit": str(k_limit),
+        "scanned_k": str(k_limit),
+        "automatic": False,
+        "stop_reason": "ceiling",
+        "complete": True,
+        "factors": [q for q, _, _ in records],
+        "exponent_prime": meta["prime"],
+        "exponent_factorization": meta["factorization"],
+        "columns": ["Factor q", "k in q = 2kd + 1", "Order divisor d", "Digits of q"],
+        "rows": rows,
+        "metrics": {
+            "Exponent p": str(exponent),
+            "Exponent factorization": meta["factorization"],
+            "Exponent type": "prime" if meta["prime"] else "composite",
+            "M_p decimal digits": f"{digits:,}",
+            "Search mode": "manual bound",
+            "Largest k reached in any order": f"{k_limit:,}",
+            "Largest candidate tested": f"{largest_candidate:,}",
+            "Factors found": str(len(records)),
+            "Order divisors completed": f"{len(meta['orders'])} of {len(meta['orders'])}",
+            "Stop reason": "ceiling",
+            "Selected k range complete": "yes",
+            "Scanner": "numerisect-mfactor (C, GMP, OpenMP)",
+        },
+        "engine": "numerisect-mfactor with PARI/GP confirmation",
+        "note": (
+            (
+                "For prime p, every prime factor q of M_p satisfies q = 2kp + 1. "
+                if meta["prime"]
+                else "Because p is composite, PARI/GP factored the exponent and searched "
+                "q = 2kd + 1 for every order divisor d > 1 of p. "
+            )
+            + "Every candidate also satisfies q = ±1 (mod 8) and is tested by one modular "
+            "exponentiation. The compiled scanner sieved each progression by small primes "
+            "and ran the surviving exponentiations across every core; PARI/GP enumerated "
+            "the order divisors beforehand and confirmed each reported q is a prime "
+            "divisor afterwards, so nothing here rests on the scanner alone. "
+            "M_p itself is never constructed. "
+            "The whole requested k range was searched. "
+            "This is factor discovery, not a complete factorization of M_p. Finding "
+            "nothing is inconclusive: it means no factor in the searched q = 2kd + 1 "
+            "progressions exists below the bound searched, and says nothing about whether "
+            "M_p is prime. Use the Lucas–Lehmer test for that question."
+        ),
+    }
+
+
 def mersenne_factors(
     exponent: int,
     k_limit: int | None = None,
@@ -758,6 +922,26 @@ def mersenne_factors(
 
     automatic = k_limit is None
     ceiling = MAX_MERSENNE_K if automatic else k_limit
+
+    # A finite, explicit range is exactly what the compiled scanner is for. It sieves
+    # the progression and uses a 64-bit modular exponentiation across every core, which
+    # measured about a thousand times PARI's rate on this machine. Automatic mode stays
+    # in PARI/GP, where the stop-at-first-factor and budget semantics live. If the
+    # helper cannot be built, PARI/GP does the whole job as before.
+    if not automatic:
+        try:
+            scanner = mfactor_tool_path()
+        except (RuntimeError, OSError):
+            scanner = None
+        if scanner is not None:
+            try:
+                return _mersenne_factors_native(exponent, k_limit, timeout)
+            except subprocess.TimeoutExpired:
+                raise PrimeEngineError(
+                    "The Mersenne scanner exceeded the time limit; lower the k bound "
+                    "or raise the timeout"
+                ) from None
+
     lines = _gp_call(
         f"fl_mersenne_factors({exponent},{ceiling},{timeout},{int(automatic)})",
         timeout + 30,

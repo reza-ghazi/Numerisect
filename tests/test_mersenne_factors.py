@@ -5,17 +5,26 @@ that M_p is never constructed, so the tests deliberately include an exponent who
 Mersenne number has more than 300,000 decimal digits.
 """
 
+import subprocess
+
 import pytest
 from fastapi.testclient import TestClient
 
 import numerisect.factor_lab as factor_lab
 from numerisect import outputs
 from numerisect.factor_lab import (
+    _mersenne_confirm,
+    _mersenne_native_scan,
     mersenne_factor_hunt,
     mersenne_factors,
     special_form_analysis,
 )
 from numerisect.main import app
+from numerisect.native_tools import (
+    build_mfactor_cuda_tool,
+    cuda_compiler,
+    mfactor_tool_path,
+)
 
 
 @pytest.fixture()
@@ -117,12 +126,31 @@ def test_automatic_mode_selects_k_dynamically_and_stops_at_the_first_factor():
     assert result["complete"] is False
 
 
-def test_manual_timeout_preserves_factors_and_reports_actual_k():
+def test_manual_timeout_preserves_factors_and_reports_actual_k(monkeypatch):
+    """PARI/GP's manual path must still preserve findings when its budget expires.
+
+    The compiled scanner now handles finite ranges and finishes this range far inside a
+    one-second budget, so the PARI/GP behaviour is exercised by forcing the fallback.
+    """
+
+    def unavailable():
+        raise RuntimeError("scanner unavailable for this test")
+
+    monkeypatch.setattr(factor_lab, "mfactor_tool_path", unavailable)
     result = mersenne_factors(29, k_limit=50_000_000, timeout=1)
     assert {"233", "1103", "2089"}.issubset(result["factors"])
     assert result["stop_reason"] == "timeout"
     assert 1 <= int(result["scanned_k"]) < 50_000_000
     assert result["complete"] is False
+
+
+def test_the_scanner_finishes_the_range_that_used_to_time_out():
+    """The same request the fallback cannot finish in a second, the scanner completes."""
+
+    result = mersenne_factors(29, k_limit=50_000_000, timeout=120)
+    assert {"233", "1103", "2089"}.issubset(result["factors"])
+    assert result["stop_reason"] == "ceiling"
+    assert result["complete"] is True
 
 
 def test_staged_hunt_finishes_when_the_remaining_cofactor_is_prime():
@@ -196,7 +224,7 @@ def test_bounds_are_enforced():
         {"exponent": 1},
         {"exponent": 2},  # M_2 = 3 is the trivial exception to q = 2kp + 1.
         {"exponent": 11, "k_limit": 0},
-        {"exponent": 11, "k_limit": 50_000_001},
+        {"exponent": 11, "k_limit": 100_000_000_001},
         {"exponent": 11, "timeout": 0},
     ):
         with pytest.raises(ValueError):
@@ -267,3 +295,114 @@ def test_mersenne_route_accepts_an_odd_composite_exponent(local_client):
     )
     assert response.status_code == 200
     assert "127" in response.json()["factors"]
+
+
+# --- the compiled scanner ------------------------------------------------------------
+
+
+def test_the_scanner_emits_a_completion_marker():
+    tool = mfactor_tool_path()
+    output = subprocess.run(
+        [str(tool), "11", "1", "1000", "1000"], capture_output=True, text=True
+    ).stdout
+    assert "DONE:1" in output
+    assert "STATUS:complete" in output
+
+
+def test_the_scanner_rejects_an_even_or_tiny_order():
+    tool = mfactor_tool_path()
+    for argv in (["4", "1", "10"], ["1", "1", "10"], ["11", "0", "10"], ["11", "5", "1"]):
+        result = subprocess.run([str(tool), *argv], capture_output=True, text=True)
+        assert result.returncode == 2, argv
+
+
+@pytest.mark.parametrize("order,k_limit,expected", [
+    (11, 20_000, ["23", "89"]),
+    (23, 20_000, ["47", "178481"]),
+    (43, 30_000, ["431", "9719", "2099863"]),
+    (2_000_003, 3_000_000, ["160000241", "8924785387159"]),
+    (999_999_001, 200_000_000, ["357999642359", "216674111542346329"]),
+])
+def test_the_scanner_recovers_every_known_factor(order, k_limit, expected):
+    """The same answers PARI/GP gives, from the compiled path."""
+
+    hits = _mersenne_native_scan([order], k_limit, timeout=600, threads=None)
+    assert sorted(int(q) for q, _, _ in hits) == sorted(int(q) for q in expected)
+
+
+def test_the_scanner_handles_candidates_above_2_64_with_gmp():
+    """Beyond 2^64 the 64-bit path cannot run and GMP takes over.
+
+    q = 18446744073709551697 is prime, exceeds 2^64, and the order of 2 modulo it is
+    384307168202282327, which places it at k = 24 in that progression. A scanner that
+    silently skipped wide candidates would report nothing here.
+    """
+
+    order = 384307168202282327
+    tool = mfactor_tool_path()
+    output = subprocess.run(
+        [str(tool), str(order), "1", "60", "100000"], capture_output=True, text=True
+    ).stdout
+    assert "FACTOR:18446744073709551697|24" in output
+    # WIDE counts the candidates that needed GMP; this one must be among them.
+    wide = int([line for line in output.splitlines() if line.startswith("WIDE:")][0][5:])
+    assert wide >= 1
+
+
+def test_scanned_candidates_are_confirmed_by_the_engine_not_trusted():
+    """The scanner reports divisors of 2^d - 1; primality is PARI/GP's call.
+
+    9 divides nothing relevant and is composite, so confirmation must drop it while
+    keeping the genuine factor.
+    """
+
+    kept = _mersenne_confirm([("127", 9, 7), ("9", 1, 7)], timeout=60)
+    assert [q for q, _, _ in kept] == ["127"]
+
+
+def test_the_public_search_uses_the_scanner_for_a_finite_range():
+    result = mersenne_factors(43, k_limit=30_000, timeout=120)
+    assert result["engine"] == "numerisect-mfactor with PARI/GP confirmation"
+    assert result["factors"] == ["431", "9719", "2099863"]
+    assert result["complete"] is True
+
+
+def test_the_public_search_falls_back_to_pari_when_the_scanner_is_missing(monkeypatch):
+    """A machine with no C compiler must still be able to run this search."""
+
+    from numerisect import factor_lab
+
+    def unavailable():
+        raise RuntimeError("no compiler")
+
+    monkeypatch.setattr(factor_lab, "mfactor_tool_path", unavailable)
+    result = mersenne_factors(43, k_limit=30_000, timeout=180)
+    assert result["engine"] == "PARI/GP"
+    assert result["factors"] == ["431", "9719", "2099863"]
+
+
+def test_automatic_mode_still_runs_in_pari():
+    """Stop-at-first-factor and budget semantics live in PARI/GP, not the scanner."""
+
+    result = mersenne_factors(2_000_003, k_limit=None, timeout=120)
+    assert result["engine"] == "PARI/GP"
+    assert result["automatic"] is True
+
+
+# --- the optional CUDA accelerator ------------------------------------------------------
+
+
+def test_cuda_is_optional_and_its_absence_is_not_an_error():
+    """A driver without a toolkit must not be mistaken for a usable compiler.
+
+    nvcc-gpp15 is a wrapper that execs nvcc. On a machine with the driver but no
+    toolkit the wrapper exists and the compiler does not, so detection probes rather
+    than trusting PATH.
+    """
+
+    compiler = cuda_compiler()
+    if compiler is None:
+        assert build_mfactor_cuda_tool() is None
+    else:
+        built = build_mfactor_cuda_tool()
+        assert built is not None and built.is_file()

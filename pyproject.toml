@@ -64,6 +64,7 @@ numerisect = [
   "engine_manifest.toml",
   "rsa_challenge.toml",
   "native/*.c",
+  "native/*.cu",
   "static/*.html",
   "static/*.css",
   "static/*.js",
