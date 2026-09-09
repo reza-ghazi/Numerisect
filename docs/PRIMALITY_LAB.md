@@ -1,6 +1,6 @@
 # Primality laboratory
 
-Numerisect 0.6.0 adds a dedicated PARI/GP computational layer in
+Numerisect 0.7.0 adds a dedicated PARI/GP computational layer in
 `numerisect/primality_lab.gp` with the Python boundary
 `numerisect/primality_lab.py`. Python validates requests, launches `gp` under a
 bounded wall-clock timeout, requires the mandatory `DONE:` completion marker,

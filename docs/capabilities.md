@@ -1,11 +1,11 @@
 ---
-description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.6.0.
+description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.7.0.
 ---
 
 # Capability index
 
 This page answers a practical question: **which part of Numerisect should I use?** It is
-an index of the released 0.6.0 interface, not a list of future intentions. The
+an index of the released 0.7.0 interface, not a list of future intentions. The
 [roadmap ledger](ROADMAP_STATUS.md) separately records partial, deferred and declined
 work.
 

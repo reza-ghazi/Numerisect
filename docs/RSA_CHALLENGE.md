@@ -1,6 +1,6 @@
 # The RSA Factoring Challenge
 
-*Numerisect 0.6.0*
+*Numerisect 0.7.0*
 
 Numerisect could always factor an RSA number. An RSA number is an ordinary semiprime, and
 the automatic pipeline routes one to YAFU or CADO-NFS by size like any other input. What it

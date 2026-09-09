@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.7.0 — 2026-09-09
+
 - Audited the public documentation after the Mersenne and local-session changes. The
   factorization mathematics now covers odd composite exponents and their order-divisor
   progressions consistently. The README, interface guide, FAQ, API reference, and both
@@ -43,7 +47,7 @@ binary packages are published.
   SQUFOF helper, WSL checkout line endings, and a process-group RSS watchdog for
   reliable macOS memory limits.
 
-- Audited the public documentation against the 0.6.0 application after making
+- Audited the public documentation against the application after making
   `numerisect.com` the entry point. Added a capability index and a mathematical
   prime-structures chapter covering tuples versus Ω-based k-primes, base-dependent
   digital classes, reciprocal periods, Gaussian and Eisenstein primes, perfect numbers,

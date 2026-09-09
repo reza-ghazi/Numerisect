@@ -1,6 +1,6 @@
 # Prime structures and related numbers
 
-Numerisect 0.6.0 adds companion algebraic pages for Eisenstein primes and
+Numerisect 0.7.0 adds companion algebraic pages for Eisenstein primes and
 rational-prime decomposition in quadratic number fields. PARI/GP applies the
 exact Eisenstein norm/axis criterion and constructs the maximal quadratic
 order for `idealprimedec`, returning splitting, ramification, inertia degree,

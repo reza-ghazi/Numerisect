@@ -2,7 +2,7 @@
 
 **Multi-Engine Integer Factorization and Prime Analysis**
 
-Numerisect 0.6.0 is a local web workbench for integer factorization, primality
+Numerisect 0.7.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
 

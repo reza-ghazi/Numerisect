@@ -1,6 +1,6 @@
 # Zeta lab: explicit formulas, zero statistics, and L-functions
 
-Numerisect 0.6.0 extends the Riemann-zeta workspace with twelve operations that
+Numerisect 0.7.0 extends the Riemann-zeta workspace with twelve operations that
 turn certified zeros into explicit-formula experiments, zero statistics, Gram
 geometry, Dirichlet L-functions, and Dedekind zeta functions of bounded number
 fields. See [Riemann zeta tools](RIEMANN_ZETA.md) for the ten original

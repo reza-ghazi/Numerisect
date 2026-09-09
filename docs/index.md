@@ -8,7 +8,7 @@ Numerisect is a local workbench for integer factorization, primality, prime expl
 and analytic number theory. It runs on your machine, listens only on loopback, and keeps
 every calculation, log and result there.
 
-!!! info "Current release: 0.6.0"
+!!! info "Current release: 0.7.0"
 
     Numerisect is an experimental, source-distributed pre-release. The current interface
     contains 133 Prime Tools pages, 22 zeta/L-function pages, an expert factorization
@@ -74,7 +74,7 @@ lead visitors to the same maintained content.
     ---
 
     A compact, auditable map of the factorization, Prime Tools, zeta, verification and
-    workflow capabilities currently shipped in 0.6.0.
+    workflow capabilities currently shipped in 0.7.0.
 
     [:octicons-arrow-right-24: Capability index](capabilities.md)
 

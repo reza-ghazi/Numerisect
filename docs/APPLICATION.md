@@ -1,6 +1,6 @@
 # Application infrastructure
 
-Numerisect 0.6.0 adds workspace, search, export, scheduling, caching, adapter, and
+Numerisect 0.7.0 adds workspace, search, export, scheduling, caching, adapter, and
 optional catalogue facilities around the native computation core. Nothing in this
 document performs mathematics: every value shown was produced by PARI/GP, FLINT/Arb,
 YAFU, Msieve, GMP-ECM, CADO-NFS, primesieve, or primecount and is only stored,

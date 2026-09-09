@@ -1,6 +1,6 @@
 # Analytic prime-distribution laboratory
 
-Numerisect 0.6.0 adds eleven analytic prime-distribution pages backed by
+Numerisect 0.7.0 adds eleven analytic prime-distribution pages backed by
 `numerisect/distribution_lab.gp` and the `primecount` and `primesieve` engines.
 `numerisect/distribution_lab.py` validates requests, starts the engines,
 requires complete tagged output, parses it, and persists reports. It does not

@@ -63,7 +63,7 @@ def test_installer_resolves_checkout_when_called_elsewhere(tmp_path):
     )
     if result.returncode:
         pytest.skip(f'Host lacks optional native prerequisites: {result.stderr.strip()}')
-    assert 'Numerisect 0.6.0 prerequisites are available' in result.stdout
+    assert 'Numerisect 0.7.0 prerequisites are available' in result.stdout
 
 
 def test_installer_rejects_unsupported_operating_system(tmp_path):

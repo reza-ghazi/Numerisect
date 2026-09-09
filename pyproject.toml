@@ -1,6 +1,6 @@
 [project]
 name = "numerisect"
-version = "0.6.0"
+version = "0.7.0"
 description = "Multi-Engine Integer Factorization and Prime Analysis"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -14,6 +14,8 @@ classifiers = [
   "Environment :: Web Environment",
   "Framework :: FastAPI",
   "Intended Audience :: Science/Research",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: C",
   "Programming Language :: JavaScript",
