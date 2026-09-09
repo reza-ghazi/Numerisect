@@ -34,6 +34,7 @@ MATHEMATICAL_MODULES = [
     "algebra_lab.py",
     "visual_lab.py",
     "forms_lab.py",
+    "gpu.py",
 ]
 
 # Modules that legitimately contain no engine call: transport, formatting, storage.
@@ -48,7 +49,8 @@ INTERFACE_ONLY_MODULES = [
 ]
 
 ENGINE_CALL = re.compile(
-    r"_run_gp\(|_run_zeta\(|_execute\(|subprocess\.(run|Popen)|tool_path\(\)|_run_process\("
+    r"_run_gp\(|_run_zeta\(|_execute\(|subprocess\.(run|Popen)|tool_path\(\)"
+    r"|_run_process\(|cuLaunchKernel\("
 )
 
 # Third-party mathematics is forbidden outright: it would replace the engines.
@@ -105,7 +107,7 @@ def test_mathematical_modules_name_their_engine(module: str):
     assert any(
         name in head
         for name in ("pari", "gp", "flint", "arb", "yafu", "msieve", "cado", "ecm",
-                     "primesieve", "primecount", "gmp")
+                     "primesieve", "primecount", "gmp", "cuda", "nvrtc")
     ), f"{module} does not name the library routine or program that computes its results"
 
 
@@ -330,4 +332,43 @@ def test_every_source_parses_on_the_minimum_supported_python():
     assert not offenders, (
         f"These use syntax newer than Python {minimum}, which pyproject.toml promises "
         f"and CI tests. Note that `ruff check .` also catches this; run it. {offenders}"
+    )
+
+
+def test_no_python_number_theory_anywhere_including_the_tests():
+    """Python must not reimplement what the engines compute, in the suite either.
+
+    A test that checks an engine against a second implementation written here is not an
+    independent check: a mistake shared between the two makes both look right. This was
+    not hypothetical. A GPU test once carried a full sieve of Eratosthenes and Fermat
+    modular inverses in Python to build its own candidate set, duplicating the C helper's
+    mathematics. References must come from an engine.
+
+    Three-argument pow is modular exponentiation, and math.gcd, math.isqrt and
+    math.factorial are number theory. None belongs on this side of the boundary.
+    """
+
+    banned_calls = {"gcd", "isqrt", "factorial", "comb", "perm"}
+    offenders: list[str] = []
+    roots = [PACKAGE, PACKAGE.parent / "tests"]
+    for root in roots:
+        for path in sorted(root.glob("*.py")):
+            if path.name == "test_native_computation_policy.py":
+                continue        # this file names the forbidden constructs to forbid them
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                function = node.func
+                if isinstance(function, ast.Name) and function.id == "pow" and len(node.args) == 3:
+                    offenders.append(f"{path.name}:{node.lineno}: modular exponentiation")
+                if (
+                    isinstance(function, ast.Attribute)
+                    and function.attr in banned_calls
+                    and isinstance(function.value, ast.Name)
+                    and function.value.id == "math"
+                ):
+                    offenders.append(f"{path.name}:{node.lineno}: math.{function.attr}")
+    assert not offenders, (
+        "Python must not compute number theory; ask an engine instead: " + str(offenders)
     )

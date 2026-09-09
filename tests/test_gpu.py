@@ -10,6 +10,7 @@ import pytest
 
 from numerisect import gpu
 from numerisect.native_tools import build_mfactor_cuda_tool, cuda_compiler
+from numerisect.primes import _run_gp
 
 DEVICE = gpu.available()
 needs_gpu = pytest.mark.skipif(DEVICE is None, reason="no usable CUDA device")
@@ -84,14 +85,15 @@ def test_the_kernel_compiles_for_this_device():
 
 @needs_gpu
 @pytest.mark.parametrize("order,k_limit,expected", [
-    # Published factorizations, restricted to the sieved progression the pipeline uses.
+    # Published factorizations. The device sees the raw progression, so a composite
+    # divisor may appear alongside them; only the primes are asserted as a subset.
     (23, 20_000, [47, 178481]),
     (29, 20_000, [233, 1103, 2089]),
     (43, 30_000, [431, 9719, 2099863]),
 ])
 def test_the_device_finds_the_published_factors(order, k_limit, expected):
-    ks = _sieved(order, k_limit)
-    assert gpu.test_candidates(order, ks, DEVICE) == sorted(expected)
+    found = gpu.test_candidates(order, _candidates(order, k_limit), DEVICE)
+    assert set(expected).issubset(found)
 
 
 @needs_gpu
@@ -101,9 +103,11 @@ def test_a_hit_is_a_divisor_and_not_a_claim_of_primality():
     This is why the pipeline sieves first and confirms primality in PARI/GP after.
     """
 
-    unsieved = list(range(1, 20_001))
-    assert 2047 in gpu.test_candidates(11, unsieved, DEVICE)
-    assert gpu.test_candidates(11, _sieved(11, 20_000), DEVICE) == [23, 89]
+    found = gpu.test_candidates(11, _candidates(11, 20_000), DEVICE)
+    assert 2047 in found            # 2047 = 23 * 89, a genuine composite divisor
+    assert {23, 89}.issubset(found)
+    # PARI/GP, asked the same question over the same range, agrees exactly.
+    assert found == _divisors_from_engine(11, 20_000)
 
 
 @needs_gpu
@@ -124,8 +128,10 @@ def test_the_device_agrees_with_the_compiled_cpu_helper():
     order, k_limit = 2_000_003, 3_000_000
     hits, _ = _mersenne_native_scan([order], k_limit, 600, None)
     cpu = sorted(int(q) for q, _, _ in hits)
-    device = gpu.test_candidates(order, _sieved(order, k_limit), DEVICE)
-    assert device == cpu
+    device = gpu.test_candidates(order, _candidates(order, k_limit), DEVICE)
+    # The C helper sieves and PARI/GP confirms primality, so it reports prime factors
+    # only; the device sees the raw progression. Every prime factor must still appear.
+    assert set(cpu).issubset(device)
 
 
 def test_an_even_order_is_rejected():
@@ -133,26 +139,39 @@ def test_an_even_order_is_rejected():
         gpu.test_candidates(4, [1])
 
 
-def _sieved(order: int, k_limit: int, bound: int = 100_000) -> list[int]:
-    """The same small-prime sieve the C helper applies, for a comparable candidate set."""
+def _divisors_from_engine(order: int, k_limit: int) -> list[int]:
+    """Every q = 2k*order + 1 in range that divides 2^order - 1, decided by PARI/GP.
 
-    composite = bytearray(bound + 1)
-    primes: list[int] = []
-    for i in range(3, bound + 1, 2):
-        if not composite[i]:
-            primes.append(i)
-            for j in range(i * i, bound + 1, 2 * i):
-                composite[j] = 1
-    dead = bytearray(k_limit + 1)
-    for r in primes:
-        a = (2 * order) % r
-        if a == 0:
-            continue
-        k0 = (r - pow(a, r - 2, r)) % r
-        for k in range(k0 or r, k_limit + 1, r):
-            if 2 * k * order + 1 != r:
-                dead[k] = 1
-    return [
-        k for k in range(1, k_limit + 1)
-        if not dead[k] and (2 * k * order + 1) % 8 in (1, 7)
-    ]
+    The reference must not be a second implementation of the same search in Python.
+    This asks the engine directly, so a shared mistake in my own arithmetic cannot make
+    the device look correct.
+    """
+
+    program = (
+        f"d = {order}; for(k = 1, {k_limit}, my(q = 2*k*d + 1); "
+        "if((q % 8 == 1 || q % 8 == 7) && Mod(2, q)^d == 1, print(\"Q:\", q)));"
+        " print(\"DONE:1\");"
+    )
+    lines = _run_gp(program, timeout=900)
+    assert any(line.startswith("DONE:") for line in lines)
+    return sorted(int(line[2:]) for line in lines if line.startswith("Q:"))
+
+
+def _candidates(order: int, k_limit: int) -> list[int]:
+    """Every k whose q satisfies the mod-8 condition, unsieved.
+
+    The device is handed the raw progression rather than a Python-sieved subset, so the
+    test exercises the kernel rather than a filter written here.
+    """
+
+    return [k for k in range(1, k_limit + 1) if (2 * k * order + 1) % 8 in (1, 7)]
+
+
+@needs_gpu
+@pytest.mark.parametrize("order,k_limit", [(11, 20_000), (23, 20_000), (43, 30_000)])
+def test_the_device_matches_the_engine(order, k_limit):
+    """The device and PARI/GP must return the same divisors over the same range."""
+
+    assert gpu.test_candidates(order, _candidates(order, k_limit), DEVICE) == (
+        _divisors_from_engine(order, k_limit)
+    )

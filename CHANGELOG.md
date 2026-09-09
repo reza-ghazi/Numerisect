@@ -5,6 +5,19 @@ binary packages are published.
 
 ## Unreleased
 
+- Removed a Python reimplementation of engine mathematics from the test suite. A GPU test
+  built its own candidate set with a full sieve of Eratosthenes and Fermat modular
+  inverses written in Python, duplicating what the C helper does. Checking an engine
+  against a second implementation written here is not an independent check: a mistake
+  shared between the two makes both look correct. The reference now comes from PARI/GP.
+- Registered `gpu.py` in the native-computation policy's module list. It had been added
+  without one, so none of the dispatch or engine-naming checks applied to it. A CUDA
+  kernel launch now counts as engine dispatch, and CUDA and NVRTC count as named engines.
+- Added a policy test forbidding Python number theory in the package **and in the test
+  suite**: three-argument `pow`, which is modular exponentiation, and `math.gcd`,
+  `math.isqrt`, `math.factorial`, `math.comb` and `math.perm`. Verified against a planted
+  violation rather than assumed to work.
+
 - Fixed engine results above 4,300 decimal digits raising `ValueError` in every boundary
   module. CPython refuses to convert an integer of more than 4,300 digits to or from a
   string, a denial-of-service guard aimed at untrusted input, and engine output is not
