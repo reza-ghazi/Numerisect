@@ -181,6 +181,7 @@ nav:
       - reference/output.md
       - INSTALLATION.md
   - About:
+      - about/citation.md
       - about/glossary.md
       - about/bibliography.md
       - about/faq.md

@@ -202,8 +202,4 @@ and executable checksums used.
 
 [:octicons-arrow-right-24: Third-party licences](https://github.com/reza-ghazi/Numerisect/blob/main/THIRD_PARTY_LICENSES.md)
 
-[:octicons-arrow-right-24: Cite all versions — DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026)
-
-[:octicons-arrow-right-24: Cite version 0.7.0 — DOI 10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027)
-
-[:octicons-arrow-right-24: Citation metadata](https://github.com/reza-ghazi/Numerisect/blob/main/CITATION.cff)
+[:octicons-arrow-right-24: Citation guide and DOI](about/citation.md)

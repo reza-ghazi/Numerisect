@@ -19,6 +19,11 @@ This separation is deliberate: GitHub Pages owns and certificates the documentat
 host, while WHC owns only the redirect. Do not change the Pages custom domain to the
 apex; doing so would reverse the canonical direction.
 
+The documentation deployment is separate from release preservation. Zenodo archives
+tagged source releases rather than this generated website. Numerisect `v0.7.0` is
+preserved under [DOI 10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027);
+the [citation guide](citation.md) documents the stable concept DOI used across versions.
+
 ## DNS
 
 The relevant records are:

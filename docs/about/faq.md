@@ -98,6 +98,14 @@ control on a network you trust.
 
 ## About the project
 
+### How should I cite Numerisect?
+
+For work performed with release `v0.7.0`, cite the immutable version DOI
+[10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027). Use the concept DOI
+[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) only when referring
+to Numerisect across all versions. The [citation guide](citation.md) provides a formatted
+software citation and explains the reproducibility metadata to retain.
+
 ### Why does Python compute nothing?
 
 Because the mathematics belongs in libraries written by specialists and optimized over

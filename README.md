@@ -841,6 +841,8 @@ Academic and educational users can cite the software using
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.7.0`
 snapshot specifically as
 [10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027).
+See the [citation guide](docs/about/citation.md) for the formatted software citation and
+the distinction between the project-level concept DOI and the immutable version DOI.
 
 ## License
 

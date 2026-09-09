@@ -8,7 +8,9 @@ binary packages are published.
 - Added the Zenodo archival identifiers issued for the first public source release:
   concept DOI `10.5281/zenodo.22679026` for all versions and version DOI
   `10.5281/zenodo.22679027` for the immutable `v0.7.0` snapshot. The README, website,
-  package metadata, and `CITATION.cff` now expose the appropriate identifiers.
+  installation guides, release history, FAQ, publishing guide, package metadata, and
+  `CITATION.cff` now expose the appropriate identifiers. A dedicated citation page
+  explains when to cite the version DOI and when to use the concept DOI.
 
 ## 0.7.0 — 2026-09-09
 

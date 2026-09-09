@@ -9,6 +9,9 @@ an index of the released 0.7.0 interface, not a list of future intentions. The
 [roadmap ledger](ROADMAP_STATUS.md) separately records partial, deferred and declined
 work.
 
+This capability inventory corresponds to the archived `v0.7.0` source snapshot,
+[DOI 10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.22679027).
+
 The current application exposes five top-level workspaces, 133 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
 API total is checked against the running FastAPI application by the test suite, so adding
