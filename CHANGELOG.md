@@ -5,6 +5,23 @@ binary packages are published.
 
 ## Unreleased
 
+- **Correction: the CUDA path is verified on hardware, and no CUDA toolkit is needed.**
+  The previous entry said the device path had never been executed because no machine had
+  a toolkit. The toolkit is indeed absent, but that conclusion was wrong: this workstation
+  has the full CUDA runtime installed through pip, including NVRTC, the runtime compiler.
+  The kernel is now compiled by NVRTC for whichever device is present, so `nvcc` is not
+  required at all. On an RTX 5090 it returns the published factorizations for every case
+  tested and agrees exactly with the compiled CPU helper on the same sieved candidates.
+- Measured what the GPU is actually worth here: about 16.5 million candidates a second
+  against the C helper's 7.4 million across 24 cores, a factor of roughly 2.2 rather than
+  the order of magnitude the hardware suggests. The kernel is not the limit; host-to-device
+  transfer is. The C helper remains the default and the GPU is an option, not the fast path.
+- Split the device code into `numerisect_mfactor_kernel.cu`, free of includes and host
+  code so one source compiles both under `nvcc` and under NVRTC.
+- Candidates at or above 2^63 are refused by the GPU path rather than skipped, since the
+  Montgomery bound cannot cover them and dropping them silently would turn an untested
+  range into an apparent absence of factors.
+
 - Stopped reports crediting PARI/GP with work it did not do. Both shared report savers
   overwrote the engine label unconditionally, so a Mersenne scan run entirely by the
   compiled helper came back to the caller labelled `PARI/GP`. A result that names its own

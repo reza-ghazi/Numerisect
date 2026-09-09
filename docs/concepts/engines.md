@@ -30,7 +30,7 @@ that justification in its own source header.
 | `numerisect_squfof.c` | Shanks' square forms factorization. Absent from every installed engine: YAFU has no `squfof` function, PARI implements it internally but exposes no standalone entry point, Msieve is QS/NFS only, and GMP-ECM is ECM/P−1/P+1 only. |
 | `numerisect_bigsieve.c` | Prime enumeration above \(2^{64}\). primesieve refuses such inputs outright, and PARI's `forprime` is single-threaded and far slower there. |
 | `numerisect_mfactor.c` | Mersenne trial factoring over \(q = 2kd + 1\). PARI/GP searches the same progression correctly, but with generic arbitrary-precision arithmetic on one core; measured here at about 1.1 million candidates a second against this helper's 1.3 billion. It sieves the progression by small primes, uses a 64-bit modular exponentiation below \(2^{64}\) with a GMP fallback above, and runs across every core. |
-| `numerisect_mfactor_cuda.cu` | **Optional** CUDA accelerator for the same scan, using Montgomery arithmetic on the device. It computes nothing the C helper cannot and is built only when a working `nvcc` is present. |
+| `numerisect_mfactor_kernel.cu` | **Optional** CUDA kernel for the same scan, using Montgomery arithmetic. Compiled at run time by NVRTC, so no CUDA toolkit is needed, and verified on an RTX 5090 against both the published factorizations and the C helper. It computes nothing the C helper cannot, and measured only about 2.2x its rate because host-to-device transfer dominates. |
 
 ## Which engine answers which question
 

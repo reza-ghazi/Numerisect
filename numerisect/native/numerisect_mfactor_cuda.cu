@@ -47,56 +47,7 @@
 #define MAX_HITS 4096
 #define BLOCK 256
 
-/* -q^-1 mod 2^64 by Newton iteration; exact after five doublings from 3 bits. */
-__host__ __device__ static inline uint64_t mont_inv(uint64_t q) {
-  uint64_t inv = 1;
-  for (int i = 0; i < 6; i++) inv *= 2 - q * inv;
-  return (uint64_t)0 - inv;
-}
-
-__device__ static inline uint64_t mont_mul(uint64_t a, uint64_t b, uint64_t q,
-                                           uint64_t qinv) {
-  const uint64_t lo = a * b;
-  const uint64_t hi = __umul64hi(a, b);
-  const uint64_t m = lo * qinv;
-  const uint64_t mq_hi = __umul64hi(m, q);
-  /* lo + m*q is zero in the low word by construction, so only the carry survives. */
-  const uint64_t carry = (lo != 0) ? 1ULL : 0ULL;
-  uint64_t t = hi + mq_hi + carry;
-  if (t >= q) t -= q;
-  return t;
-}
-
-/* Tests 2^order == 1 (mod q) entirely in the Montgomery domain. */
-__device__ static inline bool divides(uint64_t q, uint64_t order) {
-  const uint64_t qinv = mont_inv(q);
-  /* R mod q, with R = 2^64, computed as (2^64 - q) % q to stay in 64 bits. */
-  const uint64_t one = ((uint64_t)0 - q) % q;
-  uint64_t base = (one << 1) % q;   /* 2 in the Montgomery domain, q < 2^63 */
-  uint64_t result = one;
-  uint64_t e = order;
-  while (e) {
-    if (e & 1) result = mont_mul(result, base, q, qinv);
-    base = mont_mul(base, base, q, qinv);
-    e >>= 1;
-  }
-  return result == one;
-}
-
-__global__ void test_kernel(const uint64_t *ks, uint32_t count, uint64_t order,
-                            uint64_t *hits, uint32_t *hit_count, uint32_t max_hits) {
-  const uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= count) return;
-  const uint64_t k = ks[i];
-  const uint64_t q = 2ULL * k * order + 1ULL;
-  if (divides(q, order)) {
-    const uint32_t slot = atomicAdd(hit_count, 1u);
-    if (slot < max_hits) {
-      hits[2 * slot] = q;
-      hits[2 * slot + 1] = k;
-    }
-  }
-}
+#include "numerisect_mfactor_kernel.cu"
 
 static uint64_t modinv_host(uint64_t a, uint64_t prime) {
   uint64_t result = 1, base = a % prime, e = prime - 2;
@@ -194,7 +145,7 @@ int main(int argc, char **argv) {
                cudaMemcpyHostToDevice);
     cudaMemset(d_count, 0, sizeof(uint32_t));
     const uint32_t blocks = (uint32_t)((survivors.size() + BLOCK - 1) / BLOCK);
-    test_kernel<<<blocks, BLOCK>>>(d_ks, (uint32_t)survivors.size(), order, d_hits,
+    numerisect_mfactor_kernel<<<blocks, BLOCK>>>(d_ks, (uint32_t)survivors.size(), order, d_hits,
                                    d_count, MAX_HITS);
     if (cudaDeviceSynchronize() != cudaSuccess) {
       fprintf(stderr, "numerisect-mfactor-cuda: kernel failed\n");

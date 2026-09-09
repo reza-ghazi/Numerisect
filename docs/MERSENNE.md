@@ -136,24 +136,41 @@ there too, and the answers are the same.
 ### The optional GPU accelerator
 
 The modular exponentiations are perfectly independent, which is what a GPU is for.
-`numerisect_mfactor_cuda.cu` moves them to the device using Montgomery multiplication,
+`numerisect_mfactor_kernel.cu` runs them on the device using Montgomery multiplication,
 which replaces a 128-bit division per multiply with two 64-bit multiplies and a shift.
-The usual REDC bound applies, so it handles \(q < 2^{63}\) and defers anything wider back
-to the CPU helper rather than skipping it.
+The REDC bound applies, so it handles \(q < 2^{63}\); anything wider is **refused rather
+than skipped**, because silently dropping candidates would turn an untested range into an
+apparent absence of factors.
 
-!!! warning "Not exercised by this project yet"
+**No CUDA toolkit is required.** The kernel is compiled at run time by NVRTC, which ships
+with the same packages as the CUDA runtime, for whichever device is actually present. A
+machine can have an excellent GPU and no `nvcc` at all, which is exactly the case on the
+workstation this was developed on. An `nvcc` build is still available for anyone who has
+the toolkit; both compile the same kernel file.
 
-    The CUDA helper is **optional and unverified on hardware**. It was written and its
-    arithmetic was checked on the host against plain modular exponentiation, three
-    million random cases with no disagreement and all 21 known Mersenne factors accepted,
-    but no machine available to the project has a CUDA toolkit installed, so the device
-    path itself has never been executed. A GPU driver is not enough; `nvcc` ships with
-    the toolkit. Numerisect detects this by asking the compiler to identify itself rather
-    than trusting its presence on `PATH`, because a wrapper script can exist while the
-    compiler it calls does not.
+**Verified on hardware.** On an RTX 5090 (compute capability 12.0, NVRTC 13.0) the device
+returns the published factorizations for every case tested, and agrees exactly with the
+compiled CPU helper on the same sieved candidate set. The suite skips these tests cleanly
+where there is no device.
 
-    Nothing depends on it. If no working `nvcc` is found, the build is skipped silently
-    and the C helper does the work.
+**What it is worth, measured honestly:**
+
+| | candidates tested per second |
+|---|---|
+| C helper, 24 cores | 7.4 million |
+| RTX 5090 through this path | 16.5 million |
+
+About **2.2x**, not the order of magnitude the hardware suggests. The kernel is not the
+limit; moving candidate lists from host to device is. A pipeline that generated
+candidates on the device would do much better, and this is not that. It is offered as a
+real, verified option rather than as the fast path, and the C helper remains the default.
+
+!!! note "A hit is a divisor, not a prime factor"
+
+    \(2^d \equiv 1 \pmod q\) makes \(q\) a divisor of \(2^d - 1\) and says nothing about
+    \(q\) being prime. Composite divisors genuinely occur: \(2047 = 23 \cdot 89\) divides
+    \(2^{11} - 1\) and the kernel reports it correctly. The pipeline sieves those out
+    beforehand and PARI/GP confirms primality afterwards.
 
 ### Finding nothing is inconclusive
 
