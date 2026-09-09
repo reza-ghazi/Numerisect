@@ -174,17 +174,31 @@ work now spreads across every chunk instead of landing on one thread, and writes
 inside a narrow window. Nothing but the prime table, once, and the handful of hits ever
 crosses the bus.
 
-### When the GPU is used, and when it is not
+### Past \(2^{64}\): two-limb Montgomery
 
-Montgomery REDC needs \(q < 2^{63}\). Numerisect uses the device **only when the whole
-requested range stays inside that bound**, and runs the C helper otherwise, because the C
-helper tests wide candidates with GMP rather than deferring them. Speed is never bought by
-leaving candidates untested.
+Single-limb Montgomery needs \(q < 2^{63}\), which at an exponent near \(10^9\) is reached
+around \(k = 4.6\) billion. The device used to stop there and hand the rest to the C
+helper, which tests wide candidates with GMP at roughly a hundredth the rate.
 
-The standalone GPU binary reports deferrals explicitly. Asked for \(k \le 2 \times 10^{11}\)
-at an order near \(10^9\), it tests 187 million candidates, defers 15.9 billion, and says
-`STATUS:deferred-wide`. That is not a search of \(2 \times 10^{11}\) and it does not claim
-to be.
+The same algorithm now runs on **two limbs**, covering \(q < 2^{127}\). At that exponent
+the bound moves to \(k\) near \(8 \times 10^{28}\), which is past anything the k ceiling
+allows, so in practice the device covers the whole range. Both kernels run over each
+segment and their results are merged.
+
+The arithmetic is CIOS Montgomery multiplication for a two-limb odd modulus. One detail
+is worth recording: \(R \bmod n\) is built by doubling 1 exactly 128 times, not by
+reducing \(2^{128}\) with repeated subtraction, which runs about \(2^{128}/n\) times and
+does not terminate in practice for a small \(n\).
+
+**Measured across the boundary**, where the C helper must use GMP for a third of the
+candidates:
+
+| \(k \le\) | C helper | CUDA build | |
+|---|---|---|---|
+| \(10^{10}\) | 55.2 s | 6.4 s | 8.7x |
+| \(2 \times 10^{10}\) | 121.3 s | 13.9 s | 8.7x |
+
+Both agree exactly on the factors found, and the device defers nothing.
 
 Both scanners are checked against each other in the test suite, and against the published
 factorizations.

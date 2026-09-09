@@ -5,6 +5,25 @@ binary packages are published.
 
 ## Unreleased
 
+- Extended the CUDA scanner to two-limb Montgomery arithmetic, so the device now tests
+  candidates up to 2^127 instead of stopping at 2^63. At a Mersenne exponent near 10^9
+  the old ceiling was reached around k = 4.6 billion, past which the range fell back to
+  GMP on the CPU at roughly a hundredth the rate per candidate. Measured across that
+  boundary the device is now about **nine times** the C helper: 13.9 seconds against
+  121.3 for k up to two times 10^10, with both agreeing exactly on the factors and the
+  device deferring nothing.
+- The arithmetic is CIOS Montgomery multiplication for a two-limb odd modulus, validated
+  before it reached the device: 400,000 randomised agreements against 64-bit modular
+  exponentiation, thirteen wide negatives and six wide positives above 2^64 checked
+  against PARI/GP. One detail cost an hour and is recorded in the source: R mod n must be
+  built by doubling 1 exactly 128 times, not by reducing 2^128 with repeated subtraction,
+  which runs about 2^128/n times and does not terminate for a small n.
+- The public Mersenne search now uses the device across the whole k ceiling rather than
+  only inside the single-limb range.
+- The standalone GPU binary no longer reports `deferred-wide` for these ranges, because
+  it no longer defers them. The honesty guarantee is unchanged: anything it cannot test
+  is still counted and reported rather than silently dropped.
+
 - Closed the GPU performance gap. The CUDA scanner now sieves and tests entirely on the
   device, so no candidate crosses the bus, and it measures about **twelve times** the C
   helper's rate: two seconds against twenty-three for four billion candidates at an order

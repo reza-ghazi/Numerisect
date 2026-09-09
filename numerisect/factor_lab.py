@@ -726,10 +726,14 @@ def tune_recommendation(parsed: dict[str, Any], current_threshold: int) -> dict[
 
 #: Small-prime bound used when the compiled scanner sieves the k progression.
 MFACTOR_SIEVE_BOUND = 1_000_000
-#: Montgomery REDC on the device needs q < 2**63. Above that only the CPU helper, which
-#: falls back to GMP, can test a candidate, so the GPU is used only when the whole
-#: requested range stays inside the bound. Nothing is ever left untested to gain speed.
-MONTGOMERY_LIMIT = 1 << 63
+#: Widest candidate the device can test.
+#:
+#: Single-limb Montgomery stops at 2**63, which at a Mersenne exponent near 10**9 is
+#: reached around k = 4.6 billion. The device now carries the same algorithm on two
+#: limbs, so it covers q < 2**127; at that exponent the bound is k near 8*10**28, past
+#: anything the k ceiling allows. Ranges beyond it still go to the C helper, which tests
+#: wide candidates with GMP. Nothing is left untested to gain speed.
+DEVICE_LIMIT = 1 << 127
 
 
 def _mersenne_metadata(exponent: int, timeout: int) -> dict[str, Any]:
@@ -758,17 +762,17 @@ def _mersenne_native_scan(
     """
 
     cpu_tool = mfactor_tool_path()
-    # The device sieves and tests without moving candidates across the bus, which
-    # measured about twelve times the C helper's rate. It can only be used where every
-    # candidate stays below the Montgomery bound; otherwise the C helper runs, since it
-    # handles wide candidates with GMP rather than deferring them.
+    # The device sieves and tests without moving candidates across the bus. Measured
+    # against the C helper it runs about twelve times faster inside the single-limb
+    # range and about nine times faster across the two-limb range, where the C helper
+    # must fall back to GMP.
     gpu_tool = mfactor_cuda_tool_path()
     hits: list[tuple[str, int, int]] = []
     gpu_used = False
     deadline = max(1, timeout)
     for order in orders:
         widest = 2 * k_limit * order + 1
-        use_gpu = gpu_tool is not None and widest < MONTGOMERY_LIMIT
+        use_gpu = gpu_tool is not None and widest < DEVICE_LIMIT
         tool = gpu_tool if use_gpu else cpu_tool
         gpu_used = gpu_used or use_gpu
         command = [

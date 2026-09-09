@@ -44,21 +44,21 @@ def test_the_nvcc_build_produces_a_working_binary():
 
 
 @needs_nvcc
-def test_the_nvcc_build_defers_wide_candidates_rather_than_skipping_them():
-    """Beyond 2^63 Montgomery cannot run, and an untested range must not read as empty."""
+def test_the_nvcc_build_tests_wide_candidates_rather_than_deferring_them():
+    """The two-limb kernel replaced deferral with an answer.
+
+    q = 18446744073709551697 is prime, exceeds 2**64, and sits at k = 24 of its order's
+    progression. This range used to come back deferred; it now comes back solved.
+    """
 
     tool = build_mfactor_cuda_tool()
     output = subprocess.run(
         [str(tool), "384307168202282327", "1", "60", "100000"],
         capture_output=True, text=True,
     ).stdout
-    assert "STATUS:deferred-wide" in output
-    deferred = int(
-        [line for line in output.splitlines() if line.startswith("DEFERRED:")][0][9:]
-    )
-    assert deferred >= 1
-    # It reports nothing found, which is not the same as reporting no factor exists.
-    assert "COUNT:0" in output
+    assert "FACTOR:18446744073709551697|24" in output
+    assert "DEFERRED:0" in output
+    assert "STATUS:complete" in output
 
 
 def test_detection_does_not_require_a_cuda_toolkit(monkeypatch):

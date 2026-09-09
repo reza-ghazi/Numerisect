@@ -50,6 +50,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -68,6 +69,18 @@ static std::vector<unsigned int> odd_primes(unsigned long bound) {
   for (unsigned long i = 3; i <= bound; i += 2)
     if (!composite[i]) primes.push_back((unsigned int)i);
   return primes;
+}
+
+/* Render a two-limb value in base 10 by repeated division by 10^19. */
+static std::string decimal128(numerisect_u64 lo, numerisect_u64 hi) {
+  if (hi == 0) return std::to_string(lo);
+  __uint128_t value = ((__uint128_t)hi << 64) | lo;
+  std::string out;
+  while (value) {
+    out.insert(out.begin(), (char)('0' + (int)(value % 10)));
+    value /= 10;
+  }
+  return out;
 }
 
 static bool ok(cudaError_t status, const char *what) {
@@ -108,15 +121,23 @@ int main(int argc, char **argv) {
 
   const std::vector<unsigned int> primes = odd_primes(sieve_bound);
   const numerisect_u64 montgomery_k = ((1ULL << 63) - 1) / (2 * order);
+  /* The two-limb kernel reaches q < 2^127, so k < (2^127 - 1) / 2d. Computed as a
+   * 128-bit quotient without forming 2^127: (2^127-1)/(2d) = 2^63/d * 2^63 ... use a
+   * conservative bound that cannot overflow, which is far past any practical k. */
+  const numerisect_u64 wide_k =
+      (order <= 2 ? UINT64_MAX : UINT64_MAX / 2);
 
   unsigned char *d_dead = nullptr;
   unsigned int *d_primes = nullptr, *d_residues = nullptr, *d_hit_count = nullptr;
-  numerisect_u64 *d_hits = nullptr;
+  numerisect_u64 *d_hits = nullptr, *d_wide_hits = nullptr;
+  unsigned int *d_wide_count = nullptr;
   unsigned long long *d_deferred = nullptr, *d_tested = nullptr;
   if (!ok(cudaMalloc(&d_dead, SEGMENT), "allocate the segment") ||
       !ok(cudaMalloc(&d_primes, primes.size() * sizeof(unsigned int)), "allocate primes") ||
       !ok(cudaMalloc(&d_residues, primes.size() * sizeof(unsigned int)), "allocate residues") ||
       !ok(cudaMalloc(&d_hits, MAX_HITS * 2 * sizeof(numerisect_u64)), "allocate hits") ||
+      !ok(cudaMalloc(&d_wide_hits, MAX_HITS * 3 * sizeof(numerisect_u64)), "allocate wide hits") ||
+      !ok(cudaMalloc(&d_wide_count, sizeof(unsigned int)), "allocate the wide counter") ||
       !ok(cudaMalloc(&d_hit_count, sizeof(unsigned int)), "allocate the hit counter") ||
       !ok(cudaMalloc(&d_deferred, sizeof(unsigned long long)), "allocate the deferred counter") ||
       !ok(cudaMalloc(&d_tested, sizeof(unsigned long long)), "allocate the tested counter"))
@@ -127,6 +148,7 @@ int main(int argc, char **argv) {
                      cudaMemcpyHostToDevice), "upload primes"))
     return 1;
   if (!ok(cudaMemset(d_hit_count, 0, sizeof(unsigned int)), "clear the hit counter") ||
+      !ok(cudaMemset(d_wide_count, 0, sizeof(unsigned int)), "clear the wide counter") ||
       !ok(cudaMemset(d_deferred, 0, sizeof(unsigned long long)), "clear deferred") ||
       !ok(cudaMemset(d_tested, 0, sizeof(unsigned long long)), "clear tested"))
     return 1;
@@ -154,6 +176,11 @@ int main(int argc, char **argv) {
     numerisect_scan_kernel<<<scan_blocks, BLOCK>>>(
         d_dead, base, length, order, montgomery_k, d_hits, d_hit_count, MAX_HITS,
         d_deferred, d_tested);
+    /* Everything past the single-limb bound goes to the two-limb kernel, so no part of
+     * the requested range is left untested. */
+    numerisect_scan_wide_kernel<<<scan_blocks, BLOCK>>>(
+        d_dead, base, length, order, montgomery_k, wide_k, d_wide_hits, d_wide_count,
+        MAX_HITS, d_tested, d_deferred);
     if (!ok(cudaDeviceSynchronize(), "run the segment")) return 1;
   }
 
@@ -163,19 +190,31 @@ int main(int argc, char **argv) {
   cudaMemcpy(&deferred, d_deferred, sizeof deferred, cudaMemcpyDeviceToHost);
   cudaMemcpy(&tested, d_tested, sizeof tested, cudaMemcpyDeviceToHost);
 
+  unsigned int wide_found = 0;
+  cudaMemcpy(&wide_found, d_wide_count, sizeof wide_found, cudaMemcpyDeviceToHost);
+
   const unsigned int take = std::min<unsigned int>(found, MAX_HITS);
   std::vector<numerisect_u64> host(2 * (take ? take : 1));
   if (take)
     cudaMemcpy(host.data(), d_hits, 2 * take * sizeof(numerisect_u64),
                cudaMemcpyDeviceToHost);
+  const unsigned int wide_take = std::min<unsigned int>(wide_found, MAX_HITS);
+  std::vector<numerisect_u64> wide_host(3 * (wide_take ? wide_take : 1));
+  if (wide_take)
+    cudaMemcpy(wide_host.data(), d_wide_hits, 3 * wide_take * sizeof(numerisect_u64),
+               cudaMemcpyDeviceToHost);
 
-  std::vector<std::pair<numerisect_u64, numerisect_u64>> hits;
+  /* (k, decimal q). Wide hits need base-10 conversion from two limbs. */
+  std::vector<std::pair<numerisect_u64, std::string>> hits;
   for (unsigned int i = 0; i < take; i++)
-    hits.emplace_back(host[2 * i + 1], host[2 * i]);   /* (k, q), sorted by k */
+    hits.emplace_back(host[2 * i + 1], decimal128(host[2 * i], 0));
+  for (unsigned int i = 0; i < wide_take; i++)
+    hits.emplace_back(wide_host[3 * i + 2],
+                      decimal128(wide_host[3 * i], wide_host[3 * i + 1]));
   std::sort(hits.begin(), hits.end());
   for (const auto &hit : hits)
-    printf("FACTOR:%llu|%llu\n", (unsigned long long)hit.second,
-           (unsigned long long)hit.first);
+    printf("FACTOR:%s|%llu\n", hit.second.c_str(), (unsigned long long)hit.first);
+  found += wide_found;
 
   printf("CANDIDATES:%llu\n", tested);
   printf("DEFERRED:%llu\n", deferred);
@@ -188,6 +227,8 @@ int main(int argc, char **argv) {
   cudaFree(d_primes);
   cudaFree(d_residues);
   cudaFree(d_hits);
+  cudaFree(d_wide_hits);
+  cudaFree(d_wide_count);
   cudaFree(d_hit_count);
   cudaFree(d_deferred);
   cudaFree(d_tested);

@@ -439,28 +439,37 @@ def test_the_response_names_the_engine_that_actually_ran(local_client):
     assert automatic["engine"] == "PARI/GP"
 
 
-def test_the_gpu_is_used_only_inside_the_montgomery_bound():
-    """Speed must never come at the cost of leaving candidates untested.
+def test_candidates_above_2_64_are_tested_on_the_device_not_deferred():
+    """The two-limb kernel exists so that no part of a range is skipped for speed.
 
-    Montgomery REDC on the device needs q < 2**63. Where the requested range would
-    exceed that, the C helper must run instead, because it tests wide candidates with
-    GMP rather than deferring them.
+    q = 18446744073709551697 exceeds 2**64 and sits at k = 24 of its order's
+    progression. Single-limb Montgomery cannot represent it; the device must still
+    find it.
     """
 
-    from numerisect.factor_lab import MONTGOMERY_LIMIT
+    from numerisect.factor_lab import DEVICE_LIMIT
+
+    order = 384307168202282327
+    assert 2 * 60 * order + 1 < DEVICE_LIMIT
+    hits, _ = _mersenne_native_scan([order], 60, timeout=300, threads=None)
+    assert [q for q, _, _ in hits] == ["18446744073709551697"]
+
+
+def test_a_range_crossing_the_single_limb_boundary_is_fully_searched():
+    """Both kernels run over the same segment, and their results are merged."""
+
     from numerisect.native_tools import mfactor_cuda_tool_path
 
-    inside = mersenne_factors(999_999_001, k_limit=1_000_000, timeout=300)
-    assert 2 * 1_000_000 * 999_999_001 + 1 < MONTGOMERY_LIMIT
-    if mfactor_cuda_tool_path() is not None:
-        assert "cuda" in inside["engine"]
+    if mfactor_cuda_tool_path() is None:
+        pytest.skip("no CUDA accelerator built")
 
-    # This order puts every candidate beyond the bound, so the C helper must take it.
-    order = 384307168202282327
-    assert 2 * 60 * order + 1 > MONTGOMERY_LIMIT
-    hits, gpu_used = _mersenne_native_scan([order], 60, timeout=300, threads=None)
-    assert gpu_used is False
-    assert [q for q, _, _ in hits] == ["18446744073709551697"]
+    order = 999_999_001
+    single_limb_bound = (2**63 - 1) // (2 * order)
+    k_limit = single_limb_bound + 1_000_000
+    hits, gpu_used = _mersenne_native_scan([order], k_limit, timeout=900, threads=None)
+    assert gpu_used is True
+    # Both known factors sit below the boundary and must survive the merge.
+    assert sorted(int(q) for q, _, _ in hits) == [357999642359, 216674111542346329]
 
 
 def test_the_two_scanners_agree():
