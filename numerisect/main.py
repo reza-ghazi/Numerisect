@@ -1461,7 +1461,15 @@ def _save_manipulation_report(kind: str, heading: str, result: dict) -> dict:
     lines.extend(["", " | ".join(result["columns"])])
     lines.extend(" | ".join(row) for row in result["rows"])
     path = save_prime_output(kind, heading, lines)
-    return {**result, "output_file": path.name, "engine": "PARI/GP"}
+    # Most of these reports come from PARI/GP, but not all: the Mersenne search
+    # hands a finite range to the compiled scanner. Overwriting the engine label
+    # unconditionally told the caller PARI/GP had done work it had not, so a
+    # result that names its own engine keeps that name.
+    return {
+        **result,
+        "output_file": path.name,
+        "engine": result.get("engine") or "PARI/GP",
+    }
 
 
 @app.post("/api/primes/batch-check")
@@ -3391,7 +3399,15 @@ def _save_distribution_report(kind: str, heading: str, result: dict) -> dict:
         lines.extend(["", section["title"], " | ".join(section["columns"])])
         lines.extend(" | ".join(row) for row in section["rows"])
     path = save_prime_output(kind, heading, lines)
-    return {**result, "output_file": path.name, "engine": "PARI/GP"}
+    # Most of these reports come from PARI/GP, but not all: the Mersenne search
+    # hands a finite range to the compiled scanner. Overwriting the engine label
+    # unconditionally told the caller PARI/GP had done work it had not, so a
+    # result that names its own engine keeps that name.
+    return {
+        **result,
+        "output_file": path.name,
+        "engine": result.get("engine") or "PARI/GP",
+    }
 
 
 @app.post("/api/distribution/approximation-error")

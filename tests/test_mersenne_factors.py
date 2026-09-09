@@ -406,3 +406,23 @@ def test_cuda_is_optional_and_its_absence_is_not_an_error():
     else:
         built = build_mfactor_cuda_tool()
         assert built is not None and built.is_file()
+
+
+def test_the_response_names_the_engine_that_actually_ran(local_client):
+    """A report must not credit PARI/GP with work the compiled scanner did.
+
+    The shared report saver overwrote the engine label unconditionally, so a scan run
+    entirely by numerisect-mfactor came back labelled PARI/GP.
+    """
+
+    scanned = local_client.post(
+        "/api/factor-lab/mersenne-factors",
+        json={"exponent": 43, "k_limit": 30000, "timeout_seconds": 120},
+    ).json()
+    assert scanned["engine"] == "numerisect-mfactor with PARI/GP confirmation"
+
+    automatic = local_client.post(
+        "/api/factor-lab/mersenne-factors",
+        json={"exponent": 2000003, "timeout_seconds": 120},
+    ).json()
+    assert automatic["engine"] == "PARI/GP"

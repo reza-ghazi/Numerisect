@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Stopped reports crediting PARI/GP with work it did not do. Both shared report savers
+  overwrote the engine label unconditionally, so a Mersenne scan run entirely by the
+  compiled helper came back to the caller labelled `PARI/GP`. A result that names its own
+  engine now keeps that name, and a test pins both paths.
+
 - Stopped continuous integration depending on apt repositories the project does not use.
   The hosted runner image ships Google Chrome and Microsoft sources, and on 2026-09-09
   the Chrome repository served an index whose hash did not match its Release file, so
