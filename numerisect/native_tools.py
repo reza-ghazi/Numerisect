@@ -501,3 +501,19 @@ def build_mfactor_cuda_tool() -> Path | None:
         temporary.chmod(0o755)
         temporary.replace(destination)
         return destination
+
+
+def mfactor_cuda_tool_path() -> Path | None:
+    """Return the CUDA accelerator, building it on demand, or ``None`` if unavailable.
+
+    Absence is never an error: the C helper is complete on its own and every caller
+    falls back to it.
+    """
+
+    discovered = shutil.which(MFACTOR_CUDA_TOOL_NAME)
+    if discovered:
+        return Path(discovered)
+    try:
+        return build_mfactor_cuda_tool()
+    except RuntimeError:
+        return None

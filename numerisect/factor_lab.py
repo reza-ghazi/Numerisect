@@ -37,7 +37,11 @@ from typing import Any
 
 from .config import PACKAGE_DIR
 from .engines import parse_ecm_output
-from .native_tools import mfactor_tool_path, squfof_tool_path
+from .native_tools import (
+    mfactor_cuda_tool_path,
+    mfactor_tool_path,
+    squfof_tool_path,
+)
 from .primes import PrimeEngineError, _run_gp
 
 PROGRAM = PACKAGE_DIR / "factor_lab.gp"
@@ -722,6 +726,10 @@ def tune_recommendation(parsed: dict[str, Any], current_threshold: int) -> dict[
 
 #: Small-prime bound used when the compiled scanner sieves the k progression.
 MFACTOR_SIEVE_BOUND = 1_000_000
+#: Montgomery REDC on the device needs q < 2**63. Above that only the CPU helper, which
+#: falls back to GMP, can test a candidate, so the GPU is used only when the whole
+#: requested range stays inside the bound. Nothing is ever left untested to gain speed.
+MONTGOMERY_LIMIT = 1 << 63
 
 
 def _mersenne_metadata(exponent: int, timeout: int) -> dict[str, Any]:
@@ -742,21 +750,31 @@ def _mersenne_metadata(exponent: int, timeout: int) -> dict[str, Any]:
 
 def _mersenne_native_scan(
     orders: list[int], k_limit: int, timeout: int, threads: int | None
-) -> list[tuple[str, int, int]]:
+) -> tuple[list[tuple[str, int, int]], bool]:
     """Scan every order's progression with the compiled helper.
 
     The helper is a scanner, not an authority. It reports q with 2^d = 1 (mod q), which
     makes q a divisor of 2^d - 1 and nothing more; PARI/GP confirms primality afterwards.
     """
 
-    tool = mfactor_tool_path()
+    cpu_tool = mfactor_tool_path()
+    # The device sieves and tests without moving candidates across the bus, which
+    # measured about twelve times the C helper's rate. It can only be used where every
+    # candidate stays below the Montgomery bound; otherwise the C helper runs, since it
+    # handles wide candidates with GMP rather than deferring them.
+    gpu_tool = mfactor_cuda_tool_path()
     hits: list[tuple[str, int, int]] = []
+    gpu_used = False
     deadline = max(1, timeout)
     for order in orders:
+        widest = 2 * k_limit * order + 1
+        use_gpu = gpu_tool is not None and widest < MONTGOMERY_LIMIT
+        tool = gpu_tool if use_gpu else cpu_tool
+        gpu_used = gpu_used or use_gpu
         command = [
             str(tool), str(order), "1", str(k_limit), str(MFACTOR_SIEVE_BOUND),
         ]
-        if threads:
+        if threads and not use_gpu:
             command.append(str(threads))
         result = subprocess.run(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
@@ -772,12 +790,20 @@ def _mersenne_native_scan(
             raise PrimeEngineError(
                 "The Mersenne scanner did not return a completion marker"
             )
+        status = next(
+            (line[len("STATUS:"):] for line in lines if line.startswith("STATUS:")), ""
+        )
+        if status not in {"complete", ""}:
+            raise PrimeEngineError(
+                f"The Mersenne scanner did not finish the range for order {order}: "
+                f"{status}"
+            )
         for row in _tagged(lines, "FACTOR"):
             parts = row.split("|")
             if len(parts) != 2 or not all(part.isdigit() for part in parts):
                 raise PrimeEngineError("The Mersenne scanner returned an invalid record")
             hits.append((parts[0], int(parts[1]), order))
-    return hits
+    return hits, gpu_used
 
 
 def _mersenne_confirm(
@@ -814,7 +840,7 @@ def _mersenne_factors_native(
     """
 
     meta = _mersenne_metadata(exponent, timeout)
-    hits = _mersenne_native_scan(meta["orders"], k_limit, timeout, threads)
+    hits, gpu_used = _mersenne_native_scan(meta["orders"], k_limit, timeout, threads)
     confirmed = _mersenne_confirm(hits, timeout)
 
     # The same q can surface under several order divisors; keep the smallest order.
@@ -852,9 +878,17 @@ def _mersenne_factors_native(
             "Order divisors completed": f"{len(meta['orders'])} of {len(meta['orders'])}",
             "Stop reason": "ceiling",
             "Selected k range complete": "yes",
-            "Scanner": "numerisect-mfactor (C, GMP, OpenMP)",
+            "Scanner": (
+                "numerisect-mfactor-cuda (CUDA, device-side sieve)"
+                if gpu_used
+                else "numerisect-mfactor (C, GMP, OpenMP)"
+            ),
         },
-        "engine": "numerisect-mfactor with PARI/GP confirmation",
+        "engine": (
+            "numerisect-mfactor-cuda with PARI/GP confirmation"
+            if gpu_used
+            else "numerisect-mfactor with PARI/GP confirmation"
+        ),
         "note": (
             (
                 "For prime p, every prime factor q of M_p satisfies q = 2kp + 1. "

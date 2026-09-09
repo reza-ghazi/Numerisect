@@ -5,6 +5,26 @@ binary packages are published.
 
 ## Unreleased
 
+- Closed the GPU performance gap. The CUDA scanner now sieves and tests entirely on the
+  device, so no candidate crosses the bus, and it measures about **twelve times** the C
+  helper's rate: two seconds against twenty-three for four billion candidates at an order
+  near 10^9. The public Mersenne search uses it automatically.
+- Two corrections were needed to get there, both caught by measurement. Sieving on the
+  host and copying survivors was slower than the C helper, because thirty 64-bit
+  Montgomery squarings per candidate does not pay for a PCIe transfer. Moving the sieve to
+  the device with one thread per prime was slower still: in a 67-million-entry segment the
+  thread holding r = 3 performs 22 million serialized writes while a thread near the sieve
+  bound performs seventy. Splitting the work by (prime, chunk) instead of by prime fixed
+  it, spreading a small prime's work across every chunk.
+- The device is used only when every candidate in the requested range stays below 2^63,
+  the Montgomery bound. Wider ranges run on the C helper, which tests them with GMP rather
+  than deferring them, so speed is never bought by leaving candidates untested. The
+  standalone GPU binary reports deferrals explicitly and never counts them as tested.
+- Reports name the scanner that actually ran, CPU or device, and a test asserts the engine
+  label and the scanner metric agree.
+- Both scanners are now checked against each other as well as against the published
+  factorizations.
+
 - Built and verified the offline CUDA path now that a toolkit is installed. `nvcc` 13.4
   compiles the helper, it recovers every published Mersenne factorization on an RTX 5090,
   and it defers candidates at or above 2^63 rather than skipping them, so an untested

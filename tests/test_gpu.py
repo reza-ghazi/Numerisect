@@ -122,7 +122,8 @@ def test_the_device_agrees_with_the_compiled_cpu_helper():
     from numerisect.factor_lab import _mersenne_native_scan
 
     order, k_limit = 2_000_003, 3_000_000
-    cpu = sorted(int(q) for q, _, _ in _mersenne_native_scan([order], k_limit, 600, None))
+    hits, _ = _mersenne_native_scan([order], k_limit, 600, None)
+    cpu = sorted(int(q) for q, _, _ in hits)
     device = gpu.test_candidates(order, _sieved(order, k_limit), DEVICE)
     assert device == cpu
 

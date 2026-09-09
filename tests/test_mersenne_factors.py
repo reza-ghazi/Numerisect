@@ -326,7 +326,7 @@ def test_the_scanner_rejects_an_even_or_tiny_order():
 def test_the_scanner_recovers_every_known_factor(order, k_limit, expected):
     """The same answers PARI/GP gives, from the compiled path."""
 
-    hits = _mersenne_native_scan([order], k_limit, timeout=600, threads=None)
+    hits, _ = _mersenne_native_scan([order], k_limit, timeout=600, threads=None)
     assert sorted(int(q) for q, _, _ in hits) == sorted(int(q) for q in expected)
 
 
@@ -360,9 +360,17 @@ def test_scanned_candidates_are_confirmed_by_the_engine_not_trusted():
     assert [q for q, _, _ in kept] == ["127"]
 
 
-def test_the_public_search_uses_the_scanner_for_a_finite_range():
+SCANNERS = {
+    "numerisect-mfactor with PARI/GP confirmation",
+    "numerisect-mfactor-cuda with PARI/GP confirmation",
+}
+
+
+def test_the_public_search_uses_a_compiled_scanner_for_a_finite_range():
+    """Either scanner is acceptable; PARI/GP alone is not, for a finite range."""
+
     result = mersenne_factors(43, k_limit=30_000, timeout=120)
-    assert result["engine"] == "numerisect-mfactor with PARI/GP confirmation"
+    assert result["engine"] in SCANNERS
     assert result["factors"] == ["431", "9719", "2099863"]
     assert result["complete"] is True
 
@@ -419,10 +427,60 @@ def test_the_response_names_the_engine_that_actually_ran(local_client):
         "/api/factor-lab/mersenne-factors",
         json={"exponent": 43, "k_limit": 30000, "timeout_seconds": 120},
     ).json()
-    assert scanned["engine"] == "numerisect-mfactor with PARI/GP confirmation"
+    assert scanned["engine"] in SCANNERS
+    # The label must name the scanner that actually ran, CPU or device.
+    assert scanned["metrics"]["Scanner"].startswith("numerisect-mfactor")
+    assert ("cuda" in scanned["engine"]) == ("cuda" in scanned["metrics"]["Scanner"])
 
     automatic = local_client.post(
         "/api/factor-lab/mersenne-factors",
         json={"exponent": 2000003, "timeout_seconds": 120},
     ).json()
     assert automatic["engine"] == "PARI/GP"
+
+
+def test_the_gpu_is_used_only_inside_the_montgomery_bound():
+    """Speed must never come at the cost of leaving candidates untested.
+
+    Montgomery REDC on the device needs q < 2**63. Where the requested range would
+    exceed that, the C helper must run instead, because it tests wide candidates with
+    GMP rather than deferring them.
+    """
+
+    from numerisect.factor_lab import MONTGOMERY_LIMIT
+    from numerisect.native_tools import mfactor_cuda_tool_path
+
+    inside = mersenne_factors(999_999_001, k_limit=1_000_000, timeout=300)
+    assert 2 * 1_000_000 * 999_999_001 + 1 < MONTGOMERY_LIMIT
+    if mfactor_cuda_tool_path() is not None:
+        assert "cuda" in inside["engine"]
+
+    # This order puts every candidate beyond the bound, so the C helper must take it.
+    order = 384307168202282327
+    assert 2 * 60 * order + 1 > MONTGOMERY_LIMIT
+    hits, gpu_used = _mersenne_native_scan([order], 60, timeout=300, threads=None)
+    assert gpu_used is False
+    assert [q for q, _, _ in hits] == ["18446744073709551697"]
+
+
+def test_the_two_scanners_agree():
+    """Two independent implementations of the same search must not disagree."""
+
+    from numerisect.native_tools import mfactor_cuda_tool_path
+
+    if mfactor_cuda_tool_path() is None:
+        pytest.skip("no CUDA accelerator built")
+
+    import subprocess as sp
+
+    from numerisect.native_tools import mfactor_tool_path
+
+    order, k_limit = 2_000_003, 3_000_000
+
+    def factors(tool, extra):
+        out = sp.run([str(tool), str(order), "1", str(k_limit), "1000000", *extra],
+                     capture_output=True, text=True).stdout
+        return sorted(int(line.split(":", 1)[1].split("|")[0])
+                      for line in out.splitlines() if line.startswith("FACTOR:"))
+
+    assert factors(mfactor_cuda_tool_path(), []) == factors(mfactor_tool_path(), ["24"])

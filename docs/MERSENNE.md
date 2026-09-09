@@ -153,30 +153,41 @@ returns the published factorizations for every case tested, and agrees exactly w
 compiled CPU helper on the same sieved candidate set. The suite skips these tests cleanly
 where there is no device.
 
-**What it is worth, measured honestly: on this hardware, nothing.**
+**What it is worth, measured:** about **twelve times** the C helper, once the sieve moved
+onto the device.
 
-With a CUDA toolkit installed the standalone GPU build was benchmarked against the C
-helper on the same range, an order of \(999{,}999{,}001\) with \(k \le 2 \times 10^9\):
-
-| | wall clock |
+| | wall clock, \(k \le 4 \times 10^9\) |
 |---|---|
-| C helper, 24 cores | 11.3 s |
-| GPU build, RTX 5090 | 13.5 s |
+| C helper, 24 cores | 23.3 s |
+| CUDA build, RTX 5090 | 2.0 s |
 
-The GPU build is **slower**, by about 20%. This is not a defect in the kernel, which tests
-candidates faster than the CPU does. The work per candidate is roughly thirty 64-bit
-Montgomery squarings, which is small, and the pipeline must first sieve the range, gather
-the survivors, and copy them to the device. The C helper tests each survivor in place, in
-the same parallel loop that found it, and moves nothing.
+Getting there took two corrections. The first GPU build sieved on the host, gathered the
+survivors and copied them across, and measured **slower** than the C helper: the work per
+candidate is only about thirty 64-bit Montgomery squarings, which does not pay for moving
+that candidate over PCIe. Moving the sieve onto the device made it slower still, because
+one thread per prime is catastrophically unbalanced. In a 67-million-entry segment the
+thread holding \(r = 3\) performs 22 million serialized writes while a thread near the
+sieve bound performs about seventy.
 
-Parallelising the GPU build's host-side sieve took it from about half the CPU's speed to
-about four fifths, which shows where the time actually goes. Closing the remaining gap
-means sieving on the device so candidates are never transferred at all, and that is a
-different program from this one.
+Splitting the work by **(prime, chunk)** rather than by prime fixed it. A small prime's
+work now spreads across every chunk instead of landing on one thread, and writes stay
+inside a narrow window. Nothing but the prime table, once, and the handful of hits ever
+crosses the bus.
 
-**So the C helper remains the default, and the GPU is not the fast path.** The kernel is
-correct, verified, and available for anyone who wants it or who has a weaker CPU relative
-to their GPU. It is not an improvement on 24 cores for this particular workload.
+### When the GPU is used, and when it is not
+
+Montgomery REDC needs \(q < 2^{63}\). Numerisect uses the device **only when the whole
+requested range stays inside that bound**, and runs the C helper otherwise, because the C
+helper tests wide candidates with GMP rather than deferring them. Speed is never bought by
+leaving candidates untested.
+
+The standalone GPU binary reports deferrals explicitly. Asked for \(k \le 2 \times 10^{11}\)
+at an order near \(10^9\), it tests 187 million candidates, defers 15.9 billion, and says
+`STATUS:deferred-wide`. That is not a search of \(2 \times 10^{11}\) and it does not claim
+to be.
+
+Both scanners are checked against each other in the test suite, and against the published
+factorizations.
 
 !!! note "A hit is a divisor, not a prime factor"
 
