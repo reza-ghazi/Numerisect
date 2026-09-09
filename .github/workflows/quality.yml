@@ -33,6 +33,13 @@ jobs:
           cache: pip
       - name: Install lightweight native test prerequisites
         run: |
+          # The hosted runner image ships third-party apt sources that this project
+          # does not use. On 2026-09-09 Google's Chrome repository served an index whose
+          # hash did not match its Release file, so apt-get update exited non-zero and
+          # took the whole build with it. Every package below comes from the Ubuntu
+          # archives, so drop those sources rather than depend on their availability.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+                     /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get update
           sudo apt-get install --yes pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc primesieve gmp-ecm autoconf automake libtool shellcheck
       - name: Install project test dependencies
@@ -56,6 +63,13 @@ jobs:
           cache: pip
       - name: Install validation tools
         run: |
+          # The hosted runner image ships third-party apt sources that this project
+          # does not use. On 2026-09-09 Google's Chrome repository served an index whose
+          # hash did not match its Release file, so apt-get update exited non-zero and
+          # took the whole build with it. Every package below comes from the Ubuntu
+          # archives, so drop those sources rather than depend on their availability.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+                     /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get update
           sudo apt-get install --yes shellcheck
           python -m pip install '.[test,dev]'

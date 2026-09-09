@@ -5,6 +5,13 @@ binary packages are published.
 
 ## Unreleased
 
+- Stopped continuous integration depending on apt repositories the project does not use.
+  The hosted runner image ships Google Chrome and Microsoft sources, and on 2026-09-09
+  the Chrome repository served an index whose hash did not match its Release file, so
+  `apt-get update` exited non-zero and failed the Quality workflow on every Python
+  version. Every package the build installs comes from the Ubuntu archives, so those
+  sources are now removed before the update rather than relied on.
+
 - Added `numerisect_mfactor.c`, a compiled Mersenne trial-factoring scanner, and made it
   the engine for any finite k range. PARI/GP searched the same progression correctly but
   with generic arbitrary-precision arithmetic on one core, measured here at about 1.1

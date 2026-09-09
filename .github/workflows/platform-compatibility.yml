@@ -50,6 +50,13 @@ jobs:
       - name: Install Linux native prerequisites
         if: runner.os == 'Linux'
         run: |
+          # The hosted runner image ships third-party apt sources that this project
+          # does not use. On 2026-09-09 Google's Chrome repository served an index whose
+          # hash did not match its Release file, so apt-get update exited non-zero and
+          # took the whole build with it. Every package below comes from the Ubuntu
+          # archives, so drop those sources rather than depend on their availability.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+                     /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get update
           sudo apt-get install --yes ${{ matrix.packages }}
       - name: Install macOS native prerequisites
