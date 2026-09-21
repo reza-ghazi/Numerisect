@@ -16,8 +16,9 @@ while [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) identif
 full version family. See [Citing Numerisect](citation.md) for when to use each one.
 
 Version 0.8.0 is preserved at
-[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181); the concept DOI
-now resolves to it.
+[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181), and the 0.8.1 patch
+release at [DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791), to which the
+concept DOI now resolves.
 
 No official binary packages are published. Install from source, or use the versioned
 user-local installer, which keeps each release in its own directory with a stable

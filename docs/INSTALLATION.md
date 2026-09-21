@@ -5,8 +5,8 @@ official RPM, DEB, AppImage, macOS package, Windows executable, or other binary
 installer is published. The repository includes `install.sh` as a convenience
 for installing a checked-out source revision into a user-owned directory.
 
-The immutable `v0.8.0` source release is preserved at
-[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181). The DOI archive
+The immutable `v0.8.1` source release is preserved at
+[DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791). The DOI archive
 is source code, not a binary package. The concept DOI
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) represents Numerisect
 across all released versions.
@@ -64,7 +64,7 @@ python3 -m venv .venv
 For the exact DOI-bearing release rather than the moving `main` branch, clone its tag:
 
 ```bash
-git clone --branch v0.8.0 --depth 1 https://github.com/reza-ghazi/Numerisect.git
+git clone --branch v0.8.1 --depth 1 https://github.com/reza-ghazi/Numerisect.git
 ```
 
 The browser opens `http://127.0.0.1:8765/`. The service binds to loopback only.
