@@ -60,7 +60,7 @@ def test_primesieve_and_pari_tuple_searches_agree(monkeypatch):
     assert quadruplets[-1] == [1871, 1873, 1877, 1879]
     assert truncated is False
 
-    import numerisect.primes as primes_module
+    from numerisect import primes as primes_module
 
     real_which = primes_module.shutil.which
     monkeypatch.setattr(

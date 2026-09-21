@@ -215,8 +215,6 @@ def test_system_diagnostics_are_a_first_class_local_workspace():
 def test_every_documentation_page_is_reachable_from_the_site_navigation():
     """A page in docs/ that is not in mkdocs.yml would be published but unlinked."""
 
-    import re
-
     config = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
     nav = config.split("nav:", 1)[1]
     listed = set(re.findall(r"([A-Za-z0-9_./-]+\.md)", nav))

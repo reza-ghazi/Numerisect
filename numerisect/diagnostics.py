@@ -20,6 +20,7 @@ def _memory_total() -> str:
                 kibibytes = int(line.split()[1])
                 return f"{kibibytes / 1024**2:.2f} GiB"
     except (OSError, ValueError, IndexError):
+        # No /proc/meminfo on this platform, or an unexpected format: report it as unknown.
         pass
     return "not reported by this platform"
 

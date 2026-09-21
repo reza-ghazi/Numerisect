@@ -323,6 +323,7 @@ class JobManager:
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
+                    # Exited between the check and the signal, which is what was wanted.
                     pass
                 return
             time.sleep(0.25)
@@ -347,6 +348,7 @@ class JobManager:
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
+                    # Exited between the check and the signal, which is what was wanted.
                     pass
                 return
 
@@ -1092,6 +1094,7 @@ class JobManager:
             except subprocess.TimeoutExpired:
                 os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
+                # Exited on its own before the escalation; cancellation succeeded.
                 pass
         return self.database.get_job(job_id)  # type: ignore[return-value]
 
@@ -1125,6 +1128,7 @@ class JobManager:
                 os.killpg(process.pid, signal.SIGCONT)
                 os.killpg(process.pid, signal.SIGINT)
             except ProcessLookupError:
+                # Already exited while shutting down, which is the outcome wanted.
                 pass
         self.executor.shutdown(wait=False, cancel_futures=True)
 
@@ -1197,6 +1201,7 @@ class JobManager:
             try:
                 os.killpg(process.pid, signal.SIGCONT)
             except ProcessLookupError:
+                # The process exited before SIGCONT reached it; nothing to resume.
                 pass
 
     def pause(self, job_id: str) -> dict[str, Any]:

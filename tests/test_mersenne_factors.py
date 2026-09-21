@@ -10,8 +10,7 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-import numerisect.factor_lab as factor_lab
-from numerisect import outputs
+from numerisect import factor_lab, outputs
 from numerisect.factor_lab import (
     _mersenne_confirm,
     _mersenne_native_scan,
