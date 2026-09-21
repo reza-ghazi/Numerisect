@@ -6,6 +6,22 @@ Numerisect is an experimental source-only pre-release. Until a stable release
 exists, security fixes are made on the current `main` branch only. Older
 commits and locally modified engine pins are not supported.
 
+## Automated checks
+
+Every push to `main` and every pull request is checked by:
+
+- **CodeQL** static analysis of the code this project writes: the Python orchestration
+  layer, the browser interface, and the compiled C helpers, using the
+  `security-and-quality` query suite. It also runs weekly, so newly published queries
+  are applied to unchanged code.
+- **Gitleaks**, scanning the full Git history for committed secrets.
+- **GitHub secret scanning with push protection**, which blocks a push containing a
+  recognised credential.
+- **Dependabot**, for Python dependency ranges and pinned GitHub Actions.
+
+The native engines Numerisect builds, such as PARI/GP, YAFU and CADO-NFS, are separate
+upstream projects pinned to reviewed commits. They are not analysed by these checks.
+
 ## Reporting a vulnerability
 
 Do not open a public issue for a suspected vulnerability.

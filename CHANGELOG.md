@@ -5,6 +5,15 @@ binary packages are published.
 
 ## Unreleased
 
+- Added CodeQL code scanning. GitHub had never run an analysis of this repository. The
+  new workflow covers everything the project writes: the Python orchestration layer, the
+  browser interface, and the compiled C helpers, which parse command-line input and
+  allocate from caller-supplied sizes and are the most security-relevant code here. The
+  helpers are compiled through the project's own build functions from an editable
+  install, so the analysed compiler invocations carry the real flags and map to files in
+  the checkout. It runs on every push and pull request and weekly, with actions pinned by
+  commit like the rest of CI. The security policy now lists the automated checks.
+
 - Redesigned how a tool is found. 133 operations in a scrollable sidebar is more than
   anyone can survey, and the labels were the only thing search could match, so a tool was
   reachable only by guessing the words this project happened to choose. This was not

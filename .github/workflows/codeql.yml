@@ -1,0 +1,95 @@
+name: CodeQL
+
+# Static security analysis of everything Numerisect itself authors: the Python
+# orchestration layer, the browser interface, and the compiled C helpers. The native
+# engines Numerisect builds are third-party projects and are not analysed here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so newly published queries run against unchanged code too.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          # The C helpers parse command-line input with GMP and allocate from
+          # caller-supplied sizes, which makes them the most security-relevant code the
+          # project writes. They are compiled for real so the analysis sees them.
+          - language: c-cpp
+            build-mode: manual
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+
+      - name: Set up Python
+        if: matrix.language == 'c-cpp'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install native build prerequisites
+        if: matrix.language == 'c-cpp'
+        run: |
+          # The runner image ships apt sources this build never uses; a broken vendor
+          # index once failed every Quality run. Drop them before updating.
+          sudo grep -rlE 'dl\.google\.com|packages\.microsoft\.com' \
+            /etc/apt/sources.list.d/ 2>/dev/null | sudo xargs -r rm -f
+          sudo apt-get update
+          sudo apt-get install --yes gcc pkg-config libgmp-dev libmpfr-dev libflint-dev
+
+      - name: Build the C helpers
+        if: matrix.language == 'c-cpp'
+        run: |
+          # Build through the project's own functions so the analysed compiler
+          # invocations carry exactly the flags a user's build does. The install is
+          # editable so the compiled sources are the checkout's own files; a regular
+          # install would hand CodeQL copies in site-packages that map back to nothing
+          # in the repository. The CUDA helper is skipped when there is no nvcc.
+          python -m pip install --quiet -e .
+          python - <<'PY'
+          from numerisect import native_tools as tools
+          for build in (
+              tools.build_squfof_tool,
+              tools.build_bigsieve_tool,
+              tools.build_mfactor_tool,
+              tools.build_zeta_tool,
+          ):
+              print(build.__name__, "->", build())
+          PY
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          category: /language:${{ matrix.language }}
