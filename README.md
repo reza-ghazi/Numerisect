@@ -4,7 +4,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22679026.svg)](https://doi.org/10.5281/zenodo.22679026)
 
-Numerisect 0.7.0 is a local web workbench for integer factorization, primality
+Numerisect 0.8.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
 

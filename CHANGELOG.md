@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.8.0 — 2026-09-21
+
 - Fixed four defects that the first CodeQL analysis found, each confirmed by
   reproducing it before changing anything and each now pinned by a test that fails on
   the old code:
