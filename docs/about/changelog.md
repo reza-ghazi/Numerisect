@@ -15,6 +15,10 @@ snapshot has [DOI 10.5281/zenodo.22679027](https://doi.org/10.5281/zenodo.226790
 while [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) identifies the
 full version family. See [Citing Numerisect](citation.md) for when to use each one.
 
+Version 0.8.0 is preserved at
+[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181); the concept DOI
+now resolves to it.
+
 No official binary packages are published. Install from source, or use the versioned
 user-local installer, which keeps each release in its own directory with a stable
 launcher so state survives upgrades.

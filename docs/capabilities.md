@@ -10,9 +10,8 @@ an index of the released 0.8.0 interface, not a list of future intentions. The
 work.
 
 This capability inventory corresponds to the `v0.8.0` source release. Its archived
-snapshot is reachable through the concept
-[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026), which always
-resolves to the latest released version.
+snapshot is preserved at
+[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181).
 
 The current application exposes five top-level workspaces, 133 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
