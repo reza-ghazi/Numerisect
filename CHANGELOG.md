@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.8.1 — 2026-09-21
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.22882181` for the `v0.8.0` source
   release. `CITATION.cff`, the README, the installation guides, the citation page, the FAQ
   and the publishing guide now point at the 0.8.0 snapshot; the 0.7.0 DOI stays listed

@@ -1,17 +1,18 @@
 ---
-description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.8.0.
+description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.8.1.
 ---
 
 # Capability index
 
 This page answers a practical question: **which part of Numerisect should I use?** It is
-an index of the released 0.8.0 interface, not a list of future intentions. The
+an index of the released 0.8.1 interface, not a list of future intentions. The
 [roadmap ledger](ROADMAP_STATUS.md) separately records partial, deferred and declined
 work.
 
-This capability inventory corresponds to the `v0.8.0` source release. Its archived
-snapshot is preserved at
-[DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181).
+This capability inventory corresponds to the `v0.8.1` source release. Its archived
+snapshot is reachable through the concept
+[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026), which always
+resolves to the latest released version.
 
 The current application exposes five top-level workspaces, 133 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The

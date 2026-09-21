@@ -13,9 +13,9 @@ authors:
 repository-code: "https://github.com/reza-ghazi/Numerisect"
 url: "https://numerisect.com"
 license: GPL-3.0-or-later
-version: 0.8.0
+version: 0.8.1
 date-released: 2026-09-21
-doi: "10.5281/zenodo.22882181"
+doi: "10.5281/zenodo.22679026"
 keywords:
   - integer factorization
   - prime numbers
