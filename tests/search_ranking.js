@@ -31,7 +31,17 @@ for (const match of html.matchAll(/<form id="([a-z0-9-]+-form)"[^>]*>([\s\S]*?)<
   const heading = /<h2>([\s\S]*?)<\/h2>/.exec(match[2]);
   const description = /<p>([\s\S]*?)<\/p>/.exec(match[2]);
   if (!heading) continue;
-  const clean = (value) => value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  // Strip markup until nothing changes, so a fragment such as '<<b>x>' cannot leave a
+  // tag behind after one pass. This reads the project's own HTML, but a harness that
+  // mishandles nested markup would quietly compare the wrong text.
+  const clean = (value) => {
+    let text = value;
+    for (let previous = null; previous !== text;) {
+      previous = text;
+      text = text.replace(/<[^>]*>/g, '');
+    }
+    return text.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+  };
   meta[match[1]] = {
     eyebrow: eyebrow ? eyebrow[1].trim() : '',
     title: clean(heading[1]),

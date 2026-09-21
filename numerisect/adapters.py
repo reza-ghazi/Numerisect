@@ -435,7 +435,15 @@ def load_user_adapters(directory: Path = ADAPTERS_DIR) -> tuple[list[EngineAdapt
             with path.open("rb") as handle:
                 data = tomllib.load(handle)
             adapter = adapter_from_mapping(data)
-        except (OSError, tomllib.TOMLDecodeError, AdapterError) as exc:
+        except OSError as exc:
+            # str(exc) on an OSError carries the absolute path it failed on, and this
+            # text is returned by /api/adapters. Responses stay free of filesystem paths,
+            # so report only the operating system's reason alongside the file name.
+            problems.append(f"{path.name}: could not be read ({exc.strerror or 'unknown error'})")
+            continue
+        except (tomllib.TOMLDecodeError, AdapterError) as exc:
+            # Neither message contains a path: TOML errors give a line and column, and
+            # AdapterError messages are written by this module.
             problems.append(f"{path.name}: {exc}")
             continue
         if any(existing.name == adapter.name for existing in adapters):

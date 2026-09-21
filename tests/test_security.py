@@ -104,3 +104,52 @@ def test_ordinary_status_does_not_disclose_absolute_paths(monkeypatch):
     payload = client.get("/api/setup").json()
     assert "log_path" not in payload
     assert "managed_bin" not in payload
+
+
+def test_output_paths_cannot_escape_the_output_directory(tmp_path, monkeypatch):
+    """Regression: CodeQL py/path-injection.
+
+    Checking only that a name had no directory part let ".." through, since it is its own
+    final component, and followed any symbolic link placed in the output directory.
+    """
+
+    import os
+
+    from numerisect import outputs
+
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "report-abc.txt").write_text("inside")
+    secret = tmp_path / "secret.txt"
+    secret.write_text("outside")
+    os.symlink(secret, output / "escape.txt")
+    monkeypatch.setattr(outputs, "OUTPUT_DIR", output)
+
+    assert outputs.safe_output_path("report-abc.txt") is not None
+    for name in ("..", ".", ".hidden", "../secret.txt", "escape.txt", "", "missing.txt"):
+        assert outputs.safe_output_path(name) is None, name
+
+
+def test_adapter_load_errors_do_not_expose_filesystem_paths(tmp_path):
+    """Regression: CodeQL py/stack-trace-exposure.
+
+    str() of an OSError includes the absolute path, and adapter problems are returned by
+    /api/adapters. Responses must stay free of filesystem paths.
+    """
+
+    import os
+
+    from numerisect.adapters import load_user_adapters
+
+    unreadable = tmp_path / "unreadable.toml"
+    unreadable.write_text('name = "x"')
+    os.chmod(unreadable, 0)
+    try:
+        _, problems = load_user_adapters(tmp_path)
+    finally:
+        os.chmod(unreadable, 0o600)
+    if os.geteuid() == 0:
+        return  # root can read a mode-0 file, so there is no error to inspect
+    assert problems
+    assert all(str(tmp_path) not in problem for problem in problems)
+    assert any("could not be read" in problem for problem in problems)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import uuid
 from collections.abc import Callable
@@ -181,7 +182,20 @@ def finalize_native_output(temporary_path: Path, final_path: Path) -> Path:
 
 
 def safe_output_path(filename: str) -> Path | None:
-    if Path(filename).name != filename:
+    """Resolve a report name to a file inside the output directory, or ``None``.
+
+    Checking only that the name has no directory part let two cases through. ``..`` is
+    its own final component, so it passed, and was rejected only because a directory is
+    not a file. And a symbolic link inside the output directory would have been followed
+    wherever it pointed. The name is now refused if it is hidden or relative, and the
+    fully resolved path must still lie inside the resolved output directory.
+    """
+
+    if not filename or filename.startswith(".") or Path(filename).name != filename:
         return None
-    path = OUTPUT_DIR / filename
+    base = os.path.realpath(OUTPUT_DIR)
+    candidate = os.path.realpath(os.path.join(base, filename))
+    if not candidate.startswith(base + os.sep):
+        return None
+    path = Path(candidate)
     return path if path.is_file() else None

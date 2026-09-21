@@ -52,9 +52,8 @@ def _catalogue_dir(directory: Path | None) -> Path:
 
     if directory is not None:
         return directory
-    import numerisect.catalogues as module
-
-    return module.CATALOGUES_DIR
+    # Read at call time, so an override of this module's CATALOGUES_DIR is honoured.
+    return CATALOGUES_DIR
 
 
 def network_status() -> dict[str, Any]:

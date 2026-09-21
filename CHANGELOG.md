@@ -5,6 +5,38 @@ binary packages are published.
 
 ## Unreleased
 
+- Fixed four defects that the first CodeQL analysis found, each confirmed by
+  reproducing it before changing anything and each now pinned by a test that fails on
+  the old code:
+  - **The "Measure density and residues" tool drew an empty result**, and had since
+    0.5.0. It shared the internal result type `distribution` with the analytic
+    distribution pages, whose branch came first, so its own renderer was unreachable and
+    the page was drawn by code looking for fields the API never returns. It now has its
+    own type, and a test rejects any renderer handling the same type twice.
+  - **Batch imports were open to quadratic regular-expression backtracking.** The
+    family-syntax pattern let a polynomial ending in a space trade characters with the
+    whitespace after it: 20,000 spaces took 1.26 s, and at the two-million-character
+    request limit a single line would have held the server for about three and a half
+    hours. The polynomial must now end on a non-space character and the whitespace runs
+    are possessive; two million characters now take 0.05 s.
+  - **Report downloads could follow a symbolic link out of the output directory**, and
+    accepted the name `..`, which was refused only because it names a directory. Names
+    are now resolved and must stay inside the resolved output directory.
+  - **An unreadable adapter file exposed its absolute path** through `/api/adapters`,
+    contradicting the rule that responses carry no filesystem paths. Only the operating
+    system's reason is reported now.
+- Also from the same analysis: two tests performed their request inside an `assert`,
+    which would vanish under `python -O`; a dead initial assignment in the spiral renderer;
+    a redundant self-import; explanatory comments on deliberate empty exception handlers;
+    documentation for the five longest zeta commands; and a test harness that stripped
+    markup in a single pass.
+- Dismissed six findings as false positives after reading each, with the reason recorded
+    on the alert: the two command-injection reports, where every argument is a fixed flag
+    or an integer already validated as non-negative, passed as an argument list with no
+    shell; the SQL-injection report, where every value is a bound parameter and the only
+    interpolated identifiers are allowlisted; and the three report-write paths, whose
+    names are a literal kind and a server-generated UUID.
+
 - Added CodeQL code scanning. GitHub had never run an analysis of this repository. The
   new workflow covers everything the project writes: the Python orchestration layer, the
   browser interface, and the compiled C helpers, which parse command-line input and

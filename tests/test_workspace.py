@@ -138,7 +138,8 @@ def test_workspace_crud_round_trip(local_client, tmp_path, monkeypatch):
     assert updated.json()["notes"] == "updated"
 
     assert local_client.get(f"/api/workspaces/{workspace_id}").json()["name"] == "Cunningham run"
-    assert local_client.delete(f"/api/workspaces/{workspace_id}").status_code == 200
+    deleted = local_client.delete(f"/api/workspaces/{workspace_id}")
+    assert deleted.status_code == 200
     assert local_client.get(f"/api/workspaces/{workspace_id}").status_code == 404
 
 
@@ -204,7 +205,8 @@ def test_cache_routes_report_and_clear(local_client):
     stats = local_client.get("/api/cache")
     assert stats.status_code == 200
     assert "enabled" in stats.json()
-    assert local_client.delete("/api/cache").status_code == 200
+    cleared = local_client.delete("/api/cache")
+    assert cleared.status_code == 200
 
 
 def test_network_is_denied_by_default():
@@ -413,3 +415,36 @@ def test_factor_verification_runs_in_gp():
 def test_factor_verification_rejects_non_integers():
     with pytest.raises(ValueError):
         verify_claimed_factors(8051, ["83", "not-a-number"])
+
+
+def test_family_syntax_is_linear_on_long_runs_of_whitespace():
+    """Regression: CodeQL py/polynomial-redos.
+
+    The polynomial group could end in a space and trade characters with the whitespace
+    after it, so "1", 8,000 spaces and "1" took 0.28 s and doubling the run quadrupled
+    it. The import route accepts two million characters, which projected to hours for a
+    single line. The bound here is loose so a slow CI runner cannot flake it; the old
+    pattern would have needed hours.
+    """
+
+    import time
+
+    from numerisect.workspace import FAMILY_SYNTAX
+
+    for attack in ("1" + " " * 2_000_000 + "1", "1 for n=" + " " * 2_000_000 + "x"):
+        started = time.perf_counter()
+        FAMILY_SYNTAX.match(attack)
+        assert time.perf_counter() - started < 2.0
+
+
+def test_family_syntax_still_parses_real_families():
+    from numerisect.workspace import FAMILY_SYNTAX
+
+    for text, poly, start, end in (
+        ("n^2+1 for n = 1..10", "n^2+1", "1", "10"),
+        ("2*n + 1 for n in 5..9", "2*n + 1", "5", "9"),
+        ("(n+1)^3 - 1 for n=0..4", "(n+1)^3 - 1", "0", "4"),
+    ):
+        match = FAMILY_SYNTAX.match(text)
+        assert match, text
+        assert (match["poly"], match["start"], match["end"]) == (poly, start, end)

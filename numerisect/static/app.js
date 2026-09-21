@@ -1133,7 +1133,11 @@ function showPrimeResult(title, data, type, form) {
     if (!data.divisors_complete) $('#prime-result-note').textContent += ` Showing ${data.divisors.length.toLocaleString()} of ${Number(data.divisor_count).toLocaleString()} divisors.`;
   } else if (type === 'coprimes') {
     content.innerHTML = `<div class="prime-metric"><span>Euler totient φ(${escapeHtml(data.modulus)})</span><strong>${escapeHtml(data.totient)}</strong></div><div class="result-group"><span>Coprimes strictly after ${escapeHtml(data.start)}</span><div>${data.after.map((value) => `<code class="prime-chip">${escapeHtml(value)}</code>`).join('')}</div></div><div class="result-group"><span>Reduced residue system${data.residues_complete ? '' : ' preview'}</span><div>${data.residues.map((value) => `<code class="prime-chip">${escapeHtml(value)}</code>`).join('') || '<div class="empty">No residues requested.</div>'}</div></div>`;
-  } else if (type === 'distribution') {
+  } else if (type === 'prime-distribution') {
+    // This tool once shared the type name 'distribution' with the analytic
+    // distribution pages. The earlier branch matched first, so this renderer was
+    // unreachable and the density tool drew an empty panel from fields it never
+    // returns. It has its own name now.
     content.innerHTML = `<div class="reciprocal-summary"><article><span>Prime count</span><strong>${Number(data.count).toLocaleString()}</strong></article><article><span>Twin pairs</span><strong>${Number(data.twin_count).toLocaleString()}</strong></article><article><span>Largest internal gap</span><strong>${escapeHtml(data.maximum_gap)}</strong></article><article><span>Gap begins at</span><strong>${escapeHtml(data.maximum_gap_at)}</strong></article></div><div class="chart-stack"><div><span>Prime counts by interval</span><canvas id="distribution-bin-canvas" class="math-canvas chart-canvas" width="1000" height="420" aria-label="Prime counts by interval"></canvas></div><div><span>Residues modulo ${data.modulus}</span><canvas id="distribution-residue-canvas" class="math-canvas chart-canvas" width="1000" height="420" aria-label="Prime residue counts"></canvas></div></div>`;
     drawCountBars($('#distribution-bin-canvas'), data.bins.map((item) => ({ label: `${item.start}–${item.end}`, count: item.count })));
     drawCountBars($('#distribution-residue-canvas'), data.residues.map((item) => ({ label: item.residue, count: item.count })));
@@ -1612,7 +1616,7 @@ $('#prime-distribution-form').addEventListener('submit', (event) => {
     start: $('#distribution-start').value, end: $('#distribution-end').value,
     bins: Number($('#distribution-bins').value),
     modulus: Number($('#distribution-modulus').value),
-  }, (data) => `${Number(data.count).toLocaleString()} primes · exact distribution`, 'distribution');
+  }, (data) => `${Number(data.count).toLocaleString()} primes · exact distribution`, 'prime-distribution');
 });
 
 $('#factor-count-distribution-form').addEventListener('submit', (event) => {
@@ -1765,7 +1769,7 @@ function drawVisualSpiral(canvas, data) {
     }
     return [offset * Math.cos(offset), offset * Math.sin(offset)];
   });
-  let extent = 1;
+  let extent;
   if (data.layout === 'ulam') extent = Math.ceil((Math.sqrt(last + 1) - 1) / 2) + 1;
   else if (data.layout === 'sacks') extent = Math.sqrt(last) + 1;
   else extent = last + 1;

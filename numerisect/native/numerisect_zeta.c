@@ -630,6 +630,14 @@ static void explicit_pi_zero_term(arb_t result, const arb_t gamma, const arb_t l
     acb_clear(rho);
 }
 
+/* explicit-pi X EXACT_PI ZEROS DIGITS THREADS
+ *
+ * Reconstructs pi(x) from Riemann's explicit formula: the Moebius-weighted Riemann R
+ * main terms minus the contribution of the first ZEROS non-trivial zeros, compared with
+ * the exact count the caller supplies from primecount. Emits one TERM per partial sum,
+ * MOEBIUS_TERMS, ZEROS and COUNT. Each partial sum is an Arb ball, but truncating the
+ * zero sum is a heuristic cut-off, so the reconstruction is exploratory rather than a
+ * certified value of pi(x). */
 static void command_explicit_pi(int argc, char **argv)
 {
     slong count, digits, threads, precision, i, indices;
@@ -790,6 +798,12 @@ static void chebyshev_psi_exact(arb_t result, ulong limit, slong precision)
     arb_clear(logarithm);
 }
 
+/* psi X ZEROS DIGITS THREADS
+ *
+ * Rebuilds the Chebyshev function psi(x) = x - sum over zeros of x^rho/rho - log(2 pi)
+ * - log(1 - x^-2)/2, one TERM per added zero, against the exact psi(x) computed here by
+ * sieving (EXACT_MID). LIMIT reports the zero sum's truncation. As with explicit-pi the
+ * arithmetic is rigorous but the truncated sum is exploratory, not certified. */
 static void command_chebyshev_psi(int argc, char **argv)
 {
     slong count, digits, threads, precision, i;
@@ -1368,6 +1382,13 @@ static void command_pair_correlation(int argc, char **argv)
     fmpz_clear(start);
 }
 
+/* gram-blocks START COUNT DIGITS THREADS
+ *
+ * Evaluates the Hardy Z function at consecutive Gram points from index START, classifies
+ * each as good or bad by Gram's law, and groups them into Gram blocks, reporting every
+ * exception to Rosser's rule. A Z value whose enclosure contains zero cannot be signed,
+ * so it is reported as INCONCLUSIVE rather than guessed. Emits GRAM, BLOCK, EXCEPTION,
+ * their counts, and COUNT. */
 static void command_gram_blocks(int argc, char **argv)
 {
     slong count, digits, threads, precision, i;
@@ -1490,6 +1511,12 @@ static void command_gram_blocks(int argc, char **argv)
     fmpz_clear(start);
 }
 
+/* backlund T_MIN T_MAX SAMPLES DIGITS THREADS
+ *
+ * Samples the zero-counting remainder S(T) on [T_MIN, T_MAX] from the Riemann-von
+ * Mangoldt formula, with Arb's certified bound on S(T), and reports the rigorous zero
+ * count N(T) at the endpoints. Emits one POINT per sample, NZEROS and COUNT. The sampled
+ * curve is exploratory; the counts and bounds are certified. */
 static void command_backlund(int argc, char **argv)
 {
     slong samples, digits, threads, precision, i;
@@ -1758,6 +1785,14 @@ static void refine_sign_change(arf_t a, arf_t b, int lower_positive,
     arf_clear(middle);
 }
 
+/* l-zeros Q M T_MIN T_MAX SAMPLES DIGITS THREADS
+ *
+ * Searches the critical line of the Dirichlet L-function for the character of modulus Q
+ * and index M. For a real character the Hardy-type function is real on the line, so a
+ * certified sign change between samples proves a zero in that interval (SIGN_CHANGE,
+ * CHANGES). For a complex character no such real function is available, so only
+ * exploratory minima of |L| are reported (MINIMUM, MINIMA), and MODE says which of the
+ * two applied. Emits one POINT per sample, SAMPLES and COUNT. */
 static void command_l_zeros(int argc, char **argv)
 {
     slong samples, digits, threads, precision, i;

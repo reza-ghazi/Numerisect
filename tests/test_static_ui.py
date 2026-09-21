@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260909-command-palette' in INDEX
-    assert '/assets/app.js?v=20260909-command-palette' in INDEX
-    assert '/assets/favicon.svg?v=20260909-command-palette' in INDEX
+    assert '/assets/styles.css?v=20260921-code-scanning' in INDEX
+    assert '/assets/app.js?v=20260921-code-scanning' in INDEX
+    assert '/assets/favicon.svg?v=20260921-code-scanning' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260909-command-palette#primes/prime-check' in RUNNER
+    assert '?ui=20260921-code-scanning#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -351,3 +351,19 @@ def test_navigation_group_names_predict_their_contents():
     assert len(labels) == 11
     for vague in ("Advanced explorations", "Arithmetic & factors", "Patterns & distribution"):
         assert vague not in labels, f"{vague!r} does not say what it holds"
+
+
+def test_result_renderers_have_no_unreachable_branches():
+    """Regression: CodeQL js/duplicate-condition.
+
+    Two tools shared the result type "distribution". The first branch matched, so the
+    density tool's renderer was unreachable and its page drew an empty panel from
+    fields its API never returns. Each type may be handled once per renderer.
+    """
+
+    start = APP.index("function showPrimeResult(")
+    end = APP.index("\nfunction ", start + 1)
+    handled = re.findall(r"type === '([a-z-]+)'", APP[start:end])
+    duplicates = sorted({kind for kind in handled if handled.count(kind) > 1})
+    assert not duplicates, f"unreachable renderer branches for: {duplicates}"
+    assert "'prime-distribution'" in APP[start:end]

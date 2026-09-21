@@ -30,8 +30,16 @@ from .primes import PrimeEngineError, _run_gp
 
 PROGRAM = PACKAGE_DIR / "workspace.gp"
 MAX_IMPORT_BYTES = 2_000_000
+# The polynomial may contain spaces, and so may the text around "for n". The first
+# version let a lazy polynomial group ending in a space trade characters with the "\s+"
+# after it, which backtracked quadratically: "1", 8,000 spaces and "1" took 0.28 s, and
+# the import route accepts two million characters, so one crafted line could hold the
+# server for hours. The polynomial must now end on a non-space character, and the
+# whitespace runs are possessive, so no run is ever re-divided. Possessive quantifiers
+# need Python 3.11, the project's minimum.
 FAMILY_SYNTAX = re.compile(
-    r"^(?P<poly>[0-9n+\-*^() ]+?)\s+for\s+n\s*(?:=|in)\s*(?P<start>[^.]+?)\.\.(?P<end>.+)$",
+    r"^(?P<poly>[0-9n+\-*^() ]*?[0-9n+\-*^()])\s++for\s++n\s*+(?:=|in)\s*+"
+    r"(?P<start>[^.]+?)\.\.(?P<end>.+)$",
     re.IGNORECASE,
 )
 RANGE_SYNTAX = re.compile(r"^(?P<start>[^.]+?)\.\.(?P<end>[^.]+)$")
