@@ -9,6 +9,25 @@ binary packages are published.
   release. `CITATION.cff`, the README, the installation guides, the citation page, the FAQ
   and the publishing guide now point at the 0.8.0 snapshot; the 0.7.0 DOI stays listed
   on the citation page.
+- Removed `numerisect/gpu.py`, the runtime-compiled (NVRTC) route to the Mersenne kernel.
+  Nothing in the application called it: the scan has run on the `nvcc`-built
+  `numerisect-mfactor-cuda` since the device-side sieve and two-limb Montgomery kernels
+  arrived, and that binary covers everything the module did, with q up to 2^127 rather
+  than 2^63. The single-candidate-list kernel only it launched is gone from
+  `numerisect_mfactor_kernel.cu`. Its tests, which skipped whenever the CUDA Python
+  bindings were absent, now run against the `nvcc` binary instead. They check it against
+  the published factorizations, PARI/GP's prime divisors and the CPU helper, called
+  directly, since the pipeline would otherwise compare the device with itself. They also
+  check that the sieve removes the composite divisor 2047, that candidates past 2^127
+  are counted as deferred, and that an even order is refused.
+- Fixed the CUDA scanner's rebuild check. It compared the binary only against the host
+  program, so an edit confined to the included kernel file left the stale binary in use.
+  Either file being newer now triggers a rebuild, pinned by a test that runs without a
+  CUDA toolkit.
+- Corrected the GPU documentation, which still described the removed runtime-compile
+  path: the Mersenne guide and engine table now say the accelerator is built with `nvcc`
+  and reaches q < 2^127, and the kernel and host source comments no longer describe a
+  2^63 limit or claim that nothing is ever deferred.
 
 ## 0.8.0 — 2026-09-21
 

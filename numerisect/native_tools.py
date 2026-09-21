@@ -474,8 +474,11 @@ def build_mfactor_cuda_tool() -> Path | None:
     if not compiler:
         return None
     destination = TOOLS_BIN_DIR / MFACTOR_CUDA_TOOL_NAME
+    # The host program #includes the kernels, so an edit to either file must rebuild.
+    kernels = NATIVE_DIR / "numerisect_mfactor_kernel.cu"
+    newest = max(path.stat().st_mtime for path in (source, kernels) if path.is_file())
     with _BUILD_LOCK:
-        if destination.is_file() and destination.stat().st_mtime >= source.stat().st_mtime:
+        if destination.is_file() and destination.stat().st_mtime >= newest:
             return destination
         TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")

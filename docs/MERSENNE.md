@@ -138,20 +138,20 @@ there too, and the answers are the same.
 The modular exponentiations are perfectly independent, which is what a GPU is for.
 `numerisect_mfactor_kernel.cu` runs them on the device using Montgomery multiplication,
 which replaces a 128-bit division per multiply with two 64-bit multiplies and a shift.
-The REDC bound applies, so it handles \(q < 2^{63}\); anything wider is **refused rather
-than skipped**, because silently dropping candidates would turn an untested range into an
-apparent absence of factors.
+Candidates the device cannot cover are **counted as deferred rather than skipped**,
+because silently dropping them would turn an untested range into an apparent absence of
+factors; Numerisect sends such ranges to the C helper instead.
 
-**No CUDA toolkit is required.** The kernel is compiled at run time by NVRTC, which ships
-with the same packages as the CUDA runtime, for whichever device is actually present. A
-machine can have an excellent GPU and no `nvcc` at all, which is exactly the case on the
-workstation this was developed on. An `nvcc` build is still available for anyone who has
-the toolkit; both compile the same kernel file.
+**Building it needs the CUDA toolkit.** When `nvcc` is present, Numerisect compiles
+`numerisect_mfactor_cuda.cu` into `data/tools/bin/numerisect-mfactor-cuda` on first use,
+and rebuilds it whenever the host program or the kernel file it includes is newer
+than the binary. Without `nvcc` or without a
+device, the C helper does all the work and the answers are the same.
 
-**Verified on hardware.** On an RTX 5090 (compute capability 12.0, NVRTC 13.0) the device
-returns the published factorizations for every case tested, and agrees exactly with the
-compiled CPU helper on the same sieved candidate set. The suite skips these tests cleanly
-where there is no device.
+**Verified on hardware.** On an RTX 5090 (compute capability 12.0) the device returns the
+published factorizations for every case tested, matches PARI/GP's prime divisors over the
+same ranges, and agrees exactly with the compiled CPU helper. The suite skips these tests
+cleanly where no CUDA toolkit is installed.
 
 **What it is worth, measured:** about **twelve times** the C helper, once the sieve moved
 onto the device.
@@ -207,8 +207,8 @@ factorizations.
 
     \(2^d \equiv 1 \pmod q\) makes \(q\) a divisor of \(2^d - 1\) and says nothing about
     \(q\) being prime. Composite divisors genuinely occur: \(2047 = 23 \cdot 89\) divides
-    \(2^{11} - 1\) and the kernel reports it correctly. The pipeline sieves those out
-    beforehand and PARI/GP confirms primality afterwards.
+    \(2^{11} - 1\), and the kernel's divisibility test is correctly true for it. The pipeline
+    sieves those out beforehand and PARI/GP confirms primality afterwards.
 
 ### Finding nothing is inconclusive
 

@@ -1,24 +1,23 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The Mersenne trial-factoring device kernel, and nothing else.
+ * The Mersenne trial-factoring device kernels, and nothing else.
  *
- * This file is deliberately free of #include directives and host code so that it can be
- * compiled two ways from one source: by nvcc, when a CUDA toolkit is installed, and by
- * NVRTC at run time, when only the driver and the pip CUDA runtime are present. NVRTC
- * has no standard headers, so anything it cannot see must not appear here.
+ * numerisect_mfactor_cuda.cu includes this file and owns all host code. Keeping the
+ * kernels apart keeps the arithmetic reviewable on its own.
  *
- * MONTGOMERY ARITHMETIC AND THE 2^63 LIMIT
- * ----------------------------------------
+ * MONTGOMERY ARITHMETIC
+ * ---------------------
  * A 128-bit division per multiply would waste the device. Montgomery multiplication
- * replaces it with two 64-bit multiplies and a shift. The usual REDC bound applies: the
- * intermediate sum must not overflow 64 bits, so q < 2^63. Wider candidates are the
- * caller's problem and must be sent to the CPU helper, which handles them with GMP.
+ * replaces it with two 64-bit multiplies and a shift. On one limb the REDC bound requires
+ * q < 2^63; the two-limb kernel further down carries the same algorithm to q < 2^127.
+ * Candidates beyond that are counted as deferred, never dropped, and belong to the CPU
+ * helper, which handles them with GMP.
  *
  * WHAT A HIT MEANS
  * ----------------
  * 2^order = 1 (mod q) makes q a divisor of 2^order - 1. It does NOT make q prime, and
- * composite divisors do occur: 2047 = 23 * 89 divides 2^11 - 1 and the kernel reports it
- * correctly. The pipeline sieves those out beforehand and PARI/GP confirms primality
+ * composite divisors do occur: 2047 = 23 * 89 divides 2^11 - 1, and numerisect_divides
+ * correctly returns true for it. The pipeline sieves those out beforehand and PARI/GP confirms primality
  * afterwards. This kernel is a filter, not an authority.
  */
 
@@ -59,23 +58,6 @@ __device__ __forceinline__ bool numerisect_divides(numerisect_u64 q,
   }
   return result == one;
 }
-
-extern "C" __global__ void numerisect_mfactor_kernel(
-    const numerisect_u64 *ks, unsigned int count, numerisect_u64 order,
-    numerisect_u64 *hits, unsigned int *hit_count, unsigned int capacity) {
-  const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= count) return;
-  const numerisect_u64 k = ks[i];
-  const numerisect_u64 q = 2ULL * k * order + 1ULL;
-  if (numerisect_divides(q, order)) {
-    const unsigned int slot = atomicAdd(hit_count, 1u);
-    if (slot < capacity) {
-      hits[2 * slot] = q;
-      hits[2 * slot + 1] = k;
-    }
-  }
-}
-
 
 /* ---------------------------------------------------------------------------------
  * DEVICE-SIDE SIEVING
@@ -162,9 +144,8 @@ extern "C" __global__ void numerisect_sieve_kernel(
 
 /* Test every surviving k in the segment, reading the bitmap in place.
  *
- * Candidates at or above the Montgomery bound are counted as deferred rather than
- * tested, because REDC cannot cover them. They are never silently dropped: an untested
- * range must not be reported as an absence of factors. */
+ * Only k up to montgomery_k (q < 2^63) is tested here. Wider survivors are left to
+ * numerisect_scan_wide_kernel, which runs over the same segment, so nothing is dropped. */
 extern "C" __global__ void numerisect_scan_kernel(
     const unsigned char *dead, numerisect_u64 base, numerisect_u64 length,
     numerisect_u64 order, numerisect_u64 montgomery_k, numerisect_u64 *hits,
@@ -312,8 +293,8 @@ __device__ __forceinline__ bool numerisect_divides128(numerisect_u128 q,
 
 /* Test the survivors whose candidate exceeds the single-limb bound.
  *
- * Hits are written as (q low, q high, k) triples. Nothing is deferred here: this kernel
- * exists precisely so that no part of a requested range goes untested. */
+ * Hits are written as (q low, q high, k) triples. Only a candidate at or beyond 2^127 is
+ * deferred, and it is counted, so no part of a requested range goes silently untested. */
 extern "C" __global__ void numerisect_scan_wide_kernel(
     const unsigned char *dead, numerisect_u64 base, numerisect_u64 length,
     numerisect_u64 order, numerisect_u64 narrow_k, numerisect_u64 wide_k,

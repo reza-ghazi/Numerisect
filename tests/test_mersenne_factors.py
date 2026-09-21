@@ -5,6 +5,8 @@ that M_p is never constructed, so the tests deliberately include an exponent who
 Mersenne number has more than 300,000 decimal digits.
 """
 
+import os
+import shutil
 import subprocess
 
 import pytest
@@ -413,6 +415,47 @@ def test_cuda_is_optional_and_its_absence_is_not_an_error():
     else:
         built = build_mfactor_cuda_tool()
         assert built is not None and built.is_file()
+
+
+def test_editing_the_included_kernels_rebuilds_the_cuda_tool(tmp_path, monkeypatch):
+    """The host program #includes the kernels, so a kernel-only edit must rebuild.
+
+    Only the host file's timestamp used to be compared, so an edit confined to the kernels
+    left the stale binary in use. A stand-in compiler records each build, so this runs
+    without a CUDA toolkit.
+    """
+
+    from numerisect import native_tools
+
+    native = tmp_path / "native"
+    native.mkdir()
+    for name in ("numerisect_mfactor_cuda.cu", "numerisect_mfactor_kernel.cu"):
+        shutil.copy(native_tools.NATIVE_DIR / name, native / name)
+    builds = tmp_path / "builds.log"
+    compiler = tmp_path / "fake-nvcc"
+    compiler.write_text(
+        "#!/bin/sh\n"
+        f"echo build >> '{builds}'\n"
+        'while [ $# -gt 0 ]; do [ "$1" = -o ] && : > "$2"; shift; done\n',
+        encoding="utf-8",
+    )
+    compiler.chmod(0o755)
+    monkeypatch.setattr(native_tools, "NATIVE_DIR", native)
+    monkeypatch.setattr(native_tools, "TOOLS_BIN_DIR", tmp_path / "bin")
+    monkeypatch.setattr(native_tools, "cuda_compiler", lambda: str(compiler))
+
+    def build_count() -> int:
+        return len(builds.read_text().splitlines()) if builds.exists() else 0
+
+    built = build_mfactor_cuda_tool()
+    assert built is not None and built.is_file() and build_count() == 1
+    build_mfactor_cuda_tool()
+    assert build_count() == 1, "an up-to-date binary must be reused"
+
+    later = built.stat().st_mtime + 10
+    os.utime(native / "numerisect_mfactor_kernel.cu", (later, later))
+    build_mfactor_cuda_tool()
+    assert build_count() == 2, "a newer kernel file must trigger a rebuild"
 
 
 def test_the_response_names_the_engine_that_actually_ran(local_client):

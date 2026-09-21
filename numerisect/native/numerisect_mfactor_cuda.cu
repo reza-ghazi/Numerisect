@@ -23,18 +23,19 @@
  * consumed entirely on the device. Only the small prime table, once, and the handful of
  * hits at the end ever cross the bus.
  *
- * MONTGOMERY ARITHMETIC AND THE 2^63 LIMIT
- * ----------------------------------------
- * REDC requires q < 2^63. Candidates at or above that are counted as DEFERRED and never
+ * MONTGOMERY ARITHMETIC AND THE 2^127 LIMIT
+ * -----------------------------------------
+ * Single-limb REDC covers q < 2^63 and the two-limb kernel covers q < 2^127; both run
+ * over every segment. Candidates at or above 2^127 are counted as DEFERRED and never
  * reported as tested, because an untested range must not read as an absence of factors.
- * Send those to the CPU helper, which handles them with GMP.
+ * Numerisect sends such ranges to the CPU helper, which handles them with GMP.
  *
  * OUTPUT
  * ------
  *   ORDER  K_START  K_END  SIEVE_BOUND  DEVICE
  *   FACTOR:<q>|<k>       one per divisor found, ascending in k
  *   CANDIDATES:<n>       survivors actually tested on the device
- *   DEFERRED:<n>         survivors at or above 2^63, not tested here
+ *   DEFERRED:<n>         survivors at or above 2^127, not tested here
  *   COUNT:<n>            divisors found
  *   STATUS:complete|deferred-wide|hit-limit
  *   DONE:1               completion marker; absence means the run failed

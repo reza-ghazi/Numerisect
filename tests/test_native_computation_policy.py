@@ -34,7 +34,6 @@ MATHEMATICAL_MODULES = [
     "algebra_lab.py",
     "visual_lab.py",
     "forms_lab.py",
-    "gpu.py",
 ]
 
 # Modules that legitimately contain no engine call: transport, formatting, storage.
@@ -50,7 +49,7 @@ INTERFACE_ONLY_MODULES = [
 
 ENGINE_CALL = re.compile(
     r"_run_gp\(|_run_zeta\(|_execute\(|subprocess\.(run|Popen)|tool_path\(\)"
-    r"|_run_process\(|cuLaunchKernel\("
+    r"|_run_process\("
 )
 
 # Third-party mathematics is forbidden outright: it would replace the engines.
@@ -107,7 +106,7 @@ def test_mathematical_modules_name_their_engine(module: str):
     assert any(
         name in head
         for name in ("pari", "gp", "flint", "arb", "yafu", "msieve", "cado", "ecm",
-                     "primesieve", "primecount", "gmp", "cuda", "nvrtc")
+                     "primesieve", "primecount", "gmp")
     ), f"{module} does not name the library routine or program that computes its results"
 
 
