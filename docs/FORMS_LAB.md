@@ -133,11 +133,12 @@ logarithm of the same unit.
 
 **CFRAC** builds congruences of squares out of exactly these convergents of `√N`: the
 quantity `Qₙ = pₙ² − N qₙ²` is small, and smooth values of it are combined into a
-congruence `x² ≡ y² (mod N)`. **Numerisect does not implement CFRAC as a factoring
-method.** SIQS supersedes it at every size — the self-initializing quadratic sieve finds
-smooth relations far faster than the continued-fraction recursion can supply them — and
-Factor Lab routes those inputs to SIQS through YAFU. The tools on this page are
-exposition of where the idea came from, not a factoring path.
+congruence `x² ≡ y² (mod N)`. **Factor Lab now runs CFRAC** on its classical-methods
+page, in a compiled helper; see [Factor Lab](FACTOR_LAB.md#classical-methods-cfrac-lehman-and-hart).
+SIQS still supersedes it at every size — the self-initializing quadratic sieve finds
+smooth relations far faster than the continued-fraction recursion can supply them — so
+Factor Lab routes real work to SIQS through YAFU, and CFRAC is offered for the idea it
+made concrete. The tools on this page remain exposition of where that idea came from.
 
 ## Arbitrary-length values
 

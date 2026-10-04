@@ -64,9 +64,9 @@ factoring method here.  SQUFOF (``numerisect/native/numerisect_squfof.c``, reach
 Factor Lab) walks the principal cycle of forms of discriminant ``4kN`` looking for an
 ambiguous form, whose leading coefficient exposes a factor of ``N``; the enumeration tool
 below shows that cycle and flags exactly those forms.  CFRAC builds congruences of squares
-from the convergents of ``sqrt(N)``; Numerisect does not implement CFRAC as a factoring
-method because SIQS supersedes it at every size, so the continued-fraction tools are
-exposition, not a factoring path.
+from the convergents of ``sqrt(N)``, and Factor Lab's classical-methods page runs it in
+``numerisect-classic``.  SIQS still supersedes it at every size, so the continued-fraction
+tools here remain exposition; the factoring path is on that page.
 
 Resource limits enforced here
 -----------------------------
@@ -919,9 +919,9 @@ def continued_fraction(
             "raised precision. contfracpnqn formed the convergents and bestappr the best "
             "approximation. For sqrt(d) the period is [a₁, …, a_{L−1}, 2a₀] with a "
             "palindromic head, and the convergent at the end of the period solves Pell's "
-            "equation. CFRAC built congruences of squares from exactly these convergents; "
-            "Numerisect does not implement CFRAC as a factoring method because SIQS "
-            "supersedes it at every size, so this tool is exposition rather than a "
+            "equation. CFRAC builds congruences of squares from exactly these "
+            "convergents, and Factor Lab's classical-methods page runs it; SIQS still "
+            "supersedes it at every size, so this tool remains exposition rather than a "
             "factoring path."
         )
         + ("" if complete else " The period was not closed within the quotient limit, so it "

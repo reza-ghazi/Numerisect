@@ -93,6 +93,7 @@ from .exports import (
 from .factor_lab import (
     algorithm_trace,
     batch_certificates,
+    classic_factor,
     mersenne_factor_hunt,
     mersenne_factors,
     special_form_analysis,
@@ -4929,6 +4930,15 @@ def continue_composite_cofactor(
 # provides it. Every other operation here is performed by PARI/GP or GMP-ECM.
 
 
+class ClassicMethodRequest(BaseModel):
+    expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
+    method: Literal["cfrac", "lehman", "hart"] = "cfrac"
+    # Each method bounds itself differently, so the range is checked against the method
+    # in factor_lab.CLASSIC_METHODS; 0 means "the method's default", and Lehman takes none.
+    bound: int = Field(0, ge=0, le=1_000_000_000)
+    timeout_seconds: int = Field(300, ge=1, le=3600)
+
+
 class SqufofRequest(BaseModel):
     expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
     max_iterations: int = Field(4_000_000, ge=1000, le=200_000_000)
@@ -5115,6 +5125,48 @@ def factor_lab_squfof(request: SqufofRequest) -> dict:
     if result["factor"]:
         rows.append(f"Factor: {result['factor']} x {result['cofactor']}")
     return _save_factor_lab_report("squfof", "SQUFOF factorization", result, rows)
+
+
+@app.post("/api/factor-lab/classic")
+def factor_lab_classic(request: ClassicMethodRequest) -> dict:
+    """Factor with CFRAC, Lehman's method or Hart's one-line factorization."""
+
+    try:
+        number = evaluate_integer(request.expression)
+    except ExpressionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        result = classic_factor(
+            request.method, number, request.bound or None, request.timeout_seconds
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    rows = [
+        f"Method: {result['label']}",
+        f"Input: {result['number']} ({result['digits']} digits)",
+        f"Status: {result['status']}",
+    ]
+    for label, key in (
+        ("Iterations", "iterations"),
+        ("k reached", "k_reached"),
+        ("Relations collected", "relations"),
+        ("Factor-base size", "base_size"),
+        ("Bound", "bound"),
+        ("Elapsed seconds", "seconds"),
+    ):
+        if result.get(key):
+            rows.append(f"{label}: {result[key]}")
+    if result["factor"]:
+        rows.append(
+            f"Split: {result['factor']} ({result['factor_status']}) x "
+            f"{result['cofactor']} ({result['cofactor_status']})"
+        )
+        rows.append(f"Found by: {result['how']}")
+    return _save_factor_lab_report(
+        "classic-method", f"{result['label']} factorization", result, rows
+    )
 
 
 @app.post("/api/factor-lab/special-form")

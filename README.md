@@ -58,6 +58,9 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
   independent segmented Möbius sieve, with sign changes and the largest |M(n)|/√n
 - Brun-type reciprocal sums over twin, cousin, sexy, triplet and quadruplet primes in MPFR,
   reported as the exact truncated sum and never as the constant
+- CFRAC, Lehman's deterministic method and Hart's one-line factorization in a compiled
+  helper, none of them offered as the fast path and each for what the fast engines cannot
+  show
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches

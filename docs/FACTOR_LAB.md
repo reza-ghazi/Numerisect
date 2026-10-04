@@ -68,8 +68,31 @@ principal cycle exposes a factor of `N`.
 forms of `D = 7268 = 4 · 1817` gives a principal cycle of 28 forms containing
 `Qfb(23, 46, −56)`; `23` divides `46`, and `23` is exactly the factor of
 `1817 = 23 × 79` the C helper extracts. That page also covers the continued fractions
-behind CFRAC, which Numerisect deliberately does not implement as a factoring method
-because SIQS supersedes it at every size.
+behind CFRAC, which the classical-methods page below runs; SIQS still supersedes it at
+every size, so it is offered for what it shows rather than as the fast path.
+
+## Classical methods: CFRAC, Lehman and Hart
+
+Three methods that no installed engine provides, in `numerisect-classic` (C/GMP) through
+`POST /api/factor-lab/classic`. None is here to win a race — the engines are faster on
+almost any input — and each answers something they cannot:
+
+| Method | Bound | What it is for |
+|---|---|---|
+| **CFRAC** (Morrison–Brillhart, 1975) | factor-base bound, default 2,000 | The first subexponential method. Relations come from the continued fraction of √N, so it needs no sieving interval at all, and the dependency it finds is a congruence of squares a reader can check by hand. Factors a 26-digit semiprime in 0.05 s and a 32-digit one in 0.27 s. |
+| **Lehman** (1974) | none; fixed at N^(1/3) | Deterministic, with a proven O(N^(1/3)) bound. Exhausting its range proves no factor of the shape it searches exists, which no probabilistic method here can offer. |
+| **Hart** (2012) | iteration limit, default 10⁶ | One square root, one squaring and one reduction per iteration. Strongest exactly where rho and ECM are weakest: N with two close factors. 1000003 × 1000033 falls out on the first iteration. |
+
+CFRAC expands √N with the standard recurrences, keeps the `Q_i` that factor completely
+over a base of −1 and the primes for which N is a quadratic residue, and reduces the
+exponent vectors mod 2 over `GF(2)`. Any dependency gives `X² ≡ Y² (mod N)` and the split
+from `gcd(X − Y, N)`.
+
+**Every reported divisor is verified by division before it is printed**, and primality of
+each part is decided afterwards by PARI/GP `isprime` — the methods find divisors, never
+proofs of primality. Exhausting a bound is reported as `exhausted` and is explicitly not
+evidence that the input is prime; a wall-clock expiry is reported as `timeout` and
+distinguished from both.
 
 ## Strategy adviser and decision tree
 

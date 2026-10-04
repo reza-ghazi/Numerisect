@@ -294,6 +294,21 @@ fl_trace(expr, kind, steps, seconds) =
 \\ --- Batch primality certificates -------------------------------------------------
 \\ isprime decides primality, primecert builds the certificate, and
 \\ primecertisvalid re-checks it independently.
+/* Label both parts of a split from the classical methods.
+ *
+ * The C helper verifies a divisor by dividing, which says nothing about primality.
+ * This decides it, so no caller has to. */
+fl_label_split(a, b, seconds) =
+{
+  my(parts = [a, b], verdict);
+  for(i = 1, 2,
+    verdict = -1;
+    alarm(seconds, verdict = if(isprime(parts[i]), 1, 0));
+    print("SPLIT:", i, "|", verdict);
+  );
+  print("DONE:", 2);
+};
+
 fl_certificates(factors, seconds) =
 {
   my(count = 0, prime, cert, valid);

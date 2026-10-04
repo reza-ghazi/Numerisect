@@ -5,6 +5,31 @@ binary packages are published.
 
 ## Unreleased
 
+- Added `numerisect_classic.c` with three classical factoring methods that no installed
+  engine exposes: **CFRAC** (Morrison-Brillhart, 1975), **Lehman's** deterministic method
+  (1974) and **Hart's** one-line factorization (2012). YAFU and Msieve cover QS and NFS,
+  GMP-ECM covers ECM and P-1/P+1, PARI/GP exposes rho and its own `factorint` strategies,
+  and SQUFOF already had a helper; none of them offers these. `POST
+  /api/factor-lab/classic` and a Factor Lab page serve all three.
+  - None is offered as the fast path, because none is: the engines beat them on almost any
+    input. Each answers something the engines cannot. CFRAC is the first subexponential
+    method and needs no sieving interval, taking its relations from the continued fraction
+    of sqrt(N); its dependency is a congruence of squares that can be checked by hand. It
+    factors a 26-digit semiprime in 0.05 s and a 32-digit one in 0.27 s. Lehman is
+    deterministic with a proven O(N^(1/3)) bound, so exhausting it proves something.
+    Hart is strongest exactly where rho and ECM are weakest, splitting 1000003 * 1000033
+    on its first iteration.
+  - Every divisor is verified by division inside the helper before it is printed, and
+    primality of each part is decided afterwards by PARI/GP `isprime`. Exhausting a bound
+    is reported as `exhausted` and is explicitly not evidence of primality; a wall-clock
+    expiry is `timeout`; a prime input is reported as having no split to find rather than
+    searched.
+- Corrected the documentation and module comments that stated CFRAC was deliberately not
+  implemented. That was true until this release and is now false; the claim appeared in
+  `forms_lab.py` twice, `docs/FACTOR_LAB.md`, `docs/FORMS_LAB.md` and
+  `docs/mathematics/quadratic-forms.md`. SIQS still supersedes CFRAC at every size, which
+  the corrected text says instead.
+
 - Added `numerisect_mertens.c` for the Mertens function `M(x) = sum_{n<=x} mu(n)`. PARI/GP
   has `moebius` but no summatory routine and FLINT has no `M(x)`, so the application had
   only a GP loop inside the combined summatory page: linear, interpreted, and unusable past

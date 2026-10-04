@@ -19,6 +19,7 @@ MFACTOR_CUDA_TOOL_NAME = "numerisect-mfactor-cuda"
 FERMATQ_TOOL_NAME = "numerisect-fermatq"
 MERTENS_TOOL_NAME = "numerisect-mertens"
 BRUN_TOOL_NAME = "numerisect-brun"
+CLASSIC_TOOL_NAME = "numerisect-classic"
 
 
 def _pkg_config_environment() -> dict[str, str]:
@@ -564,6 +565,72 @@ def brun_tool_path() -> Path:
         ):
             return path
     return build_brun_tool()
+
+
+def build_classic_tool() -> Path:
+    """Compile the classical-methods helper, rebuilding when newer.
+
+    CFRAC, Lehman's method and Hart's one-line factorization are absent from every
+    installed engine: YAFU and Msieve offer QS and NFS, GMP-ECM offers ECM and
+    P-1/P+1, PARI/GP exposes rho and its own ``factorint`` strategies, and SQUFOF has
+    its own helper. GMP carries the arithmetic.
+
+    Returns:
+        Path to the built executable.
+
+    Raises:
+        RuntimeError: If the source is missing, no compiler is available, or the
+            build fails; the compiler output goes to ``classic-build.log``.
+    """
+
+    destination = TOOLS_BIN_DIR / CLASSIC_TOOL_NAME
+    source = NATIVE_DIR / "numerisect_classic.c"
+    with _BUILD_LOCK:
+        if not source.is_file():
+            raise RuntimeError("The Numerisect classical-methods source file is missing")
+        if destination.is_file() and destination.stat().st_mtime >= source.stat().st_mtime:
+            return destination
+        compiler = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+        if not compiler:
+            raise RuntimeError("A C compiler is required to build the classical methods")
+        TOOLS_BIN_DIR.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+        flags = _pkg_config_flags("gmp") or _managed_library_flags("gmp")
+        command = [
+            compiler, "-O3", "-std=c11", str(source), "-o", str(temporary), *flags, "-lm",
+        ]
+        result = subprocess.run(
+            command, env=_pkg_config_environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, check=False,
+        )
+        if result.returncode:
+            temporary.unlink(missing_ok=True)
+            (STATE_DIR / "classic-build.log").write_text(
+                result.stdout, encoding="utf-8", errors="replace"
+            )
+            raise RuntimeError(
+                "Failed to build the classical methods; inspect classic-build.log in "
+                "the Numerisect state directory"
+            )
+        temporary.chmod(0o755)
+        temporary.replace(destination)
+        return destination
+
+
+def classic_tool_path() -> Path:
+    """Return the classical-methods helper, building it on demand."""
+
+    discovered = shutil.which(CLASSIC_TOOL_NAME)
+    source = NATIVE_DIR / "numerisect_classic.c"
+    if discovered:
+        path = Path(discovered)
+        if (
+            path != TOOLS_BIN_DIR / CLASSIC_TOOL_NAME
+            or not source.is_file()
+            or path.stat().st_mtime >= source.stat().st_mtime
+        ):
+            return path
+    return build_classic_tool()
 
 
 def build_mfactor_tool() -> Path:

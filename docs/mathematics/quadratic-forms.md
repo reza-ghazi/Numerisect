@@ -436,11 +436,14 @@ base. Collecting enough smooth \(Q_n\) and combining them by linear algebra over
 \(\mathbb{F}_2\) produces a congruence of squares \(x^2 \equiv y^2 \pmod N\), and
 \(\gcd(x - y, N)\) then splits \(N\) with probability at least \(1/2\).
 
-**Numerisect does not implement CFRAC as a factoring method,** and this is a
-deliberate choice rather than an omission. The self-initializing quadratic sieve
-finds smooth relations far faster than the continued-fraction recursion can supply
-them, at every size, so Factor Lab routes those inputs to SIQS through YAFU. The
-continued-fraction tools on this page are exposition of where the idea came from.
+**Numerisect implements CFRAC** in `numerisect_classic.c`, reached from Factor Lab's
+classical-methods page. It is not the fast path and is not offered as one: the
+self-initializing quadratic sieve finds smooth relations far faster than the
+continued-fraction recursion can supply them, at every size, so Factor Lab routes real
+work to SIQS through YAFU. CFRAC is there because it is the method that made
+smoothness-plus-linear-algebra concrete, and because its dependency is a congruence of
+squares that can be checked by hand. The continued-fraction tools on this page remain
+exposition of where the idea came from.
 
 ## Where this appears in Numerisect
 

@@ -38,6 +38,7 @@ from typing import Any
 from .config import PACKAGE_DIR
 from .engines import parse_ecm_output
 from .native_tools import (
+    classic_tool_path,
     mfactor_cuda_tool_path,
     mfactor_tool_path,
     squfof_tool_path,
@@ -239,6 +240,184 @@ def _gp_call(call: str, timeout: int) -> list[str]:
     lines = _run_gp(f"{_program()}\n{call};", timeout=timeout)
     _require_complete(lines)
     return lines
+
+
+#: The classical methods served by ``numerisect-classic``, with the bound each one takes.
+#: None is here to win a race: the installed engines are faster on almost every input.
+#: Each answers something they cannot - the first subexponential method and its
+#: congruence of squares, a deterministic guarantee, and one line of arithmetic that
+#: excels exactly where rho and ECM struggle.
+CLASSIC_METHODS: dict[str, dict[str, Any]] = {
+    "cfrac": {
+        "label": "CFRAC (Morrison-Brillhart continued fraction)",
+        "bound": "factor-base bound",
+        "default_bound": 2000,
+        "bound_range": (20, 2_000_000),
+        "strength": (
+            "The first subexponential method. Relations come from the continued fraction "
+            "of sqrt(N), so it needs no sieving interval, and the dependency it finds is "
+            "a congruence of squares."
+        ),
+    },
+    "lehman": {
+        "label": "Lehman's deterministic method",
+        "bound": "none; the bound is N^(1/3) and is fixed by the method",
+        "default_bound": 0,
+        "bound_range": (0, 0),
+        "strength": (
+            "Deterministic with a proven O(N^(1/3)) bound. Exhausting its range is a "
+            "proof that N has no factor it could have found, which no probabilistic "
+            "method here can offer."
+        ),
+    },
+    "hart": {
+        "label": "Hart's one-line factorization",
+        "bound": "iteration limit",
+        "default_bound": 1_000_000,
+        "bound_range": (1, 1_000_000_000),
+        "strength": (
+            "One square root, one squaring and one reduction per iteration. Remarkably "
+            "effective when N has two close factors, which is where Pollard rho and ECM "
+            "are weakest."
+        ),
+    },
+}
+
+
+def _classic_primality(factor: str, cofactor: str, timeout: int) -> tuple[str, str]:
+    """Label both parts of a split, decided by PARI/GP in ``fl_label_split``.
+
+    The helper verifies divisibility by dividing, which says nothing about primality.
+    The verdict comes from the GP program and is never derived here; an alarm that
+    expires leaves the part explicitly unresolved rather than guessed.
+    """
+
+    lines = _gp_call(f"fl_label_split({factor}, {cofactor}, {timeout})", timeout + 10)
+    verdicts: dict[str, str] = {}
+    for record in _tagged(lines, "SPLIT"):
+        index, _, verdict = record.partition("|")
+        verdicts[index.strip()] = {
+            "1": "proven_prime", "0": "composite"
+        }.get(verdict.strip(), "undetermined")
+    if len(verdicts) != 2:
+        raise PrimeEngineError("PARI/GP did not label both parts of the split")
+    return verdicts["1"], verdicts["2"]
+
+
+def classic_factor(
+    method: str, number: int, bound: int | None = None, timeout: int = 300
+) -> dict[str, Any]:
+    """Factor ``number`` with one classical method, in the ``numerisect-classic`` helper.
+
+    Args:
+        method: One of the keys of :data:`CLASSIC_METHODS`.
+        number: The composite to split, at least 4.
+        bound: The method's bound; ``None`` uses its default. Lehman takes none.
+        timeout: Wall-clock limit in seconds. The helper reports its own timeout, so
+            this is a backstop.
+
+    Returns:
+        A dict with ``method``, ``label``, ``number``, ``digits``, ``status``,
+        ``factor``, ``cofactor``, ``factor_status``, ``cofactor_status``, the method's
+        own progress counters, ``engine`` and ``note``.
+
+    Raises:
+        ValueError: On an unknown method, a number below 4, or a bound out of range.
+        PrimeEngineError: If the helper fails or omits its completion marker.
+    """
+
+    if method not in CLASSIC_METHODS:
+        known = ", ".join(sorted(CLASSIC_METHODS))
+        raise ValueError(f"Unknown classical method '{method}'; choose one of {known}")
+    specification = CLASSIC_METHODS[method]
+    if number < 4:
+        raise ValueError("These methods look for a split, so they need an integer of at least 4")
+    low, high = specification["bound_range"]
+    if high == 0:
+        if bound:
+            raise ValueError(f"{specification['label']} takes no bound: it is fixed at N^(1/3)")
+        bound = 0
+    else:
+        bound = specification["default_bound"] if bound is None else bound
+        if not low <= bound <= high:
+            raise ValueError(f"The {specification['bound']} must be between {low:,} and {high:,}")
+    if not 1 <= timeout <= 86400:
+        raise ValueError("The timeout must be between 1 and 86,400 seconds")
+
+    try:
+        tool = classic_tool_path()
+    except RuntimeError as exc:
+        raise PrimeEngineError(str(exc)) from exc
+    command = [str(tool), method, str(number), str(bound), str(max(1, timeout - 10))]
+    try:
+        completed = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            timeout=timeout, check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise PrimeEngineError(
+            f"{specification['label']} exceeded the {timeout}-second limit"
+        ) from exc
+    if completed.returncode:
+        detail = completed.stderr.strip() or "unknown error"
+        raise PrimeEngineError(f"{specification['label']} failed: {detail}")
+    lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    _require_complete(lines)
+    status = _one(lines, "STATUS")
+
+    payload: dict[str, Any] = {
+        "method": method,
+        "label": specification["label"],
+        "number": str(number),
+        "digits": _one(lines, "DIGITS", "0"),
+        "status": status,
+        "factor": None,
+        "cofactor": None,
+        "how": "",
+        "bound": str(bound),
+        "iterations": _one(lines, "ITERATIONS", ""),
+        "k_reached": _one(lines, "K_REACHED", ""),
+        "relations": _one(lines, "RELATIONS", ""),
+        "base_size": _one(lines, "BASE_SIZE", ""),
+        "seconds": _one(lines, "SECONDS", ""),
+        "engine": "numerisect-classic (C/GMP)",
+    }
+    reported = _tagged(lines, "FACTOR")
+    if status == "factor-found" and reported:
+        factor, cofactor, how = reported[0].split("|", 2)
+        # The helper proves divisibility, not primality; PARI/GP decides that.
+        labels = _classic_primality(factor, cofactor, min(60, timeout))
+        payload.update({
+            "factor": factor,
+            "cofactor": cofactor,
+            "how": how,
+            "factor_status": labels[0],
+            "cofactor_status": labels[1],
+            "note": (
+                f"{specification['label']} split the input. Divisibility is verified by "
+                "division in the helper; PARI/GP decided the primality of each part. "
+                f"{specification['strength']}"
+            ),
+        })
+    elif status == "prime-input":
+        payload["note"] = (
+            "The input is prime, so there is no split to find. This is PARI/GP's verdict "
+            "on the number, not a result of the method."
+        )
+    elif status == "exhausted":
+        payload["note"] = (
+            f"{specification['label']} exhausted its bound without finding a factor. That "
+            "is inconclusive about the input: it is not evidence that the number is "
+            "prime, only that this method did not succeed within this bound."
+        )
+    elif status == "timeout":
+        payload["note"] = (
+            f"{specification['label']} ran out of wall-clock time. The range it did not "
+            "reach is untested, so nothing follows about the input."
+        )
+    else:
+        payload["note"] = f"The helper reported status '{status}'."
+    return payload
 
 
 def special_form_analysis(expression: str, timeout: int = 120) -> dict[str, Any]:

@@ -4022,6 +4022,27 @@ bindFactorLab('#factor-lab-squfof-form', '/api/factor-lab/squfof', () => ({
   return rows;
 }, 'SQUFOF');
 
+bindFactorLab('#factor-lab-classic-form', '/api/factor-lab/classic', () => ({
+  expression: $('#classic-expression').value.trim(),
+  method: $('#classic-method').value,
+  // 0 means "the method's own default"; Lehman refuses any bound at all.
+  bound: Number($('#classic-bound').value),
+  timeout_seconds: Number($('#classic-timeout').value),
+}), (data) => {
+  const rows = [['Method', data.label], ['Input', `${data.number} (${data.digits} digits)`],
+    ['Status', data.status]];
+  if (data.relations) rows.push(['Relations collected', data.relations]);
+  if (data.base_size) rows.push(['Factor-base size', data.base_size]);
+  if (data.iterations) rows.push(['Iterations', data.iterations]);
+  if (data.k_reached) rows.push(['k reached', data.k_reached]);
+  if (data.seconds) rows.push(['Elapsed seconds', data.seconds]);
+  if (data.factor) {
+    rows.push(['Split', `${data.factor} (${data.factor_status}) × ${data.cofactor} (${data.cofactor_status})`]);
+    rows.push(['Found by', data.how]);
+  }
+  return rows;
+}, 'Classical methods');
+
 bindFactorLab('#factor-lab-strategy-form', '/api/factor-lab/strategy', () => ({
   expression: $('#strategy-expression').value.trim(),
   pretest_level: Number($('#strategy-pretest').value),
