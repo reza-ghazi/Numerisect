@@ -298,10 +298,11 @@ static int numerisect_cfrac(const mpz_t n, uint64_t base_bound, uint64_t max_ite
       terms++;
     }
     for (size_t index = 1; index < base_size && smooth; index++) {
-      const unsigned long p = (unsigned long)base[index];
+      /* Named `prime` rather than `p`, which is the continued fraction's P_i here. */
+      const unsigned long prime = (unsigned long)base[index];
       int exponent = 0;
-      while (mpz_divisible_ui_p(residue, p)) {
-        mpz_divexact_ui(residue, residue, p);
+      while (mpz_divisible_ui_p(residue, prime)) {
+        mpz_divexact_ui(residue, residue, prime);
         exponent++;
       }
       if (exponent == 0) continue;

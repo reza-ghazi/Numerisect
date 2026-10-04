@@ -348,7 +348,12 @@ def classic_factor(
         tool = classic_tool_path()
     except RuntimeError as exc:
         raise PrimeEngineError(str(exc)) from exc
-    command = [str(tool), method, str(number), str(bound), str(max(1, timeout - 10))]
+    # int() at the point of assembly: the argv entries are integers by construction,
+    # the helper is launched as an argument array with no shell, and it parses each one
+    # with mpz_set_str or strtoull.
+    command = [
+        str(tool), method, str(int(number)), str(int(bound)), str(int(max(1, timeout - 10))),
+    ]
     try:
         completed = subprocess.run(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,

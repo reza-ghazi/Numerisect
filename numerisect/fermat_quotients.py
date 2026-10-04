@@ -68,6 +68,17 @@ MAX_BASE = 10**9
 MAX_NEAR_BOUND = 10**12
 
 
+def _argument(value: int) -> str:
+    """Render a validated integer as a command-line argument.
+
+    Every numeric argument these helpers take passes through here, so an argv entry is
+    an integer by construction rather than by inspection. The helpers are launched as
+    argument arrays with no shell, and each argument is parsed by ``strtoull``.
+    """
+
+    return str(int(value))
+
+
 def _one(lines: list[str], tag: str) -> str:
     """Return the single value carried by ``tag``, or raise if it is absent."""
 
@@ -135,10 +146,10 @@ def fermat_quotient_search(
 
     tool = fermatq_tool_path()
     mode = kind.replace("_", "-")
-    command = [str(tool), mode, str(start), str(end)]
+    command = [str(tool), mode, _argument(start), _argument(end)]
     if specification["takes_base"]:
-        command += [str(base), str(near_bound)]
-    command.append(str(seconds))
+        command += [_argument(base), _argument(near_bound)]
+    command.append(_argument(seconds))
     try:
         completed = subprocess.run(
             command, capture_output=True, text=True, check=False,

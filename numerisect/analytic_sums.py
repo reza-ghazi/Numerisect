@@ -67,6 +67,16 @@ BRUN_PATTERNS: dict[str, dict[str, str]] = {
 }
 
 
+def _argument(value: int) -> str:
+    """Render a validated integer as a command-line argument.
+
+    Every numeric argument passes through here, so an argv entry is an integer by
+    construction. The helpers are launched as argument arrays with no shell.
+    """
+
+    return str(int(value))
+
+
 def _tagged(lines: list[str], tag: str) -> str:
     prefix = f"{tag}:"
     for line in lines:
@@ -124,7 +134,7 @@ def mertens_value(x: int, *, cross_check: bool = False, seconds: int = 3600) -> 
             f"through {MAX_MERTENS_SIEVE_X:,}"
         )
     tool = mertens_tool_path()
-    lines = _run([str(tool), "mertens", str(x)], seconds)
+    lines = _run([str(tool), "mertens", _argument(x)], seconds)
     status = _tagged(lines, "STATUS")
     if status == "refused-memory":
         raise PrimeEngineError(
@@ -143,7 +153,7 @@ def mertens_value(x: int, *, cross_check: bool = False, seconds: int = 3600) -> 
         "cross_checked": False,
     }
     if cross_check:
-        sieve_lines = _run([str(tool), "mertens-sieve", str(x), "0"], seconds)
+        sieve_lines = _run([str(tool), "mertens-sieve", _argument(x), "0"], seconds)
         sieve_value = int(_tagged(sieve_lines, "MERTENS"))
         if sieve_value != value:
             raise PrimeEngineError(
@@ -187,7 +197,7 @@ def mertens_sign_analysis(x: int, *, seconds: int = 3600) -> dict[str, Any]:
     if not 1 <= x <= MAX_MERTENS_SIEVE_X:
         raise ValueError(f"x must be between 1 and {MAX_MERTENS_SIEVE_X:,}")
     tool = mertens_tool_path()
-    lines = _run([str(tool), "signs", str(x), str(max(1, seconds - 30))], seconds)
+    lines = _run([str(tool), "signs", _argument(x), _argument(max(1, seconds - 30))], seconds)
     minimum, _, minimum_at = _tagged(lines, "MINIMUM").partition("|")
     maximum, _, maximum_at = _tagged(lines, "MAXIMUM").partition("|")
     ratio, _, ratio_at = _tagged(lines, "EXTREME_RATIO").partition("|")
@@ -268,8 +278,8 @@ def brun_sum(
         raise ValueError("The digit count must be between 3 and 1000")
     specification = BRUN_PATTERNS[pattern]
     lines = _run(
-        [str(brun_tool_path()), pattern, str(limit), str(digits),
-         str(max(1, seconds - 30))],
+        [str(brun_tool_path()), pattern, _argument(limit), _argument(digits),
+         _argument(max(1, seconds - 30))],
         seconds,
     )
     status = _tagged(lines, "STATUS")

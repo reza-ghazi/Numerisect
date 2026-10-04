@@ -9,6 +9,13 @@ No changes yet.
 
 ## 0.9.0 — 2026-10-04
 
+- Hardened and tidied what CodeQL flagged in the new code once it was scanned. Every
+  numeric command-line argument for the new helpers is now rendered by one `_argument`
+  helper that applies `int()` at the point of assembly, so an argv entry is an integer by
+  construction rather than by inspection; the helpers were already launched as argument
+  arrays with no shell. Renamed a factor-base prime in `numerisect_classic.c` that shadowed
+  the continued fraction's `P_i`; the file is clean under `-Wshadow`.
+
 - Added `libprimesieve-dev` to the CI dependency lists and the four new helpers to the
   CodeQL C build, so the new C sources are both buildable and analysed there. The
   workflows installed the `primesieve` CLI but not its headers, which the Brun and
