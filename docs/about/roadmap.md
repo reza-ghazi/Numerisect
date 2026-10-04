@@ -20,8 +20,13 @@ the application calls, and closed the gaps that fall within the subject: a prime
 algorithm comparison, integer-structure predicates, `factorint` strategy flags, and a
 binary quadratic forms and continued fractions workbench.
 
-Three additions are not wrappers around an engine at all: cross-engine verification, the
-engine self-test, and prime enumeration above primesieve's \(2^{64}\) ceiling.
+Several additions are not wrappers around an engine at all. Cross-engine verification,
+the engine self-test and prime enumeration above primesieve's \(2^{64}\) ceiling came
+first. Since then: Mersenne trial factoring on CPU and GPU; searches for Wieferich,
+Wall–Sun–Sun, Wilson and Wolstenholme primes, which replaced tables of published values;
+the Mertens function with two independent algorithms that check each other; Brun-type
+reciprocal sums; and CFRAC, Lehman and Hart, the classical factoring methods no installed
+engine exposes. Each one states in its source header why no library could serve it.
 
 ## What was declined, and why
 

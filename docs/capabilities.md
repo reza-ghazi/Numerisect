@@ -1,17 +1,18 @@
 ---
-description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.8.1.
+description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.9.0.
 ---
 
 # Capability index
 
 This page answers a practical question: **which part of Numerisect should I use?** It is
-an index of the released 0.8.1 interface, not a list of future intentions. The
+an index of the released 0.9.0 interface, not a list of future intentions. The
 [roadmap ledger](ROADMAP_STATUS.md) separately records partial, deferred and declined
 work.
 
-This capability inventory corresponds to the `v0.8.1` source release. Its archived
-snapshot is preserved at
-[DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791).
+This capability inventory corresponds to the `v0.9.0` source release. Its archived
+snapshot is reachable through the concept
+[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026), which always
+resolves to the latest released version.
 
 The current application exposes five top-level workspaces, 136 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
@@ -49,7 +50,9 @@ The workspace is organized around a production pipeline and an expert laboratory
 | Manual strategies | Trial division, Fermat, rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Msieve and direct CADO selection | [Mathematics](mathematics/factorization.md) |
 | Result verification | Every reported factor divides the input and the full multiset reconstructs it; optional YAFU/Msieve cross-check | [Verification](VERIFICATION.md) |
 | SQUFOF | A bounded factor search for \(N<2^{62}\), implemented in C with GMP because no exposed engine routine supplies it | [Expert laboratory](FACTOR_LAB.md) |
-| Resumable ECM | A GMP-ECM campaign with saved stage-one residues and native factor reconciliation | [Expert laboratory](FACTOR_LAB.md) |
+| Resumable ECM | A GMP-ECM campaign with saved stage-one residues and native factor reconciliation, with stage-2 shape, the base-2 reduction and a known group order all exposed | [Expert laboratory](FACTOR_LAB.md) |
+| Classical methods | CFRAC, Lehman's deterministic \(O(N^{1/3})\) method and Hart's one-line factorization, in C with GMP because no installed engine exposes any of them; offered for what they establish, never as the fast path | [Expert laboratory](FACTOR_LAB.md) |
+| YAFU expert bounds | The 15 per-algorithm bounds YAFU accepts, validated when the job is created rather than when a worker starts | [Expert laboratory](FACTOR_LAB.md) |
 | Special-form analysis | Perfect powers and \(a^k\!\pm1\) without a base limit, plus bounded cyclotomic/Aurifeuillean analysis and SNFS advice | [Expert laboratory](FACTOR_LAB.md) |
 | Mersenne trial factoring | Searches \(q=2kp+1\) for prime exponents and every \(q=2kd+1\) order progression for odd composite exponents, without materializing \(M_p\) | [Mersenne numbers](MERSENNE.md) |
 | Staged Mersenne factor hunt | Reconciles exact multiplicities and the cofactor in PARI/GP after bounded trial, P−1, P+1, and GMP-ECM stages | [Mersenne numbers](MERSENNE.md) |
@@ -68,9 +71,9 @@ a bookmarkable `#primes/<tool>` route.
 |---|---:|---|
 | **Primality & navigation** | 10 | Single and batch primality; 56-class classification; nearby, interval, nth and counted primes; cross-checks; arbitrary-offset interval sieving |
 | **Primality laboratories** | 15 | Certificate verification; eight-test comparison; deterministic Miller–Rabin bounds; Pocklington, Pratt, Proth, Lucas/Frobenius/Morrison and ECPP; pseudoprime and Carmichael analysis; covering sets; Lucas–Lehmer traces |
-| **Prime generation** | 16 | Fixed-digit and structured primes; safe, Sophie Germain, Blum, congruence and NTT primes; progressions and random samples; perfect numbers and primorials; Proth, Chernick, repunit, Sierpiński/Riesel, bi-twin, ladder and constrained searches |
+| **Prime generation** | 17 | Fixed-digit and structured primes; safe, Sophie Germain, Blum, congruence and NTT primes; progressions and random samples; perfect numbers and primorials; Proth, Chernick, repunit, Sierpiński/Riesel, bi-twin, ladder and constrained searches; Wieferich, Wall–Sun–Sun, Wilson and Wolstenholme searches |
 | **Gaps, tuples & Goldbach** | 6 | Consecutive gaps, twin/k-tuple patterns, Cunningham chains, gap statistics, density/residue summaries and Goldbach partitions |
-| **Analytic distribution & counting** | 16 | \(\pi(x)\) approximations, summatory functions, PNT convergence, nth-prime bounds, prime races, progression deviations, singular series, Hardy–Littlewood and Bateman–Horn predictions, maximal gaps, Maier matrices, density surfaces and algorithm comparisons |
+| **Analytic distribution & counting** | 18 | \(\pi(x)\) approximations, summatory functions, PNT convergence, nth-prime bounds, prime races, progression deviations, singular series, Hardy–Littlewood and Bateman–Horn predictions, maximal gaps, Maier matrices, density surfaces, algorithm comparisons, the Mertens function with its sign changes, and Brun-type reciprocal sums |
 | **Reciprocals, Gaussian & digits** | 7 | Exact reciprocal periods, circular/absolute and Paterson primes, full-reptend primes, Gaussian primes and modular wheels |
 | **Divisors & arithmetic functions** | 20 | Factor-strategy advice; arithmetic functions; divisor, aliquot, coprime, smoothness, record-number and weird-number structure; perfect powers; modular arithmetic; Miller–Rabin witnesses; Cornacchia; PARI predicates and factoring strategies |
 | **Modular & polynomial algebra** | 16 | Legendre/Jacobi/Kronecker symbols, Tonelli–Shanks, CRT, modular and Hensel roots, discrete logarithms, unit groups, orders, power residues, p-adic valuations, polynomial/cyclotomic factorization, congruences and finite fields |

@@ -90,7 +90,7 @@ banner; detailed output goes to `data/engine-setup.log`.
 
 ## Compiled helpers
 
-Three C programs are built on demand and rebuilt automatically whenever their source is
+Eight C programs are built on demand and rebuilt automatically whenever their source is
 newer than the binary, so editing the C and reloading picks up the change:
 
 - `numerisect-zeta` needs FLINT development files.

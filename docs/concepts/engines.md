@@ -21,7 +21,7 @@ Engine sources are pinned to immutable upstream commits recorded in
 
 ## Programs written for this project
 
-Three C programs exist because no installed library provides what they do. Each states
+Eight C programs exist because no installed library provides what they do. Each states
 that justification in its own source header.
 
 | Program | Why it exists |

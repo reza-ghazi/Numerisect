@@ -1,6 +1,6 @@
 # Mersenne numbers
 
-*Numerisect 0.8.1*
+*Numerisect 0.9.0*
 
 \(M_p = 2^p - 1\). This page covers what Numerisect can do with them, and is honest about
 where each tool stops.

@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.9.0 — 2026-10-04
+
 - Added `numerisect_classic.c` with three classical factoring methods that no installed
   engine exposes: **CFRAC** (Morrison-Brillhart, 1975), **Lehman's** deterministic method
   (1974) and **Hart's** one-line factorization (2012). YAFU and Msieve cover QS and NFS,

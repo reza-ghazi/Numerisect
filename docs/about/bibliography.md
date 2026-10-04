@@ -60,6 +60,38 @@ list.
   Computation*. The reference implementation notes for SQUFOF.
 - D. Shanks. "Analysis and improvement of the continued fraction method of factorization".
   Unpublished manuscript, described in the Gower–Wagstaff paper above.
+- M. A. Morrison and J. Brillhart. "A method of factoring and the factorization of
+  \(F_7\)". *Mathematics of Computation* 29 (1975). CFRAC, the first subexponential
+  method.
+- R. S. Lehman. "Factoring large integers". *Mathematics of Computation* 28 (1974). The
+  deterministic \(O(N^{1/3})\) method.
+- W. B. Hart. "A one line factoring algorithm". *Journal of the Australian Mathematical
+  Society* 92 (2012).
+
+## Summatory functions and Brun-type constants
+
+- V. Brun. "La série \(1/5+1/7+1/11+\cdots\) où les dénominateurs sont nombres premiers
+  jumeaux est convergente ou finie". *Bulletin des Sciences Mathématiques* (1919). The
+  convergence that makes the constant exist.
+- D. Klyve. *Explicit bounds on twin primes and Brun's constant*. Dartmouth College thesis
+  (2007). The extrapolated estimate quoted for comparison.
+- A. M. Odlyzko and H. J. J. te Riele. "Disproof of the Mertens conjecture". *Journal für
+  die reine und angewandte Mathematik* 357 (1985).
+- M. Deléglise and J. Rivat. "Computing the summation of the Möbius function".
+  *Experimental Mathematics* 5 (1996). The sublinear approach to \(M(x)\).
+
+## Exceptional primes and Fermat quotients
+
+- A. Wieferich. "Zum letzten Fermat'schen Theorem". *Journal für die reine und angewandte
+  Mathematik* 136 (1909).
+- D. D. Wall. "Fibonacci series modulo \(m\)". *American Mathematical Monthly* 67 (1960).
+  The question behind Wall–Sun–Sun primes.
+- Z. H. Sun and Z. W. Sun. "Fibonacci numbers and Fermat's last theorem". *Acta
+  Arithmetica* 60 (1992).
+- R. Crandall, K. Dilcher and C. Pomerance. "A search for Wieferich and Wilson primes".
+  *Mathematics of Computation* 66 (1997).
+- R. J. McIntosh and E. L. Roettger. "A search for Fibonacci–Wieferich and Wolstenholme
+  primes". *Mathematics of Computation* 76 (2007).
 
 ## Distribution of primes
 

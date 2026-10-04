@@ -119,6 +119,39 @@ a tendency, not a theorem, and its exceptions are catalogued.
 **\(S(T)\)**
 : The remainder in the zero-counting formula.
 
+## Summatory functions and exceptional primes
+
+**Mertens function \(M(x)\)**
+: \(\sum_{n\le x}\mu(n)\). An exact integer sum; the conjecture that
+  \(|M(x)|<\sqrt x\) is false.
+
+**Hyperbola identity**
+: \(\sum_{n\le x} M(x/n) = 1\), the recurrence that makes \(M(x)\) computable in about
+  \(x^{2/3}\) operations instead of \(x\).
+
+**Brun's constant**
+: The limit of the sum of reciprocals over twin primes. Numerisect reports the exact
+  truncated sum up to a stated bound, never an extrapolated constant.
+
+**Fermat quotient**
+: The residue \(A\) in \(a^{p-1}\equiv 1+Ap \pmod{p^2}\). \(A=0\) makes \(p\) a
+  Wieferich prime to base \(a\); a small \(|A|\) is a near-miss.
+
+**Wilson prime**
+: A prime with \((p-1)!\equiv-1\pmod{p^2}\), strengthening Wilson's theorem. Only 5, 13
+  and 563 are known.
+
+**Wolstenholme prime**
+: A prime with \(H_{p-1}\equiv0\pmod{p^3}\), one power beyond Wolstenholme's theorem.
+  Only 16843 and 2124679 are known.
+
+**Wall–Sun–Sun prime**
+: A prime with \(p^2\mid F_{p-(5\mid p)}\). None is known.
+
+**CFRAC**
+: The continued-fraction factoring method: relations come from the convergents of
+  \(\sqrt N\) rather than from a sieving interval.
+
 ## Engines
 
 **Tagged output**
