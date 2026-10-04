@@ -154,8 +154,8 @@ def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     )[0]
     categorized_forms = re.findall(r"'([^']+-form)'", page_catalogue)
 
-    assert len(html_forms) == len(set(html_forms)) == 133
-    assert len(categorized_forms) == len(set(categorized_forms)) == 133
+    assert len(html_forms) == len(set(html_forms)) == 134
+    assert len(categorized_forms) == len(set(categorized_forms)) == 134
     assert set(categorized_forms) == set(html_forms)
 
 
@@ -255,7 +255,7 @@ def test_documentation_check_runs_for_dependency_and_workflow_updates():
     assert '".github/workflows/docs.yml"' in pull_request_paths
 
 
-# --- Finding a tool among 133 -------------------------------------------------------
+# --- Finding a tool among 134 -------------------------------------------------------
 
 CONCEPT_CASES = [
     # A label chosen by this project is rarely the word someone arrives with.

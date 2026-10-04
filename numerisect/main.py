@@ -98,6 +98,7 @@ from .factor_lab import (
     squfof,
     strategy_advice,
 )
+from .fermat_quotients import fermat_quotient_search
 from .installer import EngineInstaller
 from .jobs import JobManager
 from .number_theory import (
@@ -466,6 +467,15 @@ class PrimeModularRequest(BaseModel):
 
 class PrimeGapRequest(PrimeRangeRequest):
     pass
+
+
+class FermatQuotientRequest(BaseModel):
+    kind: Literal["wieferich", "wall_sun_sun", "wilson", "wolstenholme"] = "wieferich"
+    start: str = Field(min_length=1, max_length=100_000)
+    end: str = Field(min_length=1, max_length=100_000)
+    base: int = Field(default=2, ge=2, le=10**9)
+    near_bound: int = Field(default=0, ge=0, le=10**12)
+    seconds: int = Field(default=300, ge=1, le=86400)
 
 
 class PrimeTupleRequest(BaseModel):
@@ -2210,6 +2220,60 @@ def calculate_prime_gap_statistics(request: PrimeGapRequest) -> dict[str, object
         **result,
         "output_file": path.name,
         "note": "PARI/GP computed the exact distribution, rational mean and median, mode, and extrema over the scanned consecutive gaps.",
+    }
+
+
+@app.post("/api/primes/fermat-quotients")
+def search_fermat_quotient_primes(request: FermatQuotientRequest) -> dict[str, object]:
+    """Search a range for Wieferich, Wall-Sun-Sun, Wilson or Wolstenholme primes."""
+
+    try:
+        start = evaluate_arbitrary_integer(request.start)
+        end = evaluate_arbitrary_integer(request.end)
+        result = fermat_quotient_search(
+            request.kind, start, end, base=request.base,
+            near_bound=request.near_bound, seconds=request.seconds,
+        )
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [
+        f"Search: {result['label']}",
+        f"Congruence: {result['congruence']}",
+        f"Range: {start} through {end}",
+    ]
+    if "base" in result:
+        lines.append(f"Base: {result['base']}")
+        lines.append(f"Near-miss bound: {result['near_bound']}")
+    lines += [
+        f"Candidates tested: {result['tested']}",
+        f"Candidates refused: {result['refused']}",
+        f"Fully searched through: {result['scanned_to']}",
+        f"Status: {result['status']}",
+        "",
+        "Prime | Result | Fermat quotient",
+        "--------------------------------",
+    ]
+    lines += [" | ".join(row) for row in result["rows"]] or ["(none in range)"]
+    lines += ["", result["note"]]
+    path = save_prime_output("fermat-quotient-search", result["label"], lines)
+    metrics = {
+        "Candidates tested": f"{int(result['tested']):,}",
+        "Hits": str(len(result["hits"])),
+        "Searched through": f"{int(result['scanned_to']):,}",
+        "Status": str(result["status"]),
+    }
+    if result["near_misses"]:
+        metrics["Near-misses"] = str(len(result["near_misses"]))
+    if int(result["refused"]):
+        metrics["Refused"] = f"{int(result['refused']):,}"
+    return {
+        **result,
+        "columns": ["Prime", "Result", "Fermat quotient"],
+        "metrics": metrics,
+        "output_file": path.name,
+        "engine": "numerisect-fermatq (C, primesieve + GMP, OpenMP)",
     }
 
 

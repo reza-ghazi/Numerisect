@@ -160,6 +160,50 @@ quintuplet shapes ({0,2,6,8,12} and {0,4,6,10,12}) together, and separating them
 would require offset arithmetic outside the engines, so those sizes and every
 custom offset pattern continue to use PARI `forprime`/`isprime`.
 
+## Fermat-quotient searches
+
+Four classical questions ask whether a congruence that holds modulo \(p\) for every
+prime continues to hold modulo a higher power. Each is served by the compiled scanner
+`numerisect-fermatq` (C, primesieve + GMP, OpenMP) through
+`POST /api/primes/fermat-quotients`:
+
+| Search | Congruence | Known members |
+|---|---|---|
+| Wieferich, any base \(a\) | \(a^{p-1}\equiv 1 \pmod{p^2}\) | 1093, 3511 in base 2 |
+| Wall–Sun–Sun | \(p^2 \mid F_{p-(5\mid p)}\) | none found by any search so far |
+| Wilson | \((p-1)!\equiv -1 \pmod{p^2}\) | 5, 13, 563 |
+| Wolstenholme | \(H_{p-1}\equiv 0\pmod{p^3}\) | 16843, 2124679 |
+
+Before this, Numerisect answered the Wilson and Wolstenholme questions from a table of
+published values, tested Wieferich for a single candidate in base 2 only, and had no
+Wall–Sun–Sun test at all. The classifier's table-based verdicts remain for single
+numbers; this page is the search.
+
+**Near-misses.** Writing \(a^{p-1} = 1 + Ap \pmod{p^2}\), the residue \(A\) is the
+Fermat quotient and \(A=0\) is a hit. Published searches also report small \(|A|\),
+because it records how close a candidate came; set a near-miss bound to list them. A
+near-miss is reported as such and never as a hit.
+
+**Cost decides the reach, not the implementation.** Wieferich and Wall–Sun–Sun cost
+\(O(\log p)\) per candidate — one modular exponentiation, or Fibonacci by fast
+doubling — so a scan to \(10^9\) takes about 1.3 seconds. Wilson needs the whole
+factorial and Wolstenholme a modular inverse per term, both \(O(p)\) per candidate, so
+exhaustive ranges there are small by nature. Measured against equivalent GP loops: a
+Wieferich scan to \(10^7\) took 0.38 s in GP against 0.15 s on one core here and 0.04 s
+on 24; a Wilson search to 20,000 took 3.72 s in GP against 0.02 s; Wolstenholme to
+20,000, 6.46 s against 0.17 s.
+
+**Precision tiers, and refusal rather than silence.** The modulus sets the limit:
+\(p^2\) leaves 64 bits at \(2^{32}\) and \(p^3\) at 2,642,246. Below those bounds a
+64-bit modulus with 128-bit products is used; above them Wieferich and Wall–Sun–Sun
+continue in GMP, verified against PARI/GP. The two \(O(p)\) predicates would gain
+nothing from a GMP path, so candidates past their ceiling are counted as **refused**,
+never skipped: a candidate that was never tested must not read as one that failed.
+
+**What silence means.** A completed search reports the range it exhausted, and finding
+nothing says nothing about primes outside it. An expired budget reports `timeout` with
+the largest prime fully searched, never an empty success.
+
 ## Cryptographic prime construction is experimental
 
 The constrained-prime page is an educational tool. **It is not audited

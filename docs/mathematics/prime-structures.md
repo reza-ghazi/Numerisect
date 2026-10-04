@@ -23,6 +23,14 @@ Wieferich prime satisfies
 2^{p-1}\equiv1\pmod{p^2}.
 \]
 
+Three further congruences of this kind are searched rather than merely tested. A
+Wall–Sun–Sun prime satisfies \(p^2 \mid F_{p-(5\mid p)}\), strengthening the entry-point
+divisibility \(p \mid F_{p-(5\mid p)}\) that holds for every prime \(p\neq 5\); none is
+known. A Wilson prime strengthens Wilson's theorem \((p-1)!\equiv-1\pmod p\) to the
+square, and a Wolstenholme prime strengthens \(H_{p-1}\equiv0\pmod{p^2}\) to
+\(H_{p-1}\equiv0\pmod{p^3}\), equivalently \(\binom{2p-1}{p-1}\equiv1\pmod{p^4}\).
+See the [primality laboratory](../PRIMALITY_LAB.md) for the search and its bounds.
+
 A **sequence class** asks whether the prime occurs in a defined recurrence or established
 catalogue. Exact recurrences can often settle membership. An open-ended or finite
 catalogue cannot prove non-membership beyond its known boundary, so the correct result is

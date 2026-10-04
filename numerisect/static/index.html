@@ -1748,6 +1748,30 @@
             <button class="primary" type="submit"><span>Search repunit primes</span><span>→</span></button>
           </form>
 
+          <form id="fermat-quotient-form" class="panel utility-card">
+            <p class="eyebrow">FERMAT QUOTIENTS</p>
+            <h2>Wieferich, Wall–Sun–Sun, Wilson &amp; Wolstenholme primes</h2>
+            <p>Search a range for primes whose congruence holds modulo a power of themselves, in a compiled scanner using primesieve, 128-bit products and GMP. Wieferich accepts any base and reports near-misses by Fermat quotient.</p>
+            <div class="four-controls">
+              <label>Congruence
+                <select id="fermat-quotient-kind">
+                  <option value="wieferich">Wieferich · a^(p−1) ≡ 1 (mod p²)</option>
+                  <option value="wall_sun_sun">Wall–Sun–Sun · p² | F(p−(5|p))</option>
+                  <option value="wilson">Wilson · (p−1)! ≡ −1 (mod p²)</option>
+                  <option value="wolstenholme">Wolstenholme · H(p−1) ≡ 0 (mod p³)</option>
+                </select>
+              </label>
+              <label>Range start<input id="fermat-quotient-start" type="text" value="2" required /></label>
+              <label>Range end<input id="fermat-quotient-end" type="text" value="10000000" required /></label>
+              <label>Time budget (seconds)<input id="fermat-quotient-seconds" type="number" min="1" max="86400" value="300" required /></label>
+            </div>
+            <div class="triple-controls">
+              <label>Base a <span class="field-note">Wieferich only</span><input id="fermat-quotient-base" type="number" min="2" max="1000000000" value="2" required /></label>
+              <label>Near-miss bound <span class="field-note">|Fermat quotient| ≤ this; 0 reports hits only</span><input id="fermat-quotient-near" type="number" min="0" max="1000000000000" value="0" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Search the congruence</span><span>→</span></button>
+          </form>
+
           <form id="sierpinski-riesel-form" class="panel utility-card">
             <p class="eyebrow">SIERPIŃSKI AND RIESEL</p>
             <h2>Sierpiński and Riesel numbers k·2ⁿ ± 1</h2>

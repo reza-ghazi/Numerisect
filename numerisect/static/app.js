@@ -476,6 +476,7 @@ const toolAliases = {
   'proth-search': 'search proth k*b^n+1 exponent range',
   'chernick-carmichael': 'chernick carmichael universal form construct',
   'repunit-search': 'repunit 111 111 base b (b^n-1)/(b-1) generalized',
+  'fermat-quotient': 'wieferich wall sun sun wall-sun-sun fibonacci wieferich wilson wolstenholme fermat quotient congruence mod p^2 mod p^3 exceptional primes harmonic factorial near-miss abc conjecture',
   'sierpinski-riesel': 'sierpinski riesel k*2^n+1 k*2^n-1 covering',
   'bitwin-chain': 'bi-twin chain twin cunningham combined',
   'prime-ladder': 'prime ladder change one digit word ladder path',
@@ -585,7 +586,7 @@ const primeSections = {
   },
   generation: {
     label: 'Prime generation',
-    forms: ['prime-generate-form', 'prime-special-form', 'special-prime-family-form', 'ntt-primes-form', 'prime-progression-form', 'random-range-form', 'digit-constrained-form', 'perfect-number-form', 'primorial-form', 'proth-search-form', 'chernick-carmichael-form', 'repunit-search-form', 'sierpinski-riesel-form', 'bitwin-chain-form', 'prime-ladder-form', 'constrained-prime-form'],
+    forms: ['prime-generate-form', 'prime-special-form', 'special-prime-family-form', 'ntt-primes-form', 'prime-progression-form', 'random-range-form', 'digit-constrained-form', 'perfect-number-form', 'primorial-form', 'proth-search-form', 'chernick-carmichael-form', 'repunit-search-form', 'fermat-quotient-form', 'sierpinski-riesel-form', 'bitwin-chain-form', 'prime-ladder-form', 'constrained-prime-form'],
   },
   patterns: {
     label: 'Gaps, tuples & Goldbach',
@@ -716,7 +717,7 @@ function renderPalette() {
 }
 
 function updatePalette(query) {
-  // An empty query is an invitation, not a dump of 133 rows.
+  // An empty query is an invitation, not a dump of 134 rows.
   commandPalette.matches = searchTools(query).slice(0, query.trim() ? 40 : 12);
   commandPalette.active = 0;
   renderPalette();
@@ -2625,6 +2626,22 @@ $('#chernick-carmichael-form').addEventListener('submit', (event) => {
     k_end: Number($('#chernick-end').value),
     limit: Number($('#chernick-limit').value),
   }, (data) => `${data.metrics['Carmichael numbers found']} Chernick Carmichael numbers`, 'table');
+});
+
+$('#fermat-quotient-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const kind = $('#fermat-quotient-kind').value;
+  const wieferich = kind === 'wieferich';
+  submitPrimeForm(event.currentTarget, '/api/primes/fermat-quotients', {
+    kind,
+    start: $('#fermat-quotient-start').value,
+    end: $('#fermat-quotient-end').value,
+    seconds: Number($('#fermat-quotient-seconds').value),
+    // The other three congruences have no base to vary and no near-miss measure, and
+    // the server refuses either one for them rather than ignoring it.
+    base: wieferich ? Number($('#fermat-quotient-base').value) : 2,
+    near_bound: wieferich ? Number($('#fermat-quotient-near').value) : 0,
+  }, (data) => `${data.hits.length} ${data.label.toLowerCase()} in range`, 'table');
 });
 
 $('#repunit-search-form').addEventListener('submit', (event) => {

@@ -5,6 +5,32 @@ binary packages are published.
 
 ## Unreleased
 
+- Added `numerisect_fermatq.c`, a compiled scanner for four congruences that strengthen a
+  theorem true of every prime: **Wieferich** in any base (`a^(p-1) = 1 mod p^2`),
+  **Wall-Sun-Sun** (`p^2 | F_{p-(5|p)}`), **Wilson** (`(p-1)! = -1 mod p^2`) and
+  **Wolstenholme** (`H_{p-1} = 0 mod p^3`). No installed engine searches for any of them.
+  Before this the application answered Wilson and Wolstenholme from a table of three and
+  two published values, tested Wieferich for one candidate in base 2 only, and had no
+  Wall-Sun-Sun test at all. One route, `POST /api/primes/fermat-quotients`, and one Prime
+  Tools page, bringing the catalogue to 134.
+  - Validated against the literature: base 2 returns 1093 and 3511, base 3 returns 11 and
+    1006003, base 5 returns 2, 20771 and 40487, Wilson returns 5, 13 and 563, and
+    Wolstenholme returns 16843. The last is also what validates the criterion
+    implemented, since the harmonic form is used rather than the binomial one.
+  - Above 2^32 the squared modulus leaves 64 bits and GMP takes over; all 17 Fermat
+    quotients in a window there match PARI/GP exactly.
+  - Measured against equivalent GP loops: Wieferich to 10^7, 0.38 s in GP against 0.15 s
+    on one core and 0.04 s on 24; Wilson to 20,000, 3.72 s against 0.02 s; Wolstenholme to
+    20,000, 6.46 s against 0.17 s. Wieferich to 10^9 takes 1.3 s.
+  - Wilson and Wolstenholme cost O(p) per candidate, so their moduli have hard ceilings
+    (2^32 and 2,642,246). Candidates beyond them are counted as **refused**, never
+    skipped, and an expired budget reports `timeout` with the largest prime fully
+    searched. Neither can be mistaken for an exhausted range.
+- Registered `counting_lab.py` and `distribution_lab.py` in the native-computation
+  policy's module list alongside the new `fermat_quotients.py`. Both predate the policy
+  test and were never listed, so none of its dispatch or engine-naming checks applied to
+  them; both pass.
+
 - Wired the YAFU expert bounds into the job path. `validate_yafu_parameters` and its
   15-flag table were implemented and unit-tested, but nothing ever passed them to YAFU:
   `_run_yafu` sent only `-threads`, `-terse`, `-ggnfs_dir` and `-pretest`. A job now

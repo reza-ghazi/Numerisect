@@ -13,7 +13,7 @@ This capability inventory corresponds to the `v0.8.1` source release. Its archiv
 snapshot is preserved at
 [DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791).
 
-The current application exposes five top-level workspaces, 133 individually routed
+The current application exposes five top-level workspaces, 134 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
 API total is checked against the running FastAPI application by the test suite, so adding
 or removing a route without updating the public reference fails validation.

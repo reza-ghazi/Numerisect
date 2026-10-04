@@ -50,7 +50,10 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - Multithreaded `primesieve` intervals and `primecount` exact counts/indexed primes
 - The nth proven prime strictly before or after an arbitrary-size integer
 - Batch primality checks, interval residue-class searches, and exact prime-modulus arithmetic
-- 133 individually routed Prime Tools pages in 11 searchable groups with local results
+- 134 individually routed Prime Tools pages in 11 searchable groups with local results
+- Wieferich (any base), Wall–Sun–Sun, Wilson and Wolstenholme prime searches in a
+  compiled scanner, with Fermat-quotient near-misses and explicit refusal past each
+  congruence's supported modulus
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches
@@ -215,7 +218,7 @@ factor multisets.
 Prime operations use PARI/GP by default, with `primesieve` for eligible 64-bit
 intervals and `primecount` for large exact counts and indexed-prime requests.
 
-Prime Tools has 133 pages with searchable navigation in 11 groups. Every
+Prime Tools has 134 pages with searchable navigation in 11 groups. Every
 operation has its own page and direct hash URL, such as
 `#primes/prime-check`, `#primes/prime-reciprocal`, or
 `#primes/integer-profile`; only the selected operation is displayed. On narrow
@@ -751,7 +754,7 @@ helper. They fail clearly when the corresponding native prerequisites are unavai
 
 The suite includes API security, installer-manifest, native-engine, report,
 and interface checks. Static navigation coverage verifies one registered form
-for each of the 133 Prime Tools pages and all 22 Zeta pages, local result
+for each of the 134 Prime Tools pages and all 22 Zeta pages, local result
 placement, saved-report notices, diagnostics, and cache-busted assets.
 
 ## Documentation

@@ -34,6 +34,11 @@ MATHEMATICAL_MODULES = [
     "algebra_lab.py",
     "visual_lab.py",
     "forms_lab.py",
+    "fermat_quotients.py",
+    # These two were never registered, so none of the dispatch or engine-naming checks
+    # applied to them.
+    "counting_lab.py",
+    "distribution_lab.py",
 ]
 
 # Modules that legitimately contain no engine call: transport, formatting, storage.
