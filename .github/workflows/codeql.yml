@@ -67,7 +67,7 @@ jobs:
           sudo grep -rlE 'dl\.google\.com|packages\.microsoft\.com' \
             /etc/apt/sources.list.d/ 2>/dev/null | sudo xargs -r rm -f
           sudo apt-get update
-          sudo apt-get install --yes gcc pkg-config libgmp-dev libmpfr-dev libflint-dev
+          sudo apt-get install --yes gcc pkg-config libgmp-dev libmpfr-dev libflint-dev libprimesieve-dev
 
       - name: Build the C helpers
         if: matrix.language == 'c-cpp'
@@ -85,6 +85,10 @@ jobs:
               tools.build_bigsieve_tool,
               tools.build_mfactor_tool,
               tools.build_zeta_tool,
+              tools.build_fermatq_tool,
+              tools.build_mertens_tool,
+              tools.build_brun_tool,
+              tools.build_classic_tool,
           ):
               print(build.__name__, "->", build())
           PY

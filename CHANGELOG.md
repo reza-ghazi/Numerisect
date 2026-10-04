@@ -9,6 +9,11 @@ No changes yet.
 
 ## 0.9.0 — 2026-10-04
 
+- Added `libprimesieve-dev` to the CI dependency lists and the four new helpers to the
+  CodeQL C build, so the new C sources are both buildable and analysed there. The
+  workflows installed the `primesieve` CLI but not its headers, which the Brun and
+  Fermat-quotient helpers link against.
+
 - Added `numerisect_classic.c` with three classical factoring methods that no installed
   engine exposes: **CFRAC** (Morrison-Brillhart, 1975), **Lehman's** deterministic method
   (1974) and **Hart's** one-line factorization (2012). YAFU and Msieve cover QS and NFS,

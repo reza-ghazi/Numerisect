@@ -25,8 +25,8 @@ jobs:
           - name: Linux ARM64
             runner: ubuntu-24.04-arm
             packages: >-
-              pari-gp libflint-dev libgmp-dev libmpfr-dev pkg-config gcc g++
-              primesieve gmp-ecm autoconf automake libtool cmake
+              pari-gp libflint-dev libgmp-dev libmpfr-dev libprimesieve-dev pkg-config
+              gcc g++ primesieve gmp-ecm autoconf automake libtool cmake
           - name: macOS ARM64
             runner: macos-15
             packages: >-
@@ -102,8 +102,8 @@ jobs:
           wsl-version: 1
           additional-packages: >-
             python3 python3-venv python3-pip git make gcc g++ cmake pkg-config
-            pari-gp libflint-dev libgmp-dev libmpfr-dev primesieve gmp-ecm
-            autoconf automake libtool
+            pari-gp libflint-dev libgmp-dev libmpfr-dev libprimesieve-dev primesieve
+            gmp-ecm autoconf automake libtool
       - name: Verify WSL and install test dependencies
         shell: wsl-bash {0}
         run: |
