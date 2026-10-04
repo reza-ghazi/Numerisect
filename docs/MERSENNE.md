@@ -210,6 +210,26 @@ factorizations.
     \(2^{11} - 1\), and the kernel's divisibility test is correctly true for it. The pipeline
     sieves those out beforehand and PARI/GP confirms primality afterwards.
 
+### Two facts handed to GMP-ECM rather than rediscovered
+
+The staged hunt gives the unresolved cofactor to P−1, P+1 and ECM. Two properties of
+\(M_p\) are known before any of them starts, so they are passed as parameters:
+
+- **The cofactor divides \(2^p-1\).** GMP-ECM's `-base2` reduces modulo that form
+  instead of performing a general division.
+- **Every prime factor \(q\) satisfies \(q = 2kp+1\)**, so \(2p \mid q-1\). For
+  P−1 the group order *is* \(q-1\), so `-go 2*p` preloads a known divisor of it and
+  \(B_1\) no longer has to reach \(p\) itself.
+
+The second is worth a measurement. The factor \(2000303 = 2\cdot 1\cdot 1000151+1\)
+of \(M_{1000151}\) has \(q-1 = 2 \cdot 1000151\), whose large prime is
+\(1000151\). Plain P−1 at \(B_1=1000\) cannot find it; with `-go 2*1000151` it falls
+out in stage 1 at the same bound.
+
+P+1 gets no group order, because \(q+1\) need not be divisible by \(2p\), and ECM
+gets none because a curve order is not known in advance. Numerisect refuses `-go` for
+ECM rather than passing a number nobody can justify.
+
 ### Finding nothing is inconclusive
 
 For prime \(p\), an exhausted \(k\) range means no factor of the form \(2kp+1\) exists

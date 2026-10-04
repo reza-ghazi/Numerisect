@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20260921-code-scanning" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20260921-code-scanning" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261004-engine-controls" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261004-engine-controls" />
   </head>
   <body>
     <header class="topbar">
@@ -79,6 +79,9 @@
                   <option value="yafu_ecm">ECM</option>
                   <option value="yafu_siqs">SIQS</option>
                   <option value="yafu_nfs">NFS</option>
+                  <option value="yafu_snfs">SNFS · special number field sieve</option>
+                  <option value="yafu_fermat">Fermat · near-square search</option>
+                  <option value="ecm_campaign">ECM campaign · GMP-ECM, resumable</option>
                 </optgroup>
               </select>
             </label>
@@ -105,6 +108,137 @@
               <label>
                 Trial-division bound
                 <input id="trial-bound" type="number" min="2" max="100000000" value="100000" />
+              </label>
+            </div>
+          </details>
+
+          <details>
+            <summary>GMP-ECM campaign parameters</summary>
+            <p class="field-note">
+              Used by the <strong>ECM campaign</strong> strategy. Stage-1 residues are saved in
+              the job directory, so a cancelled campaign resumes where it stopped.
+            </p>
+            <div class="controls-grid advanced">
+              <label>
+                Stage-1 bound B1
+                <input id="ecm-b1" type="number" min="100" max="1000000000000" placeholder="50000" />
+              </label>
+              <label>
+                Stage-2 bound B2
+                <input id="ecm-b2" type="text" inputmode="numeric" placeholder="engine default" />
+                <span class="field-note">A single value or a <code>min-max</code> range</span>
+              </label>
+              <label>
+                Curves
+                <input id="ecm-curves" type="number" min="1" max="1000000" placeholder="100" />
+              </label>
+              <label>
+                Sigma
+                <input id="ecm-sigma" type="text" inputmode="numeric" placeholder="engine choice" />
+                <span class="field-note">One curve parameter, or <code>param:sigma</code></span>
+              </label>
+              <label>
+                Parametrization
+                <select id="ecm-param">
+                  <option value="">Engine default</option>
+                  <option value="0">0 · original</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </label>
+              <label>
+                Stage-2 memory cap (MB)
+                <input id="ecm-maxmem" type="number" min="16" max="1048576" placeholder="unbounded" />
+              </label>
+              <label>
+                Stage-2 steps
+                <input id="ecm-stage2-steps" type="number" min="1" max="1000" placeholder="engine choice" />
+                <span class="field-note">GMP-ECM's <code>-k</code>: more steps, less memory</span>
+              </label>
+              <label>
+                Base-2 exponent
+                <input id="ecm-base2" type="number" min="-10000000" max="10000000" placeholder="off" />
+                <span class="field-note">
+                  For a divisor of 2<sup>n</sup>+1, or 2<sup>|n|</sup>−1 when negative. Reduces
+                  modulo that form instead of dividing.
+                </span>
+              </label>
+              <label>
+                Known group order
+                <input id="ecm-group-order" type="text" placeholder="e.g. 2*101" />
+                <span class="field-note">
+                  A divisor of q−1 known from the number's form; P−1 and P+1 only
+                </span>
+              </label>
+            </div>
+          </details>
+
+          <details>
+            <summary>YAFU expert bounds</summary>
+            <p class="field-note">
+              Passed to YAFU's own sub-algorithms. Leave a field empty to let YAFU choose.
+            </p>
+            <div class="controls-grid advanced">
+              <label>
+                P−1 B1
+                <input id="yafu-b1-pm1" type="number" min="100" max="1000000000000" data-yafu="b1_pm1" />
+              </label>
+              <label>
+                P−1 B2
+                <input id="yafu-b2-pm1" type="number" min="100" max="1000000000000000" data-yafu="b2_pm1" />
+              </label>
+              <label>
+                P+1 B1
+                <input id="yafu-b1-pp1" type="number" min="100" max="1000000000000" data-yafu="b1_pp1" />
+              </label>
+              <label>
+                P+1 B2
+                <input id="yafu-b2-pp1" type="number" min="100" max="1000000000000000" data-yafu="b2_pp1" />
+              </label>
+              <label>
+                ECM B1
+                <input id="yafu-b1-ecm" type="number" min="100" max="1000000000000" data-yafu="b1_ecm" />
+              </label>
+              <label>
+                ECM B2
+                <input id="yafu-b2-ecm" type="number" min="100" max="1000000000000000" data-yafu="b2_ecm" />
+              </label>
+              <label>
+                ECM sigma
+                <input id="yafu-sigma" type="number" min="6" max="9223372036854775807" data-yafu="sigma" />
+              </label>
+              <label>
+                Pollard rho iterations
+                <input id="yafu-rho-max" type="number" min="100" max="2147483647" data-yafu="rho_max" />
+              </label>
+              <label>
+                Fermat iterations
+                <input id="yafu-fermat-max" type="number" min="100" max="2147483647" data-yafu="fermat_max" />
+              </label>
+              <label>
+                SIQS factor base
+                <input id="yafu-siqs-factor-base" type="number" min="100" max="2147483647" data-yafu="siqs_factor_base" />
+              </label>
+              <label>
+                SIQS trial-factoring bound
+                <input id="yafu-siqs-trial-bound" type="number" min="10" max="2147483647" data-yafu="siqs_trial_bound" />
+              </label>
+              <label>
+                SIQS relations
+                <input id="yafu-siqs-relations" type="number" min="100" max="2147483647" data-yafu="siqs_relations" />
+              </label>
+              <label>
+                SIQS timeout (s)
+                <input id="yafu-siqs-timeout" type="number" min="1" max="86400" data-yafu="siqs_timeout" />
+              </label>
+              <label>
+                SIQS blocks
+                <input id="yafu-siqs-blocks" type="number" min="1" max="2147483647" data-yafu="siqs_blocks" />
+              </label>
+              <label>
+                SIQS multiplier
+                <input id="yafu-siqs-multiplier" type="number" min="1" max="2147483647" data-yafu="siqs_multiplier" />
               </label>
             </div>
           </details>
@@ -2603,6 +2737,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20260921-code-scanning" defer></script>
+    <script src="/assets/app.js?v=20261004-engine-controls" defer></script>
   </body>
 </html>

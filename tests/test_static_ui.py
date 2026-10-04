@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20260921-code-scanning' in INDEX
-    assert '/assets/app.js?v=20260921-code-scanning' in INDEX
-    assert '/assets/favicon.svg?v=20260921-code-scanning' in INDEX
+    assert '/assets/styles.css?v=20261004-engine-controls' in INDEX
+    assert '/assets/app.js?v=20261004-engine-controls' in INDEX
+    assert '/assets/favicon.svg?v=20261004-engine-controls' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20260921-code-scanning#primes/prime-check' in RUNNER
+    assert '?ui=20261004-engine-controls#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -365,3 +365,46 @@ def test_result_renderers_have_no_unreachable_branches():
     duplicates = sorted({kind for kind in handled if handled.count(kind) > 1})
     assert not duplicates, f"unreachable renderer branches for: {duplicates}"
     assert "'prime-distribution'" in APP[start:end]
+
+
+def test_every_api_backend_is_offered_in_the_browser():
+    """An API-only strategy is invisible: the browser is how this app is used.
+
+    ecm_campaign, yafu_snfs and yafu_fermat were accepted by the API and missing
+    from the strategy list. squfof and tune have their own lab forms instead.
+    """
+
+    from numerisect.main import Backend
+
+    offered = set(re.findall(r'<option value="([a-z_0-9]+)"', INDEX))
+    lab_forms = {"squfof", "tune"}
+    for backend in Backend.__args__:
+        if backend in lab_forms:
+            continue
+        assert backend in offered, f"{backend} is accepted by the API but not offered in the UI"
+
+
+def test_the_yafu_expert_fields_match_the_server_parameter_table():
+    """A field name the server does not know would be rejected at submission."""
+
+    from numerisect.factor_lab import YAFU_PARAMETERS
+
+    fields = set(re.findall(r'data-yafu="([a-z0-9_]+)"', INDEX))
+    assert fields == set(YAFU_PARAMETERS), (
+        f"missing from the form: {sorted(set(YAFU_PARAMETERS) - fields)}; "
+        f"unknown to the server: {sorted(fields - set(YAFU_PARAMETERS))}"
+    )
+    # The collector is attribute-driven, so the markup alone owns the field list.
+    assert "data-yafu" in APP
+
+
+def test_the_ecm_campaign_controls_are_present_and_optional():
+    """An empty bound must be omitted, not sent as zero: the engine owns the default."""
+
+    for selector in (
+        "ecm-b1", "ecm-b2", "ecm-curves", "ecm-sigma", "ecm-param",
+        "ecm-maxmem", "ecm-stage2-steps", "ecm-base2", "ecm-group-order",
+    ):
+        assert f'id="{selector}"' in INDEX, f"{selector} is missing from the form"
+    assert "function optionalNumbers(" in APP
+    assert "function optionalText(" in APP

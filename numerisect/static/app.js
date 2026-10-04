@@ -233,6 +233,37 @@ async function selectJob(id) {
   await refreshSelected();
 }
 
+// The engine decides every bound it is not given, so an empty field must be omitted
+// rather than sent as 0 or null: a present key means "the user chose this".
+function optionalNumbers(fields) {
+  const body = {};
+  for (const [key, selector] of Object.entries(fields)) {
+    const raw = $(selector).value.trim();
+    if (raw !== '') body[key] = Number(raw);
+  }
+  return body;
+}
+
+function optionalText(fields) {
+  const body = {};
+  for (const [key, selector] of Object.entries(fields)) {
+    const raw = $(selector).value.trim();
+    if (raw !== '') body[key] = raw;
+  }
+  return body;
+}
+
+// Collected by data-yafu attribute so the markup owns the field list: adding a knob to
+// index.html needs no change here. Validation and range checks belong to the server.
+function yafuExpertOptions() {
+  const options = {};
+  for (const input of document.querySelectorAll('[data-yafu]')) {
+    const raw = input.value.trim();
+    if (raw !== '') options[input.dataset.yafu] = Number(raw);
+  }
+  return Object.keys(options).length ? { yafu_options: options } : {};
+}
+
 $('#factor-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = event.currentTarget.querySelector('button[type="submit"]');
@@ -250,6 +281,16 @@ $('#factor-form').addEventListener('submit', async (event) => {
         pretest_level: Number($('#pretest-level').value),
         trial_bound: Number($('#trial-bound').value),
         cado_parameter_size: parameter ? Number(parameter) : null,
+        ...optionalNumbers({
+          ecm_b1: '#ecm-b1',
+          ecm_curves: '#ecm-curves',
+          ecm_param: '#ecm-param',
+          ecm_maxmem: '#ecm-maxmem',
+          ecm_stage2_steps: '#ecm-stage2-steps',
+          ecm_base2: '#ecm-base2',
+        }),
+        ...optionalText({ ecm_b2: '#ecm-b2', ecm_sigma: '#ecm-sigma', ecm_group_order: '#ecm-group-order' }),
+        ...yafuExpertOptions(),
       }),
     });
     state.selectedId = job.id;

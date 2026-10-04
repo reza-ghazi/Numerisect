@@ -30,7 +30,13 @@ from .engines import (
     product_is_complete,
     select_cado_parameter,
 )
-from .factor_lab import parse_tune_info, reconcile_factors, squfof, tune_recommendation
+from .factor_lab import (
+    parse_tune_info,
+    reconcile_factors,
+    squfof,
+    tune_recommendation,
+    validate_yafu_parameters,
+)
 from .outputs import save_factorization
 from .sievers import siever_directory
 
@@ -122,6 +128,11 @@ class JobManager:
         ecm_curves: int | None = None,
         ecm_sigma: str | None = None,
         ecm_param: int | None = None,
+        ecm_maxmem: int | None = None,
+        ecm_stage2_steps: int | None = None,
+        ecm_base2: int | None = None,
+        ecm_group_order: str | None = None,
+        yafu_options: dict[str, int] | None = None,
         distributed: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not 2 <= trial_bound <= 100_000_000:
@@ -135,6 +146,10 @@ class JobManager:
         ):
             if value is not None and not 1 <= value <= upper:
                 raise ValueError(f"The {label} must be between 1 and {upper:,}")
+        # Validated here rather than at the point of use: a job that would die on a
+        # malformed expert flag must be refused outright, not queued and then failed.
+        if yafu_options:
+            validate_yafu_parameters(dict(yafu_options))
         if requested_backend.startswith("adapter:"):
             adapter = ADAPTER_REGISTRY.get(requested_backend.removeprefix("adapter:"))
             if adapter is None or adapter.builtin:
@@ -215,6 +230,11 @@ class JobManager:
                 "ecm_curves": ecm_curves,
                 "ecm_sigma": ecm_sigma,
                 "ecm_param": ecm_param,
+                "ecm_maxmem": ecm_maxmem,
+                "ecm_stage2_steps": ecm_stage2_steps,
+                "ecm_base2": ecm_base2,
+                "ecm_group_order": ecm_group_order,
+                "yafu_options_json": json.dumps(yafu_options) if yafu_options else None,
                 "distributed_json": json.dumps(distributed) if distributed else None,
             }
         )
@@ -482,6 +502,12 @@ class JobManager:
             command += ["-ggnfs_dir", str(sievers).rstrip("/") + "/"]
         if pretest_only:
             command += ["-pretest", str(job["pretest_level"])]
+        # Expert bounds for YAFU's own sub-algorithms (B1/B2 per method, rho and
+        # Fermat caps, the SIQS knobs). Re-validated from the stored row so a resume
+        # cannot smuggle in a flag that creation would have rejected.
+        stored = job.get("yafu_options_json")
+        if stored:
+            command += validate_yafu_parameters(json.loads(stored))
         expression = f"{algorithm}({number})" if algorithm else f"factor({number})"
         return_code, output = self._run_process(
             job,
@@ -599,8 +625,22 @@ class JobManager:
         curves = int(job.get("ecm_curves") or 100)
         sigma = str(job.get("ecm_sigma") or "").strip()
         param = job.get("ecm_param")
+        maxmem = job.get("ecm_maxmem")
+        stage2_steps = job.get("ecm_stage2_steps")
+        base2 = job.get("ecm_base2")
+        group_order = str(job.get("ecm_group_order") or "").strip()
 
         command: list[str] = ["ecm", "-c", str(curves)]
+        # Stage-2 shape and the special-form shortcuts, all decided by GMP-ECM
+        # itself; Numerisect only passes what the user asked for.
+        if maxmem is not None:
+            command += ["-maxmem", str(int(maxmem))]
+        if stage2_steps is not None:
+            command += ["-k", str(int(stage2_steps))]
+        if base2 is not None:
+            command += ["-base2", str(int(base2))]
+        if group_order:
+            command += ["-go", group_order]
         # Resume from a previous run's stage-1 residues when they exist, so a
         # cancelled campaign continues instead of starting over.
         if residues.is_file() and residues.stat().st_size > 0:
@@ -617,7 +657,10 @@ class JobManager:
 
         self.database.update_job(
             job["id"],
-            phase=f"GMP-ECM campaign: {curves} curves at B1={b1:,}",
+            phase=(
+                f"GMP-ECM campaign: {curves} curves at B1={b1:,}"
+                + (f", base 2^{base2}" if base2 is not None else "")
+            ),
             progress=10,
         )
         return_code, output = self._run_process(

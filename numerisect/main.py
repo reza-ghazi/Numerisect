@@ -343,6 +343,17 @@ class JobRequest(BaseModel):
     ecm_curves: int | None = Field(default=None, ge=1, le=1_000_000)
     ecm_sigma: str | None = Field(default=None, max_length=40, pattern=r"^\d+(:\d+)?$")
     ecm_param: int | None = Field(default=None, ge=0, le=3)
+    ecm_maxmem: int | None = Field(default=None, ge=16, le=1_048_576)
+    ecm_stage2_steps: int | None = Field(default=None, ge=1, le=1_000)
+    # GMP-ECM's own convention: positive n means the input divides 2^n + 1,
+    # negative means 2^|n| - 1. It warns and falls back when that is untrue.
+    ecm_base2: int | None = Field(default=None, ge=-10_000_000, le=10_000_000)
+    ecm_group_order: str | None = Field(
+        default=None, max_length=60, pattern=r"^[0-9][0-9*+^ ()-]*$"
+    )
+    # YAFU expert bounds, keyed by the field names in factor_lab.YAFU_PARAMETERS;
+    # each value is range-checked there before the job is accepted.
+    yafu_options: dict[str, int] | None = None
 
 
 class BatchJobRequest(BaseModel):
@@ -980,6 +991,10 @@ def _public_job(job: dict[str, object]) -> dict[str, object]:
         "ecm_b2",
         "ecm_curves",
         "ecm_sigma",
+        "ecm_maxmem",
+        "ecm_stage2_steps",
+        "ecm_base2",
+        "ecm_group_order",
         "ecm_curves_done",
         "cado_parameter_size",
         "factors",
@@ -4514,6 +4529,11 @@ def create_job(request: JobRequest) -> dict[str, object]:
             ecm_curves=request.ecm_curves,
             ecm_sigma=request.ecm_sigma,
             ecm_param=request.ecm_param,
+            ecm_maxmem=request.ecm_maxmem,
+            ecm_stage2_steps=request.ecm_stage2_steps,
+            ecm_base2=request.ecm_base2,
+            ecm_group_order=request.ecm_group_order,
+            yafu_options=request.yafu_options,
         )
         return _public_job(job)
     except (ExpressionError, ValueError) as exc:

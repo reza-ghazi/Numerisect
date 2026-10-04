@@ -172,8 +172,9 @@ def test_staged_hunt_reconciles_native_engine_factors(monkeypatch):
     # a mocked GMP-ECM boundary reports 9719 and GP owns all resulting arithmetic.
     calls = []
 
-    def native_stage(cofactor, method, b1, curves, timeout, threads):
-        calls.append((cofactor, method, b1, curves, timeout, threads))
+    def native_stage(cofactor, method, b1, curves, timeout, threads, base2=None,
+                     group_order=None):
+        calls.append((cofactor, method, b1, curves, timeout, threads, base2, group_order))
         return {"status": "factor_found", "factors": ["9719"],
                 "detail": "1 divisor(s) reported"}
 
@@ -183,13 +184,17 @@ def test_staged_hunt_reconciles_native_engine_factors(monkeypatch):
     assert result["cofactor"] == "2099863"
     assert [item["value"] for item in result["factors"]] == ["431", "9719"]
     assert calls and calls[0][1] == "pm1"
+    # Both facts known from the form of M_p must reach GMP-ECM: the cofactor divides
+    # 2^43 - 1, and every prime factor q has 2*43 dividing q - 1.
+    assert calls[0][6] == -43
+    assert calls[0][7] == "2*43"
     assert result["stages"][2]["status"] == "not_needed"
 
 
 def test_staged_hunt_keeps_an_unresolved_composite_explicit(monkeypatch):
     monkeypatch.setattr(
         factor_lab, "_run_ecm_factor_stage",
-        lambda *args: {"status": "completed", "factors": [], "detail": "no factor found"},
+        lambda *args, **kwargs: {"status": "completed", "factors": [], "detail": "no factor found"},
     )
     result = mersenne_factor_hunt(43, trial_k_limit=5, trial_seconds=30)
     assert result["complete"] is False
@@ -535,3 +540,45 @@ def test_the_two_scanners_agree():
                       for line in out.splitlines() if line.startswith("FACTOR:"))
 
     assert factors(mfactor_cuda_tool_path(), []) == factors(mfactor_tool_path(), ["24"])
+
+
+def test_the_ecm_stage_command_carries_the_mersenne_specific_shortcuts(monkeypatch):
+    """`-base2` and `-go` must appear exactly where they are mathematically valid.
+
+    Both follow from the form of M_p rather than from anything discovered at run
+    time, so GMP-ECM should be told rather than left to work without them.
+    """
+
+    captured: dict[str, list[str]] = {}
+
+    class Completed:
+        stdout = "Found prime factor of 4 digits: 9719\n"
+        stderr = ""
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        captured["command"] = list(command)
+        return Completed()
+
+    monkeypatch.setattr(factor_lab.shutil, "which", lambda name: "/usr/bin/ecm")
+    monkeypatch.setattr(factor_lab.subprocess, "run", fake_run)
+    factor_lab._run_ecm_factor_stage(
+        "20408568497", "pm1", 50_000, 1, 30, 1, base2=-43, group_order="2*43"
+    )
+    command = captured["command"]
+    assert command[command.index("-base2") + 1] == "-43"
+    assert command[command.index("-go") + 1] == "2*43"
+    assert "-pm1" in command
+
+
+def test_a_known_group_order_is_refused_for_ecm(monkeypatch):
+    """P-1 works in (Z/q)^*, where q-1 is known from the form; ECM does not.
+
+    Passing -go to ECM would claim knowledge of a curve order nobody has.
+    """
+
+    monkeypatch.setattr(factor_lab.shutil, "which", lambda name: "/usr/bin/ecm")
+    with pytest.raises(ValueError, match="P-1 and P\\+1"):
+        factor_lab._run_ecm_factor_stage(
+            "20408568497", "ecm", 50_000, 10, 30, 1, group_order="2*43"
+        )

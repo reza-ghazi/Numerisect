@@ -5,6 +5,32 @@ binary packages are published.
 
 ## Unreleased
 
+- Wired the YAFU expert bounds into the job path. `validate_yafu_parameters` and its
+  15-flag table were implemented and unit-tested, but nothing ever passed them to YAFU:
+  `_run_yafu` sent only `-threads`, `-terse`, `-ggnfs_dir` and `-pretest`. A job now
+  carries `yafu_options`, validated when the job is created rather than when the worker
+  starts, stored with the job, and re-validated on a resume. The factor page gained a
+  **YAFU expert bounds** panel driven by `data-yafu` attributes, so the markup owns the
+  field list and a contract test holds it equal to the server's table.
+- Offered every API backend in the browser. `ecm_campaign`, `yafu_snfs` and
+  `yafu_fermat` were accepted by `POST /api/jobs` and missing from the strategy list, so
+  the richest ECM surface in the application had no form. A test now fails if an
+  accepted backend has neither an option nor its own lab form.
+- Added GMP-ECM's stage-2 and special-form controls to the campaign backend:
+  `ecm_maxmem` (`-maxmem`), `ecm_stage2_steps` (`-k`), `ecm_base2` (`-base2`) and
+  `ecm_group_order` (`-go`), with a **GMP-ECM campaign parameters** panel covering all
+  nine fields. An empty field is omitted rather than sent as zero, because the engine
+  owns every default it is not given.
+- Taught the staged Mersenne hunt two things it already knew but never said. Every
+  cofactor of `M_p` divides `2^p - 1`, so `-base2 -p` now replaces a general division
+  with a reduction modulo that form. Every prime factor `q` satisfies `q = 2kp + 1`, so
+  `2p` divides `q - 1`, which is precisely the group order P-1 works in: `-go 2*p` is
+  passed to the P-1 stage. Measured on the known factor `2000303` of `M_1000151`, whose
+  `q - 1` is `2 * 1000151`: plain P-1 at B1=1000 finds nothing, and with the group order
+  preloaded the factor appears in stage 1 at the same bound. P+1 is given no group order
+  (`q + 1` need not be divisible by `2p`) and ECM is refused one outright, since no
+  curve order is known in advance.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.22883791` for the `v0.8.1` source
   release. `CITATION.cff`, the README, the installation guides, the capability index, the
   citation page, the FAQ and the publishing guide now point at the 0.8.1 snapshot; the

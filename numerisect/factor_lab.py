@@ -581,13 +581,40 @@ def _run_ecm_factor_stage(
     curves: int,
     timeout: int,
     threads: int,
+    base2: int | None = None,
+    group_order: str | None = None,
 ) -> dict[str, Any]:
-    """Run one GMP-ECM stage and return only engine-reported divisors."""
+    """Run one GMP-ECM stage and return only engine-reported divisors.
+
+    Args:
+        cofactor: The decimal composite to work on.
+        method: ``pm1``, ``pp1`` or ``ecm``.
+        b1: Stage-1 bound.
+        curves: Curve count, used by ``ecm`` only.
+        timeout: Wall-clock limit in seconds.
+        threads: Value for ``OMP_NUM_THREADS``.
+        base2: Exponent for GMP-ECM's special base-2 reduction, in its own
+            convention: positive for ``2^n + 1``, negative for ``2^|n| - 1``. Valid
+            only when the input divides that number; GMP-ECM warns and falls back
+            otherwise, so it is never passed speculatively.
+        group_order: A known divisor of the group order, passed to ``-go``. For P-1
+            the group order is q-1 for the sought factor q, so a divisor known in
+            advance from the number's form belongs here. It is meaningless for ECM,
+            where the curve order is not known in advance, and is refused there.
+    """
 
     executable = shutil.which("ecm")
     if not executable:
         return {"status": "skipped", "factors": [], "detail": "GMP-ECM is not installed"}
+    if group_order is not None and method not in {"pm1", "pp1"}:
+        raise ValueError("A known group order applies to P-1 and P+1, not to ECM")
     command = [executable]
+    # The special base-2 code reduces modulo 2^|n| ± 1 instead of performing a
+    # general division, which is the whole point for Cunningham-style cofactors.
+    if base2 is not None:
+        command += ["-base2", str(base2)]
+    if group_order is not None:
+        command += ["-go", group_order]
     if method in {"pm1", "pp1"}:
         command.append(f"-{method}")
     else:
@@ -1114,12 +1141,21 @@ def mersenne_factor_hunt(
         }
     ]
 
+    # Two facts about M_p are handed to GMP-ECM rather than rediscovered by it.
+    # Every cofactor divides 2^p - 1, so the special base-2 reduction applies
+    # (GMP-ECM's own convention: a negative exponent means 2^|n| - 1). And every
+    # prime factor q of M_p satisfies q = 2kp + 1, so 2p divides q - 1, which is
+    # exactly the group order P-1 works in: preloading it means B1 no longer has to
+    # reach p itself. At p = 1,000,151 that turns a factor needing B1 > 10^6 into
+    # one found at B1 = 1,000. P+1 gets no such guarantee (q + 1 need not be
+    # divisible by 2p) and ECM's curve order is not known in advance, so neither
+    # receives a group order.
     stage_specs = (
-        ("Pollard p-1", "pm1", pm1_b1, 1),
-        ("Williams p+1", "pp1", pp1_b1, 1),
-        ("Elliptic-curve method", "ecm", ecm_b1, ecm_curves),
+        ("Pollard p-1", "pm1", pm1_b1, 1, f"2*{exponent}"),
+        ("Williams p+1", "pp1", pp1_b1, 1, None),
+        ("Elliptic-curve method", "ecm", ecm_b1, ecm_curves, None),
     )
-    for label, method, b1, curves in stage_specs:
+    for label, method, b1, curves, group_order in stage_specs:
         if inventory["complete"]:
             stages.append(
                 {"stage": label, "status": "not_needed", "detail": "factorization already complete"}
@@ -1135,7 +1171,8 @@ def mersenne_factor_hunt(
             )
             continue
         result = _run_ecm_factor_stage(
-            inventory["cofactor"], method, b1, curves, stage_seconds, selected_threads
+            inventory["cofactor"], method, b1, curves, stage_seconds, selected_threads,
+            base2=-exponent, group_order=group_order,
         )
         for value in result["factors"]:
             candidates.append(value)

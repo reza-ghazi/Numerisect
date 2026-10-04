@@ -132,6 +132,11 @@ Only flags the installed YAFU build accepts are offered, verified against `yafu 
 Every value is range-checked and passed as a separate argv entry. Engine commands are
 argument arrays; nothing is ever interpolated into a shell string.
 
+They are set under **YAFU expert bounds** on the factor page, or as `yafu_options` in a
+`POST /api/jobs` body. A field the server does not know, or a value out of range, is
+refused when the job is created rather than queued and then failed; the stored options
+are validated again on a resume. Leave a field empty to let YAFU choose.
+
 ## ECM campaign manager
 
 `ecm_campaign` is a job backend that runs GMP-ECM with explicit parameters and
@@ -146,6 +151,19 @@ parameters, streams the log, and records the outcome.
 | `ecm_curves` | curves to run (`-c`) | 1 to 1,000,000 |
 | `ecm_sigma` | curve parameter (`-sigma`), optionally `param:sigma` | GMP-ECM syntax |
 | `ecm_param` | parametrization (`-param`) | 0 to 3 |
+| `ecm_maxmem` | stage-2 memory cap in MB (`-maxmem`) | 16 to 1,048,576 |
+| `ecm_stage2_steps` | stage-2 steps (`-k`); more steps need less memory | 1 to 1,000 |
+| `ecm_base2` | special base-2 reduction (`-base2`) | −10^7 to 10^7 |
+| `ecm_group_order` | known divisor of the group order (`-go`) | GMP-ECM expression |
+
+`ecm_base2` follows GMP-ECM's own convention: a positive `n` means the input divides
+2^n + 1, a negative one means it divides 2^|n| − 1. It replaces a general division by a
+reduction modulo that form, which is the point for Cunningham-style cofactors. GMP-ECM
+warns and falls back when the input does not actually divide the stated form.
+
+`ecm_group_order` is a divisor of q − 1 already known from the number's shape. It is
+meaningful for P−1 and P+1, where the group order is q ∓ 1; it is refused for ECM,
+where no curve order is known in advance.
 
 Stage-1 residues are written to `ecm-residues.txt` inside the job directory with
 `-save`. If the job is cancelled and restarted, Numerisect passes `-resume` with that
