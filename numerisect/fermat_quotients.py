@@ -34,6 +34,7 @@ from .primes import PrimeEngineError
 #: in GMP and are bounded only by patience.
 SEARCH_KINDS: dict[str, dict[str, Any]] = {
     "wieferich": {
+        "mode": "wieferich",
         "label": "Wieferich primes",
         "congruence": "a^(p-1) = 1 (mod p^2)",
         "takes_base": True,
@@ -41,6 +42,7 @@ SEARCH_KINDS: dict[str, dict[str, Any]] = {
         "known": "1093 and 3511 in base 2",
     },
     "wall_sun_sun": {
+        "mode": "wall-sun-sun",
         "label": "Wall-Sun-Sun primes",
         "congruence": "p^2 divides F_{p - (5|p)}",
         "takes_base": False,
@@ -48,6 +50,7 @@ SEARCH_KINDS: dict[str, dict[str, Any]] = {
         "known": "none; every search so far has returned nothing",
     },
     "wilson": {
+        "mode": "wilson",
         "label": "Wilson primes",
         "congruence": "(p-1)! = -1 (mod p^2)",
         "takes_base": False,
@@ -55,6 +58,7 @@ SEARCH_KINDS: dict[str, dict[str, Any]] = {
         "known": "5, 13 and 563",
     },
     "wolstenholme": {
+        "mode": "wolstenholme",
         "label": "Wolstenholme primes",
         "congruence": "H_{p-1} = 0 (mod p^3)",
         "takes_base": False,
@@ -145,7 +149,9 @@ def fermat_quotient_search(
         raise ValueError("Near-misses are reported for the Wieferich congruence only")
 
     tool = fermatq_tool_path()
-    mode = kind.replace("_", "-")
+    # The subcommand is this module's own constant, looked up by the validated key, so
+    # no request string reaches the command line at all.
+    mode = str(specification["mode"])
     command = [str(tool), mode, _argument(start), _argument(end)]
     if specification["takes_base"]:
         command += [_argument(base), _argument(near_bound)]

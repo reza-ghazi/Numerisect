@@ -40,26 +40,31 @@ MAX_BRUN_LIMIT = 10**12
 #: except as the comparison it is.
 BRUN_PATTERNS: dict[str, dict[str, str]] = {
     "twin": {
+        "mode": "twin",
         "label": "Twin primes (p, p+2)",
         "constant": "B2",
         "literature": "1.902160583104 (Klyve, extrapolated)",
     },
     "cousin": {
+        "mode": "cousin",
         "label": "Cousin primes (p, p+4)",
         "constant": "B4",
         "literature": "1.1970449 (extrapolated, excluding the pair (3, 7))",
     },
     "sexy": {
+        "mode": "sexy",
         "label": "Sexy primes (p, p+6)",
         "constant": "B6",
         "literature": "no standard published value",
     },
     "triplet": {
+        "mode": "triplet",
         "label": "Prime triplets (p, p+2, p+6) and (p, p+4, p+6)",
         "constant": "B(3)",
         "literature": "no standard published value",
     },
     "quadruplet": {
+        "mode": "quadruplet",
         "label": "Prime quadruplets (p, p+2, p+6, p+8)",
         "constant": "B(4)",
         "literature": "0.8705883800 (extrapolated)",
@@ -277,9 +282,10 @@ def brun_sum(
     if not 3 <= digits <= 1000:
         raise ValueError("The digit count must be between 3 and 1000")
     specification = BRUN_PATTERNS[pattern]
+    # The pattern argument is this module's own constant, not the request's string.
     lines = _run(
-        [str(brun_tool_path()), pattern, _argument(limit), _argument(digits),
-         _argument(max(1, seconds - 30))],
+        [str(brun_tool_path()), str(specification["mode"]), _argument(limit),
+         _argument(digits), _argument(max(1, seconds - 30))],
         seconds,
     )
     status = _tagged(lines, "STATUS")

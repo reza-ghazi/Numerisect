@@ -249,6 +249,7 @@ def _gp_call(call: str, timeout: int) -> list[str]:
 #: excels exactly where rho and ECM struggle.
 CLASSIC_METHODS: dict[str, dict[str, Any]] = {
     "cfrac": {
+        "mode": "cfrac",
         "label": "CFRAC (Morrison-Brillhart continued fraction)",
         "bound": "factor-base bound",
         "default_bound": 2000,
@@ -260,6 +261,7 @@ CLASSIC_METHODS: dict[str, dict[str, Any]] = {
         ),
     },
     "lehman": {
+        "mode": "lehman",
         "label": "Lehman's deterministic method",
         "bound": "none; the bound is N^(1/3) and is fixed by the method",
         "default_bound": 0,
@@ -271,6 +273,7 @@ CLASSIC_METHODS: dict[str, dict[str, Any]] = {
         ),
     },
     "hart": {
+        "mode": "hart",
         "label": "Hart's one-line factorization",
         "bound": "iteration limit",
         "default_bound": 1_000_000,
@@ -351,8 +354,11 @@ def classic_factor(
     # int() at the point of assembly: the argv entries are integers by construction,
     # the helper is launched as an argument array with no shell, and it parses each one
     # with mpz_set_str or strtoull.
+    # The mode is this module's own constant, looked up by the validated key, so the
+    # request's string never reaches the command line.
     command = [
-        str(tool), method, str(int(number)), str(int(bound)), str(int(max(1, timeout - 10))),
+        str(tool), str(specification["mode"]), str(int(number)), str(int(bound)),
+        str(int(max(1, timeout - 10))),
     ]
     try:
         completed = subprocess.run(
