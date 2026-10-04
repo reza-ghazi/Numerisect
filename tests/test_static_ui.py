@@ -154,8 +154,8 @@ def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     )[0]
     categorized_forms = re.findall(r"'([^']+-form)'", page_catalogue)
 
-    assert len(html_forms) == len(set(html_forms)) == 134
-    assert len(categorized_forms) == len(set(categorized_forms)) == 134
+    assert len(html_forms) == len(set(html_forms)) == 136
+    assert len(categorized_forms) == len(set(categorized_forms)) == 136
     assert set(categorized_forms) == set(html_forms)
 
 
@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20261004-engine-controls' in INDEX
-    assert '/assets/app.js?v=20261004-engine-controls' in INDEX
-    assert '/assets/favicon.svg?v=20261004-engine-controls' in INDEX
+    assert '/assets/styles.css?v=20261004-native-searches' in INDEX
+    assert '/assets/app.js?v=20261004-native-searches' in INDEX
+    assert '/assets/favicon.svg?v=20261004-native-searches' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20261004-engine-controls#primes/prime-check' in RUNNER
+    assert '?ui=20261004-native-searches#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -255,7 +255,7 @@ def test_documentation_check_runs_for_dependency_and_workflow_updates():
     assert '".github/workflows/docs.yml"' in pull_request_paths
 
 
-# --- Finding a tool among 134 -------------------------------------------------------
+# --- Finding a tool among 136 -------------------------------------------------------
 
 CONCEPT_CASES = [
     # A label chosen by this project is rarely the word someone arrives with.
@@ -269,7 +269,13 @@ CONCEPT_CASES = [
     ("n^2-n+41", "prime-polynomial"),
     ("korselt", "carmichael-analysis"),
     ("keygen", "prime-generate"),
-    ("mertens", "summatory-functions"),
+    # Before the dedicated page existed this query had to settle for the combined
+    # summatory-functions tool; the Mertens page is now the right destination.
+    ("mertens", "mertens"),
+    ("brun constant", "brun"),
+    ("wieferich", "fermat-quotient"),
+    ("wall-sun-sun", "fermat-quotient"),
+    ("wolstenholme", "fermat-quotient"),
     ("tonelli", "tonelli-shanks"),
     ("amicable", "sociable-cycle"),
     ("ulam", "visual-spiral"),

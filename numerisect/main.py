@@ -28,6 +28,7 @@ from .algebra_lab import (
     sociable_cycles,
     weird_number_analysis,
 )
+from .analytic_sums import brun_sum, mertens_sign_analysis, mertens_value
 from .catalogues import (
     ALLOW_NETWORK,
     CatalogueError,
@@ -467,6 +468,20 @@ class PrimeModularRequest(BaseModel):
 
 class PrimeGapRequest(PrimeRangeRequest):
     pass
+
+
+class MertensRequest(BaseModel):
+    x: str = Field(min_length=1, max_length=100_000)
+    mode: Literal["value", "signs"] = "value"
+    cross_check: bool = False
+    seconds: int = Field(default=600, ge=1, le=86400)
+
+
+class BrunRequest(BaseModel):
+    pattern: Literal["twin", "cousin", "sexy", "triplet", "quadruplet"] = "twin"
+    limit: str = Field(min_length=1, max_length=100_000)
+    digits: int = Field(default=20, ge=3, le=1000)
+    seconds: int = Field(default=600, ge=1, le=86400)
 
 
 class FermatQuotientRequest(BaseModel):
@@ -2220,6 +2235,129 @@ def calculate_prime_gap_statistics(request: PrimeGapRequest) -> dict[str, object
         **result,
         "output_file": path.name,
         "note": "PARI/GP computed the exact distribution, rational mean and median, mode, and extrema over the scanned consecutive gaps.",
+    }
+
+
+@app.post("/api/primes/mertens")
+def calculate_mertens_function(request: MertensRequest) -> dict[str, object]:
+    """Compute M(x), or track its sign changes and extremal ratio up to x."""
+
+    try:
+        x = evaluate_arbitrary_integer(request.x)
+        if request.mode == "signs":
+            result = mertens_sign_analysis(x, seconds=request.seconds)
+        else:
+            result = mertens_value(
+                x, cross_check=request.cross_check, seconds=request.seconds
+            )
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if request.mode == "signs":
+        lines = [
+            f"Range: 1 through {result['reached']}",
+            f"M(x): {result['mertens']}",
+            f"Sign changes: {result['sign_changes']}",
+            f"First sign change: {result['first_sign_change']}",
+            f"Minimum: {result['minimum']} at n = {result['minimum_at']}",
+            f"Maximum: {result['maximum']} at n = {result['maximum_at']}",
+            f"Largest |M(n)|/sqrt(n): {result['extreme_ratio']} at "
+            f"n = {result['extreme_ratio_at']}",
+            f"Method: {result['method']}",
+            f"Status: {result['status']}",
+            "",
+            "Sign changes",
+            "------------",
+            *result["changes"],
+            "",
+            str(result["note"]),
+        ]
+        columns = ["n where M changes sign"]
+        metrics = {
+            "M(x)": str(result["mertens"]),
+            "Sign changes": str(result["sign_changes"]),
+            "Minimum": f"{result['minimum']} at {int(result['minimum_at']):,}",
+            "Maximum": f"{result['maximum']} at {int(result['maximum_at']):,}",
+            "max |M|/√n": str(result["extreme_ratio"]),
+        }
+    else:
+        lines = [
+            f"x: {result['x']}",
+            f"M(x): {result['mertens']}",
+            f"|M(x)|/sqrt(x): {result['ratio']}",
+            f"Method: {result['method']} (table cut {result['cut']})",
+            f"Cross-checked with an independent sieve: "
+            f"{'yes' if result['cross_checked'] else 'no'}",
+            f"Elapsed: {result['seconds']} s",
+            "",
+            str(result["note"]),
+        ]
+        columns = ["Quantity", "Value"]
+        result["rows"] = [
+            ["M(x)", str(result["mertens"])],
+            ["|M(x)|/sqrt(x)", str(result["ratio"])],
+            ["Method", str(result["method"])],
+            ["Independent cross-check", "yes" if result["cross_checked"] else "no"],
+        ]
+        metrics = {"M(x)": str(result["mertens"]), "|M(x)|/√x": str(result["ratio"])}
+    path = save_prime_output("mertens-function", "Mertens function", lines)
+    return {
+        **result,
+        "columns": columns,
+        "metrics": metrics,
+        "output_file": path.name,
+        "engine": "numerisect-mertens (C, segmented Mobius sieve and hyperbola identity)",
+    }
+
+
+@app.post("/api/primes/brun")
+def calculate_brun_sum(request: BrunRequest) -> dict[str, object]:
+    """Sum the reciprocals of one prime-tuple family up to a bound, in MPFR."""
+
+    try:
+        limit = evaluate_arbitrary_integer(request.limit)
+        result = brun_sum(
+            request.pattern, limit, digits=request.digits, seconds=request.seconds
+        )
+    except (ExpressionError, ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [
+        f"Family: {result['label']}",
+        f"Constant: {result['constant']} (truncated sum, not the constant)",
+        f"Bound: every member at most {result['reached']}",
+        f"Tuples counted: {result['tuples']}",
+        f"Reciprocals summed: {result['members']}",
+        f"Largest first member: {result['largest']}",
+        f"Truncated sum: {result['sum']}",
+        f"Reported digits: {result['digits']} (working precision "
+        f"{result['precision_bits']} bits)",
+        f"Published estimate for comparison: {result['literature']}",
+        f"Status: {result['status']}",
+        "",
+        str(result["note"]),
+    ]
+    path = save_prime_output("brun-constant", f"{result['label']} reciprocal sum", lines)
+    return {
+        **result,
+        "columns": ["Quantity", "Value"],
+        "rows": [
+            ["Truncated sum", str(result["sum"])],
+            ["Tuples counted", f"{int(result['tuples']):,}"],
+            ["Reciprocals summed", f"{int(result['members']):,}"],
+            ["Largest first member", f"{int(result['largest']):,}"],
+            ["Bound reached", f"{int(result['reached']):,}"],
+            ["Published estimate", str(result["literature"])],
+        ],
+        "metrics": {
+            "Truncated sum": str(result["sum"]),
+            "Tuples": f"{int(result['tuples']):,}",
+            "Bound": f"{int(result['reached']):,}",
+        },
+        "output_file": path.name,
+        "engine": "numerisect-brun (C, primesieve + MPFR)",
     }
 
 

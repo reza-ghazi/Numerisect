@@ -32,7 +32,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (214)
+## Routes (216)
 
 ### Engine adapters
 
@@ -287,6 +287,8 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/primes/paterson` | Paterson primes by base-4 form. Find prime p when its base-4 digits, read as a decimal integer, are also prime. |
 | `POST` | `/api/primes/perfect` | Generate even perfect numbers. Use the Euclid–Euler theorem with rigorously proven Mersenne primes. |
 | `POST` | `/api/primes/polynomial` | Euler's prime polynomial n² − n + k. Find rigorous prime values, the longest consecutive run, and residue classes forced divisible by small primes. |
+| `POST` | `/api/primes/brun` | Sum reciprocals over twin, cousin, sexy, triplet or quadruplet primes up to a bound in MPFR, reporting the exact truncated sum, the tuple count and the published estimate for comparison. |
+| `POST` | `/api/primes/mertens` | Compute M(x) by the hyperbola identity, optionally cross-checked against an independent segmented Mobius sieve, or track every partial sum for sign changes, extrema and the largest \|M(n)\|/sqrt(n). |
 | `POST` | `/api/primes/fermat-quotients` | Search a range for Wieferich (any base), Wall-Sun-Sun, Wilson or Wolstenholme primes in the compiled scanner, reporting hits, near-misses by Fermat quotient, and the range actually exhausted. |
 | `POST` | `/api/primes/primorials` | Primorials p#. Multiply the first n rigorously generated primes cumulatively with arbitrary precision. |
 | `POST` | `/api/primes/problems` | Run exact equation searches. Explore four problems from the source notebook with native factorizations and rigorous primality checks. |

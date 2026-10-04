@@ -27,9 +27,54 @@ the exact `output/<filename>` path of the saved report.
 | Record prime gaps (items 88–91) | `POST /api/distribution/maximal-gaps` | PARI `forprime`, `log`, `exp`, `Euler` |
 | Maier matrix (item 92) | `POST /api/distribution/short-interval` | PARI `forprime`, `log` |
 | Density surface (item 93) | `POST /api/distribution/density-surface` | PARI `forprime`, `gcd`, `log` |
+| Mertens function | `POST /api/primes/mertens` | `numerisect-mertens`: the hyperbola identity over a segmented Möbius sieve, or the sieve alone for every partial sum |
+| Brun-type sums | `POST /api/primes/brun` | `numerisect-brun`: primesieve for the tuples, MPFR for the sum |
 
 `li(x)` is PARI's exponential integral: `li(x) = real(-eint1(-log x))`, the
 Cauchy principal value of `∫₀ˣ dt/log t`. It is never approximated in Python.
+
+## Mertens function M(x)
+
+\(M(x)=\sum_{n\le x}\mu(n)\). PARI/GP has `moebius` but no summatory routine and FLINT
+has no `M(x)` either, so a compiled helper carries two algorithms:
+
+- **The hyperbola identity.** \(\sum_{n\le x} M(x/n) = 1\) rearranges to
+  \(M(x) = 1 - \sum_{n\ge2} M(x/n)\). Grouping equal values of \(\lfloor x/n\rfloor\)
+  and sieving the small arguments gives roughly \(O(x^{2/3})\) work: \(M(10^{12})\) in
+  4.4 s and \(M(10^{13})\) in 26 s.
+- **A segmented Möbius sieve**, \(O(x\log\log x)\), which is also the only way to obtain
+  every partial sum and so drives the sign-change mode.
+
+They share no code path beyond the sieve, so the optional cross-check is a real
+independent confirmation; if the two ever disagreed, **no value is reported**. Against the
+GP loop this replaces: \(M(10^7)\) took 4.27 s in GP and 0.002 s here.
+
+**Sign changes and the Mertens conjecture.** The sign mode walks every partial sum and
+reports the sign changes, the extrema with their positions, and the largest
+\(|M(n)|/\sqrt n\) for \(n\ge2\) — the quantity the conjecture \(|M(n)|<\sqrt n\) was
+about. Odlyzko and te Riele disproved it in 1985 without exhibiting a counterexample, and
+none is known in any range reachable here, so a maximal ratio below 1 is a statement about
+the range examined and nothing more.
+
+## Brun-type constants
+
+Brun proved \(\sum_{p,\,p+2\text{ prime}}(1/p + 1/(p+2))\) converges. Nothing installed
+computes it: primesieve enumerates and counts k-tuplets but sums nothing. The helper sums
+over twin, cousin, sexy, triplet and quadruplet primes, with MPFR at the requested
+precision.
+
+**The result is the truncated sum, never the constant.** Convergence is of order
+\(1/\log x\): at \(x=10^9\) the twin sum is \(1.7747\ldots\) against a published
+estimate near \(1.9021\), so no bound reachable here determines the constant's leading
+digits. Published values rest on extrapolation models, which this program deliberately
+does not apply; the estimate is shown beside the computed sum for comparison and never
+blended into it.
+
+Counting follows the standard convention — one reciprocal per tuple member, so a prime in
+two pairs contributes twice, as 5 does in (3,5) and (5,7). Members need not be consecutive
+primes: (3,7) is a cousin pair with 5 between them, so each offset is sought
+arithmetically. The tuple count is an independent check on the sum, and it reproduces the
+published \(\pi_2(10^6)=8169\) and \(\pi_2(10^8)=440312\).
 
 ## Approximation error and convergence (items 76 and 82)
 

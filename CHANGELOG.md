@@ -5,6 +5,40 @@ binary packages are published.
 
 ## Unreleased
 
+- Added `numerisect_mertens.c` for the Mertens function `M(x) = sum_{n<=x} mu(n)`. PARI/GP
+  has `moebius` but no summatory routine and FLINT has no `M(x)`, so the application had
+  only a GP loop inside the combined summatory page: linear, interpreted, and unusable past
+  about 10^7. The helper carries **two independent algorithms** — the hyperbola identity
+  `sum_{n<=x} M(x/n) = 1` over a segmented Mobius sieve, and the sieve alone — which share
+  no code path beyond the sieve, so the optional cross-check genuinely confirms a value. If
+  they ever disagree, no value is reported at all.
+  - Validated against PARI/GP for 10^1 through 10^6 and against published values at 10^7
+    (1037), 10^8 (1928), 10^9 (-222) and 10^12 (62366).
+  - Measured: `M(10^7)` took 4.27 s in GP against 0.002 s here; `M(10^9)` 0.041 s against
+    21.3 s for the sieve; `M(10^12)` 4.4 s and `M(10^13)` 26.1 s.
+  - A sign mode walks every partial sum and reports the sign changes, extrema and the
+    largest `|M(n)|/sqrt(n)` for n >= 2 — the quantity the Mertens conjecture was about.
+    Every statistic matches PARI/GP over 10^6. The trivial n = 1, where the ratio is 1,
+    is excluded so it cannot mask later records.
+- Added `numerisect_brun.c` for Brun-type reciprocal sums over twin, cousin, sexy, triplet
+  and quadruplet primes, with primesieve supplying the tuples and MPFR the sum. Nothing
+  installed computes these: primesieve counts k-tuplets but sums nothing. The repository
+  previously mentioned the twin-prime constant only as documentation prose.
+  - All five patterns match PARI/GP exactly on both the sum and the tuple count, and the
+    counts reproduce the published pi_2(10^6) = 8169 and pi_2(10^8) = 440312.
+  - Members need not be consecutive primes, so each offset is sought arithmetically: (3, 7)
+    is a cousin pair with 5 between them and would be missed by taking the next prime.
+    Both admissible triplet shapes are counted, once each.
+  - The result is the exact **truncated** sum and is never called the constant. These sums
+    converge like 1/log x — the twin sum is 1.7747 at 10^9 against a published 1.9021 — so
+    no reachable bound fixes the constant's digits. Published estimates come from
+    extrapolation models the program deliberately does not apply; the estimate is displayed
+    beside the computed sum, never blended into it.
+- Two new Prime Tools pages, bringing the catalogue to 136, and two routes:
+  `POST /api/primes/mertens` and `POST /api/primes/brun`.
+- Extended the policy test's C-helper justification check to recognise MPFR and primesieve
+  as named libraries, and registered `analytic_sums.py` in its module list.
+
 - Added `numerisect_fermatq.c`, a compiled scanner for four congruences that strengthen a
   theorem true of every prime: **Wieferich** in any base (`a^(p-1) = 1 mod p^2`),
   **Wall-Sun-Sun** (`p^2 | F_{p-(5|p)}`), **Wilson** (`(p-1)! = -1 mod p^2`) and

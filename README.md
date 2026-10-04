@@ -50,10 +50,14 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - Multithreaded `primesieve` intervals and `primecount` exact counts/indexed primes
 - The nth proven prime strictly before or after an arbitrary-size integer
 - Batch primality checks, interval residue-class searches, and exact prime-modulus arithmetic
-- 134 individually routed Prime Tools pages in 11 searchable groups with local results
+- 136 individually routed Prime Tools pages in 11 searchable groups with local results
 - Wieferich (any base), Wall–Sun–Sun, Wilson and Wolstenholme prime searches in a
   compiled scanner, with Fermat-quotient near-misses and explicit refusal past each
   congruence's supported modulus
+- The Mertens function M(x) to 10^13 by the hyperbola identity, cross-checkable against an
+  independent segmented Möbius sieve, with sign changes and the largest |M(n)|/√n
+- Brun-type reciprocal sums over twin, cousin, sexy, triplet and quadruplet primes in MPFR,
+  reported as the exact truncated sum and never as the constant
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches
@@ -81,10 +85,10 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20261004-engine-controls#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20261004-engine-controls#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20261004-engine-controls#diagnostics>. The dedicated Mersenne
-factor search is at <http://127.0.0.1:8765/?ui=20261004-engine-controls#factor/mersenne>.
+<http://127.0.0.1:8765/?ui=20261004-native-searches#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20261004-native-searches#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20261004-native-searches#diagnostics>. The dedicated Mersenne
+factor search is at <http://127.0.0.1:8765/?ui=20261004-native-searches#factor/mersenne>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -218,7 +222,7 @@ factor multisets.
 Prime operations use PARI/GP by default, with `primesieve` for eligible 64-bit
 intervals and `primecount` for large exact counts and indexed-prime requests.
 
-Prime Tools has 134 pages with searchable navigation in 11 groups. Every
+Prime Tools has 136 pages with searchable navigation in 11 groups. Every
 operation has its own page and direct hash URL, such as
 `#primes/prime-check`, `#primes/prime-reciprocal`, or
 `#primes/integer-profile`; only the selected operation is displayed. On narrow
@@ -754,7 +758,7 @@ helper. They fail clearly when the corresponding native prerequisites are unavai
 
 The suite includes API security, installer-manifest, native-engine, report,
 and interface checks. Static navigation coverage verifies one registered form
-for each of the 134 Prime Tools pages and all 22 Zeta pages, local result
+for each of the 136 Prime Tools pages and all 22 Zeta pages, local result
 placement, saved-report notices, diagnostics, and cache-busted assets.
 
 ## Documentation

@@ -35,6 +35,7 @@ MATHEMATICAL_MODULES = [
     "visual_lab.py",
     "forms_lab.py",
     "fermat_quotients.py",
+    "analytic_sums.py",
     # These two were never registered, so none of the dispatch or engine-naming checks
     # applied to them.
     "counting_lab.py",
@@ -244,7 +245,8 @@ def test_c_helpers_document_why_they_exist():
         head = path.read_text(encoding="utf-8")[:3000].lower()
         assert any(
             phrase in head
-            for phrase in ("no installed library", "no library", "flint", "arb", "gmp")
+            for phrase in ("no installed library", "no library", "nothing installed",
+                           "flint", "arb", "gmp", "mpfr", "primesieve")
         ), f"{path.name} does not state which library it uses or why it exists"
 
 

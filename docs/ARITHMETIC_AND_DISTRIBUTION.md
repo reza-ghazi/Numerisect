@@ -16,7 +16,9 @@ step-limited run.
 
 The analytic pages combine exact parallel primecount results with PARI/GP
 error arithmetic and bounded native sums for Mertens, Liouville, and Chebyshev
-functions. See [Advanced number theory](ADVANCED_NUMBER_THEORY.md) for limits
+functions. The combined summatory page remains a bounded PARI/GP sum; the
+dedicated [Mertens page](DISTRIBUTION_LAB.md#mertens-function-mx) computes
+\(M(x)\) in a compiled helper and reaches \(10^{13}\). See [Advanced number theory](ADVANCED_NUMBER_THEORY.md) for limits
 and API scope.
 
 The source-tree audit covered the unfamiliar source code, notebooks, and Markdown

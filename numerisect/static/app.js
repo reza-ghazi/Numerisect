@@ -476,6 +476,8 @@ const toolAliases = {
   'proth-search': 'search proth k*b^n+1 exponent range',
   'chernick-carmichael': 'chernick carmichael universal form construct',
   'repunit-search': 'repunit 111 111 base b (b^n-1)/(b-1) generalized',
+  'mertens': 'mertens function M(x) mobius mu summatory sum sign changes square root conjecture odlyzko te riele hyperbola identity',
+  'brun': 'brun constant B2 twin prime reciprocal sum cousin sexy triplet quadruplet convergent series tuple sums mpfr',
   'fermat-quotient': 'wieferich wall sun sun wall-sun-sun fibonacci wieferich wilson wolstenholme fermat quotient congruence mod p^2 mod p^3 exceptional primes harmonic factorial near-miss abc conjecture',
   'sierpinski-riesel': 'sierpinski riesel k*2^n+1 k*2^n-1 covering',
   'bitwin-chain': 'bi-twin chain twin cunningham combined',
@@ -594,7 +596,7 @@ const primeSections = {
   },
   analytic: {
     label: 'Analytic distribution & counting',
-    forms: ['prime-approximation-form', 'summatory-functions-form', 'approximation-error-form', 'pnt-convergence-form', 'nth-prime-bounds-form', 'prime-race-form', 'progression-deviation-form', 'singular-series-form', 'tuple-prediction-form', 'bateman-horn-form', 'maximal-gap-form', 'short-interval-form', 'density-surface-form', 'counting-comparison-form', 'counting-phi-form', 'counting-inverse-form'],
+    forms: ['prime-approximation-form', 'summatory-functions-form', 'approximation-error-form', 'pnt-convergence-form', 'nth-prime-bounds-form', 'prime-race-form', 'progression-deviation-form', 'singular-series-form', 'tuple-prediction-form', 'bateman-horn-form', 'maximal-gap-form', 'short-interval-form', 'density-surface-form', 'mertens-form', 'brun-form', 'counting-comparison-form', 'counting-phi-form', 'counting-inverse-form'],
   },
   structures: {
     label: 'Reciprocals, Gaussian & digits',
@@ -717,7 +719,7 @@ function renderPalette() {
 }
 
 function updatePalette(query) {
-  // An empty query is an invitation, not a dump of 134 rows.
+  // An empty query is an invitation, not a dump of 136 rows.
   commandPalette.matches = searchTools(query).slice(0, query.trim() ? 40 : 12);
   commandPalette.active = 0;
   renderPalette();
@@ -2626,6 +2628,30 @@ $('#chernick-carmichael-form').addEventListener('submit', (event) => {
     k_end: Number($('#chernick-end').value),
     limit: Number($('#chernick-limit').value),
   }, (data) => `${data.metrics['Carmichael numbers found']} Chernick Carmichael numbers`, 'table');
+});
+
+$('#mertens-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const mode = $('#mertens-mode').value;
+  submitPrimeForm(event.currentTarget, '/api/primes/mertens', {
+    x: $('#mertens-x').value,
+    mode,
+    // The cross-check sieves every integer, so it is only offered for the value mode.
+    cross_check: mode === 'value' && $('#mertens-cross-check').value === 'yes',
+    seconds: Number($('#mertens-seconds').value),
+  }, (data) => (mode === 'signs'
+    ? `${Number(data.sign_changes).toLocaleString()} sign changes up to ${Number(data.reached).toLocaleString()}`
+    : `M(x) = ${data.mertens}`), 'table');
+});
+
+$('#brun-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/primes/brun', {
+    pattern: $('#brun-pattern').value,
+    limit: $('#brun-limit').value,
+    digits: Number($('#brun-digits').value),
+    seconds: Number($('#brun-seconds').value),
+  }, (data) => `${data.constant} truncated at ${Number(data.reached).toLocaleString()}`, 'table');
 });
 
 $('#fermat-quotient-form').addEventListener('submit', (event) => {

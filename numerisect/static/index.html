@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20261004-engine-controls" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20261004-engine-controls" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261004-native-searches" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261004-native-searches" />
   </head>
   <body>
     <header class="topbar">
@@ -1480,6 +1480,51 @@
             <button class="primary" type="submit"><span>Draw the density surface</span><span>→</span></button>
           </form>
 
+          <form id="mertens-form" class="panel utility-card">
+            <p class="eyebrow">MERTENS FUNCTION</p>
+            <h2>Mertens function M(x) and its sign changes</h2>
+            <p>Sum the Möbius function to x in a compiled helper. The hyperbola identity Σ M(x/n) = 1 reaches x = 10¹² in seconds; an independent segmented Möbius sieve can confirm the same value. The sign-change mode walks every partial sum and reports the largest |M(n)|/√n, the ratio the disproved Mertens conjecture was about.</p>
+            <div class="four-controls">
+              <label>x<input id="mertens-x" type="text" value="1000000000000" required /></label>
+              <label>Mode
+                <select id="mertens-mode">
+                  <option value="value">M(x) · hyperbola identity</option>
+                  <option value="signs">Sign changes &amp; extremes · full sieve</option>
+                </select>
+              </label>
+              <label>Independent cross-check
+                <select id="mertens-cross-check">
+                  <option value="no">No</option>
+                  <option value="yes">Yes · also run the sieve</option>
+                </select>
+                <span class="field-note">Linear in x; up to 10¹¹</span>
+              </label>
+              <label>Time budget (seconds)<input id="mertens-seconds" type="number" min="1" max="86400" value="600" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Compute M(x)</span><span>→</span></button>
+          </form>
+
+          <form id="brun-form" class="panel utility-card">
+            <p class="eyebrow">BRUN-TYPE SUMS</p>
+            <h2>Brun constants: reciprocal sums over prime tuples</h2>
+            <p>Sum 1/p over twin, cousin, sexy, triplet or quadruplet primes up to a bound, with primesieve supplying the tuples and MPFR carrying the sum. The result is the exact <strong>truncated</strong> sum, never the constant: these sums converge like 1/log x, so no reachable bound fixes the constant's leading digits.</p>
+            <div class="four-controls">
+              <label>Family
+                <select id="brun-pattern">
+                  <option value="twin">Twin (p, p+2) · B₂</option>
+                  <option value="cousin">Cousin (p, p+4) · B₄</option>
+                  <option value="sexy">Sexy (p, p+6)</option>
+                  <option value="triplet">Triplets (p, p+2, p+6) and (p, p+4, p+6)</option>
+                  <option value="quadruplet">Quadruplets (p, p+2, p+6, p+8)</option>
+                </select>
+              </label>
+              <label>Bound<input id="brun-limit" type="text" value="1000000000" required /></label>
+              <label>Reported digits<input id="brun-digits" type="number" min="3" max="1000" value="20" required /></label>
+              <label>Time budget (seconds)<input id="brun-seconds" type="number" min="1" max="86400" value="600" required /></label>
+            </div>
+            <button class="primary" type="submit"><span>Sum the reciprocals</span><span>→</span></button>
+          </form>
+
           <form id="counting-comparison-form" class="panel utility-card utility-wide">
             <p class="eyebrow">ALGORITHM CROSS-CHECK</p>
             <h2>Count π(x) with distinct algorithms</h2>
@@ -2761,6 +2806,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20261004-engine-controls" defer></script>
+    <script src="/assets/app.js?v=20261004-native-searches" defer></script>
   </body>
 </html>

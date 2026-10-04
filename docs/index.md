@@ -11,7 +11,7 @@ every calculation, log and result there.
 !!! info "Current release: 0.8.1"
 
     Numerisect is an experimental, source-distributed pre-release. The current interface
-    contains 134 Prime Tools pages, 22 zeta/L-function pages, an expert factorization
+    contains 136 Prime Tools pages, 22 zeta/L-function pages, an expert factorization
     workspace, and 212 documented API operations. Start with the
     [capability index](capabilities.md) when you know the question but not the tool name.
 
