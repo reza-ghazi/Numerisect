@@ -271,7 +271,7 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/primes/distribution` | Measure density and residues. Count proven primes per interval bin and residue class while measuring twin pairs and the largest internal gap. |
 | `POST` | `/api/primes/factor-count-distribution` | Compare ω(n) and Ω(n). Factor every integer in a finite range and compare distinct prime-factor counts with counts that include multiplicity. |
 | `POST` | `/api/primes/gap-statistics` | Analyze prime-gap statistics. Compute exact frequencies, extrema, rational mean and median, and mode over consecutive prime gaps. |
-| `POST` | `/api/primes/gaps` | Measure consecutive prime gaps. Inspect each gap and highlight the largest gap found in an interval. |
+| `POST` | `/api/primes/gaps` | Measure consecutive prime gaps. Report each gap with its merit, the gap over the natural logarithm of its lower prime, and highlight the largest gap in the interval. |
 | `POST` | `/api/primes/gaussian/check` | Check a + bi. Apply the exact norm and rational-axis criteria in the Gaussian integers. |
 | `POST` | `/api/primes/gaussian/range` | Find Gaussian primes. Search the square −B ≤ a,b ≤ B and inspect the prime lattice. |
 | `POST` | `/api/primes/generate` | Create fixed-size primes. Generate distinct primes with an exact decimal length. |

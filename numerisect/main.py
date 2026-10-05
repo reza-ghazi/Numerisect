@@ -1861,7 +1861,7 @@ def analyze_prime_gaps(request: PrimeGapRequest) -> dict[str, object]:
         "prime-gaps",
         f"Prime gaps from {start} through {end}",
         (
-            f"{item['from']} -> {item['to']}  gap {item['gap']}"
+            f"{item['from']} -> {item['to']}  gap {item['gap']}  merit {item['merit']}"
             for item in gaps
         ),
     )
@@ -1870,18 +1870,32 @@ def analyze_prime_gaps(request: PrimeGapRequest) -> dict[str, object]:
         "end": str(end),
         "count": len(gaps),
         "gaps": [
-            {"from": str(item["from"]), "to": str(item["to"]), "gap": item["gap"]}
+            {
+                "from": str(item["from"]),
+                "to": str(item["to"]),
+                "gap": item["gap"],
+                "merit": item["merit"],
+            }
             for item in gaps
         ],
         "largest": (
-            {"from": str(largest["from"]), "to": str(largest["to"]), "gap": largest["gap"]}
+            {
+                "from": str(largest["from"]),
+                "to": str(largest["to"]),
+                "gap": largest["gap"],
+                "merit": largest["merit"],
+            }
             if largest
             else None
         ),
         "truncated": truncated,
         "next_start": str(next_start) if next_start is not None else None,
         "output_file": path.name,
-        "note": "Gaps are measured between consecutive proven primes inside the interval.",
+        "note": (
+            "Gaps are measured between consecutive proven primes inside the interval. "
+            "Merit is the gap divided by the natural logarithm of its lower prime, "
+            "computed by PARI/GP."
+        ),
     }
 
 

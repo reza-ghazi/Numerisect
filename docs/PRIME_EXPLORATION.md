@@ -29,7 +29,10 @@ page with its result and saved-report path immediately below the form.
 
 ## Prime-gap statistics
 
-The existing gap analyzer lists consecutive prime pairs. The new distribution
+The gap analyzer lists consecutive prime pairs, each with its **merit**: the gap
+divided by the natural logarithm of its lower prime, which is what makes gaps at
+different sizes comparable (a gap of 6 below 30 is a large one; a gap of 6 near
+\(10^9\) is not). PARI/GP computes the ratio. The distribution
 tool additionally calculates, inside PARI/GP:
 
 - exact frequencies for every observed gap size;

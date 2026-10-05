@@ -5,6 +5,22 @@ binary packages are published.
 
 ## Unreleased
 
+- Guard tests for the two mistakes the 0.9.0 work made. Every `numerisect/native/*.c`
+  must have a `build_<slug>_tool` in `native_tools.py`, must appear in the CodeQL manual
+  build, and every library the builders ask pkg-config for must have its development
+  package in `quality.yml` and `codeql.yml`. The CodeQL omission is the one worth a test:
+  it fails silently, so a helper left out is simply never analysed and no check turns red.
+  Both guards were verified by reintroducing yesterday's mistakes and watching them fail.
+- Documented the policy where contributors can see it. `CLAUDE.md` is gitignored in this
+  repository, so the strengthened native-computation policy was invisible outside this
+  machine. `CONTRIBUTING.md` and `docs/about/contributing.md` now carry the step that was
+  missing from both — reach a capability through an engine's own flags or a short
+  composition before writing C — and a four-point checklist for adding a compiled helper.
+- `POST /api/primes/gaps` now reports each gap's **merit**, the gap divided by the natural
+  logarithm of its lower prime, computed by PARI/GP. Merit existed only in the maximal-gap
+  and gap-timeline tools, although it is what makes gaps at different magnitudes
+  comparable, and the main gap page is where it was most missed.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23148620` for the `v0.9.0` source
   release across `CITATION.cff`, the README, the installation guides, the capability
   index, the citation page, the FAQ, the publishing guide and the release history. The

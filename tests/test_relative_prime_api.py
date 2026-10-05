@@ -77,3 +77,24 @@ def test_manipulation_api_failure_does_not_save(endpoint, payload, tmp_path, mon
     response = local_client().post('/api/primes/' + endpoint, json=payload)
     assert response.status_code == 422
     assert list(tmp_path.iterdir()) == []
+
+def test_the_gaps_endpoint_reports_merit_for_every_gap(tmp_path, monkeypatch):
+    """Merit lived only in the distribution and visual gap tools until 0.9.1.
+
+    It is the normalization that makes gaps at different magnitudes comparable, so the
+    main gap page is the one place it was most missed.
+    """
+
+    monkeypatch.setattr(outputs, "OUTPUT_DIR", tmp_path)
+    response = local_client().post(
+        "/api/primes/gaps", json={"start": "2", "end": "100", "limit": 100}
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["gaps"], "no gaps returned below 100"
+    for gap in payload["gaps"]:
+        assert float(gap["merit"]) > 0
+    assert float(payload["largest"]["merit"]) > 0
+    assert "Merit is the gap divided by" in payload["note"]
+    report = (tmp_path / payload["output_file"]).read_text(encoding="utf-8")
+    assert "merit" in report

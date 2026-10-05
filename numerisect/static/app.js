@@ -1109,11 +1109,11 @@ function showPrimeResult(title, data, type, form) {
     content.innerHTML = `<div class="prime-metric"><span>${escapeHtml(data.label)}</span><strong>${escapeHtml(data.value)}</strong></div>`;
   } else if (type === 'gaps') {
     const largest = data.largest
-      ? `<div class="gap-highlight"><span>Largest displayed gap</span><strong>${data.largest.gap}</strong><code>${escapeHtml(data.largest.from)} → ${escapeHtml(data.largest.to)}</code></div>`
+      ? `<div class="gap-highlight"><span>Largest displayed gap</span><strong>${data.largest.gap}</strong><code>${escapeHtml(data.largest.from)} → ${escapeHtml(data.largest.to)}</code><span>merit ${escapeHtml(data.largest.merit)}</span></div>`
       : '';
     const shown = data.gaps.slice(0, 2000);
     const chart = shown.length ? '<canvas id="gap-sequence-canvas" class="math-canvas chart-canvas" width="1000" height="420" aria-label="Prime gap sequence chart"></canvas>' : '';
-    content.innerHTML = largest + chart + (shown.map((gap) => `<div class="gap-row"><code>${escapeHtml(gap.from)}</code><span>+${gap.gap}</span><code>${escapeHtml(gap.to)}</code></div>`).join('') || '<div class="empty">Fewer than two primes occur in this interval.</div>');
+    content.innerHTML = largest + chart + (shown.map((gap) => `<div class="gap-row"><code>${escapeHtml(gap.from)}</code><span>+${gap.gap}</span><code>${escapeHtml(gap.to)}</code><small>merit ${escapeHtml(gap.merit)}</small></div>`).join('') || '<div class="empty">Fewer than two primes occur in this interval.</div>');
     if (shown.length) drawGapSequence($('#gap-sequence-canvas'), shown);
     if (data.gaps.length > shown.length) $('#prime-result-note').textContent += ` Showing the first ${shown.length.toLocaleString()} gaps in the browser.`;
   } else if (type === 'tuples') {

@@ -206,8 +206,10 @@ def test_twin_primes():
 
 def test_prime_gaps():
     gaps, truncated, _ = prime_gaps(2, 30, 100)
-    assert gaps[-1] == {"from": 23, "to": 29, "gap": 6}
+    # 6/log(23) = 1.913574..., the standard merit normalization, computed by PARI/GP.
+    assert gaps[-1] == {"from": 23, "to": 29, "gap": 6, "merit": "1.913574"}
     assert truncated is False
+    assert all(float(gap["merit"]) > 0 for gap in gaps)
 
 
 def test_special_prime_generators():
@@ -409,3 +411,4 @@ def test_palindrome_derived_sequence_and_prime_indicator_constant():
     constant = prime_indicator_constant(12)
     assert constant["value"] == "0.414682509851"
     assert constant["error_bound"].startswith("2^-")
+

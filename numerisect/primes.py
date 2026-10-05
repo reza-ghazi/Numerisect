@@ -1387,24 +1387,41 @@ def prime_count(number: int, threads: int | None = None) -> int:
 
 def prime_gaps(
     start: int, end: int, limit: int
-) -> tuple[list[dict[str, int]], bool, int | None]:
+) -> tuple[list[dict[str, object]], bool, int | None]:
+    """Return consecutive prime gaps in ``[start, end]`` with each gap's merit.
+
+    Args:
+        start: Lower end of the interval.
+        end: Upper end of the interval.
+        limit: Maximum number of gaps to return; the caller is told when it bites.
+
+    Returns:
+        ``(gaps, truncated, next_start)``, where each gap carries ``from``, ``to``,
+        ``gap`` and ``merit`` as PARI/GP formatted it.
+    """
     if start > end:
         raise ValueError("Range start must not exceed range end")
+    # Merit is the gap divided by log of its lower prime, the standard normalization
+    # that makes gaps at different sizes comparable. PARI computes it; the ratio is
+    # never formed in Python.
     program = (
         f"prev=0;c=0;nx=0;forprime(p={start},{end},if(isprime(p),if(prev,"
-        f'if(c>={limit},nx=prev;break);print("G:",prev,",",p,",",p-prev);c++);'
+        f'if(c>={limit},nx=prev;break);print("G:",prev,",",p,",",p-prev,",",'
+        'strprintf("%.6f",(p-prev)/log(prev)));c++);'
         'prev=p));print("NEXT:",nx)'
     )
     lines = _run_gp(program)
-    gaps: list[dict[str, int]] = []
+    gaps: list[dict[str, object]] = []
     for line in lines:
         if not line.startswith("G:"):
             continue
         values = line[2:].strip().split(",")
-        if len(values) != 3 or not all(re.fullmatch(r"\d+", value) for value in values):
+        if len(values) != 4 or not all(re.fullmatch(r"\d+", value) for value in values[:3]):
             raise PrimeEngineError("PARI/GP produced an unexpected prime-gap result")
-        left, right, size = map(int, values)
-        gaps.append({"from": left, "to": right, "gap": size})
+        if not re.fullmatch(r"\d+\.\d+", values[3]):
+            raise PrimeEngineError("PARI/GP produced an unexpected prime-gap merit")
+        left, right, size = (int(value) for value in values[:3])
+        gaps.append({"from": left, "to": right, "gap": size, "merit": values[3]})
     next_values = _tagged_values(lines, "NEXT")
     next_start = next_values[0] if next_values and next_values[0] else None
     return gaps, next_start is not None, next_start

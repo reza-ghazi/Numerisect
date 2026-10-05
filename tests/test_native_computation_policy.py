@@ -378,3 +378,79 @@ def test_no_python_number_theory_anywhere_including_the_tests():
     assert not offenders, (
         "Python must not compute number theory; ask an engine instead: " + str(offenders)
     )
+
+
+# --- Policy: a new C helper must be built in CI and scanned by CodeQL -------------------
+
+WORKFLOWS = ROOT / ".github" / "workflows"
+
+#: pkg-config library name -> the Debian package carrying its headers. The workflows
+#: install these; the CLI package alone is not enough, which is how libprimesieve-dev
+#: came to be missing while `primesieve` was present.
+DEV_PACKAGES = {
+    "flint": "libflint-dev",
+    "gmp": "libgmp-dev",
+    "mpfr": "libmpfr-dev",
+    "primesieve": "libprimesieve-dev",
+}
+
+
+def _expected_build_function(source: Path) -> str:
+    """numerisect_<slug>.c is built by native_tools.build_<slug>_tool."""
+
+    return f"build_{source.stem.removeprefix('numerisect_')}_tool"
+
+
+def test_every_c_helper_has_a_build_function():
+    """A source with no builder is unreachable, however good the C is."""
+
+    native_tools = (PACKAGE / "native_tools.py").read_text(encoding="utf-8")
+    for source in sorted((PACKAGE / "native").glob("*.c")):
+        expected = _expected_build_function(source)
+        assert f"def {expected}(" in native_tools, (
+            f"{source.name} has no {expected} in native_tools.py"
+        )
+
+
+def test_every_c_helper_is_built_in_the_codeql_analysis():
+    """CodeQL analyses only what the manual build step compiles.
+
+    This is the failure mode worth a test: a helper left out of the build list is not
+    reported as an error anywhere. No check turns red, and its C simply goes unscanned.
+    The four helpers added in 0.9.0 were initially absent, and their first scan found
+    four real defects, so the silence had cost.
+
+    CUDA sources are deliberately exempt: the runners have no nvcc.
+    """
+
+    codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
+    missing = [
+        source.name
+        for source in sorted((PACKAGE / "native").glob("*.c"))
+        if f"tools.{_expected_build_function(source)}," not in codeql
+    ]
+    assert not missing, (
+        "these C helpers are never scanned by CodeQL; add their build functions to "
+        f".github/workflows/codeql.yml: {missing}"
+    )
+
+
+def test_every_library_a_helper_links_is_installed_in_ci():
+    """A missing header fails the suite loudly, which is the design: no skipping.
+
+    So the workflow lists must carry the development package of every library the
+    helpers ask pkg-config for, including the CodeQL job, which compiles them too.
+    """
+
+    used = set(re.findall(r'_pkg_config_flags\("([a-z0-9]+)"\)',
+                          (PACKAGE / "native_tools.py").read_text(encoding="utf-8")))
+    assert used, "no pkg-config libraries found; has the helper lookup changed?"
+    unknown = used - set(DEV_PACKAGES)
+    assert not unknown, f"no development package recorded for {sorted(unknown)}"
+    for workflow in ("quality.yml", "codeql.yml"):
+        text = (WORKFLOWS / workflow).read_text(encoding="utf-8")
+        for library in sorted(used):
+            assert DEV_PACKAGES[library] in text, (
+                f"{workflow} does not install {DEV_PACKAGES[library]}, which "
+                f"{library} needs to build the C helpers"
+            )

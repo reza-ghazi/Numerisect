@@ -67,12 +67,18 @@ Decide every feature in this order, without skipping or stopping early:
    GMP-ECM for factoring, primesieve for enumeration, primecount for counting. Prefer the
    routine the library authors optimized over anything hand-written, and check the
    documentation and installed headers before concluding one is missing.
-2. **Only if no library provides it, write an optimized C or C++ program** using GMP,
+2. **Reach the capability through an engine's own flags or a short composition** before
+   writing anything. GMP-ECM's `-base2`, `-go` and `-save`/`-resume`, primesieve's
+   k-tuplet counting and Msieve's polynomial-selection stages are all features already
+   built and tested upstream; a PARI/GP script that drives existing routines belongs here
+   too. Three capabilities shipped in 0.9.0 were nothing more than flags nobody had
+   passed yet.
+3. **Only if no library provides it, write an optimized C or C++ program** using GMP,
    FLINT/Arb and appropriate HPC facilities, exposed through a narrow subprocess
    boundary. This is the fallback, not the default. `numerisect/native/numerisect_squfof.c`
    is the worked example: SQUFOF is absent from every installed engine, and the file
    documents that before implementing it.
-3. **Python and JavaScript are interface, API, and orchestration only.** Python
+4. **Python and JavaScript are interface, API, and orchestration only.** Python
    validates input, launches engines, parses tagged output, persists results, and serves
    HTTP. JavaScript renders. Neither computes a mathematical result, ever.
 
@@ -80,7 +86,7 @@ A PARI/GP script drives a library rather than replacing one. It is the right too
 short composition of PARI routines, and for features that deliberately expose an
 algorithm's individual steps (comparison laboratories, certificate trees, algorithm
 traces). It is the wrong tool when it reimplements a routine the library already exposes,
-or when it becomes a performance-critical inner loop; escalate those to step 2.
+or when it becomes a performance-critical inner loop; escalate those to step 3.
 
 Violations include arithmetic on mathematical quantities in Python or JavaScript
 (divisibility, primality, gcd, factoring, modular exponentiation, series summation, prime
@@ -92,6 +98,31 @@ approximating it.
 
 Every new mathematical module must name, in its docstring and its `docs/*.md` page, the
 library routine or C program that performs the computation.
+
+## Adding a compiled C helper
+
+Four things must happen together, and two of them fail silently if forgotten:
+
+1. **Justify it in the file header.** State which installed engines were checked and why
+   none serves. Measure against the closest alternative where one exists; "PARI/GP is
+   slower" is a claim, and the header should carry the numbers.
+2. **Add `build_<slug>_tool` to `numerisect/native_tools.py`** for
+   `numerisect/native/numerisect_<slug>.c`, following an existing builder: rebuild when
+   the source is newer, write failures to a build log, and never silently skip.
+3. **Add the library's development package to every workflow that compiles the
+   helpers** — `quality.yml`, `platform-compatibility.yml` and `codeql.yml`. The runtime
+   CLI package is not enough: `libprimesieve-dev` was missing while `primesieve` was
+   present, and the suite failed rather than skipping, by design.
+4. **Add the build function to the CodeQL manual build in `codeql.yml`.** This is the one
+   that fails *silently*: a helper left out is simply never analysed, no check turns red,
+   and nobody notices. The four helpers added in 0.9.0 were initially absent, and their
+   first scan found four real defects.
+
+`tests/test_native_computation_policy.py` enforces 2, 3 and 4, so a forgotten step fails
+locally rather than in review.
+
+Keep the tagged-output contract: `TAG:value` lines, a mandatory completion marker, and an
+exhausted bound reported as inconclusive rather than as an empty success.
 
 ## Adding or updating an engine
 

@@ -34,10 +34,15 @@ feature in this order, without skipping:
    CADO-NFS, GMP-ECM, primesieve and primecount first, and prefer the routine the library
    authors optimized. Check the documentation and installed headers before concluding one
    is missing.
-2. **Only if no library provides it, write optimized C or C++** using GMP and FLINT,
+2. **Reach it through an engine's own flags or a short composition** before writing
+   anything: GMP-ECM's `-base2`, `-go` and `-save`/`-resume`, primesieve's k-tuplet
+   counting, Msieve's polynomial-selection stages, or a PARI/GP script driving existing
+   routines. Three capabilities shipped in 0.9.0 were flags nobody had passed yet.
+3. **Only if no library provides it, write optimized C or C++** using GMP and FLINT,
    behind a narrow subprocess boundary. This is the fallback, not the default.
-3. **Python and JavaScript are interface, API and orchestration only.** Neither computes
-   a mathematical result, ever.
+4. **Python and JavaScript are interface, API and orchestration only.** Neither computes
+   a mathematical result, ever. Where the engines cannot answer, report the gap rather
+   than approximating it in Python.
 
 `tests/test_native_computation_policy.py` enforces this. A PARI/GP script drives a
 library rather than replacing one, and is the right tool for a short composition of PARI
@@ -47,6 +52,16 @@ a performance-critical inner loop.
 
 Every new mathematical module must name, in its docstring and its documentation page, the
 routine that performs the computation.
+
+## Adding a compiled C helper
+
+Four steps, two of which fail silently if skipped: justify it in the file header against
+the engines you checked; add `build_<slug>_tool` to `native_tools.py`; add the library's
+**development** package to `quality.yml`, `platform-compatibility.yml` and `codeql.yml`;
+and add the build function to the CodeQL manual build, without which the file is never
+analysed at all. `tests/test_native_computation_policy.py` enforces the last three.
+
+[:octicons-arrow-right-24: The full checklist](https://github.com/reza-ghazi/Numerisect/blob/main/CONTRIBUTING.md#adding-a-compiled-c-helper)
 
 ## What a change should include
 
