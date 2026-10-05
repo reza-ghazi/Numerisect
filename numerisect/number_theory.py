@@ -439,7 +439,13 @@ def prime_approximation_comparison(x: str, threads: int, timeout: int = 300) -> 
 def summatory_functions(x: str, timeout: int = 300) -> dict:
     value = decimal_integer(x)
     if not 1 <= value <= 10_000_000:
-        raise ValueError("Summatory analysis supports 1 ≤ x ≤ 10,000,000")
+        # The cap is set by the Liouville sum, which factors every n; the Mertens page
+        # computes M(x) alone far beyond it, so say so rather than only refusing.
+        raise ValueError(
+            "Summatory analysis supports 1 ≤ x ≤ 10,000,000, because the Liouville sum "
+            "factors every integer up to x. For the Mertens function alone, "
+            "POST /api/primes/mertens reaches 10^13."
+        )
     lines = _execute(f"nt_summatory_functions({value})", timeout)
     decimals: dict[str, str] = {}
     for tag in ("THETA", "PSI"):
@@ -455,7 +461,12 @@ def summatory_functions(x: str, timeout: int = 300) -> dict:
     return {
         "metrics": metrics, "columns": ["Function", "Value"],
         "rows": [[key, value] for key, value in metrics.items()][1:],
-        "note": "PARI/GP evaluated Möbius and Liouville sums and prime-power Chebyshev sums natively and exactly except for the displayed rigorously computed real logarithms.",
+        "note": (
+            "PARI/GP evaluated Möbius and Liouville sums and prime-power Chebyshev sums "
+            "natively and exactly except for the displayed rigorously computed real "
+            "logarithms. This page computes four sums in one pass, which bounds x at "
+            "10,000,000; the dedicated Mertens page reaches 10^13 for M(x) alone."
+        ),
     }
 
 

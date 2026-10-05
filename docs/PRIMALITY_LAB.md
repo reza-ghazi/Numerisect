@@ -177,7 +177,14 @@ prime continues to hold modulo a higher power. Each is served by the compiled sc
 Before this, Numerisect answered the Wilson and Wolstenholme questions from a table of
 published values, tested Wieferich for a single candidate in base 2 only, and had no
 Wall–Sun–Sun test at all. The classifier's table-based verdicts remain for single
-numbers; this page is the search.
+numbers, and deliberately so: for Wilson and Wolstenholme the **published exhaustive
+searches reach further than this page can compute**. The literature settles Wilson below
+\(2\times10^{13}\) and Wolstenholme below \(10^9\), while the \(O(p)\) cost per
+candidate limits computation here to \(2^{32}\) and \(2{,}642{,}246\) respectively —
+and about ten seconds for a single candidate near \(10^9\). Citing a completed search is
+the stronger answer in that range; this page is for searching ranges the tables do not
+cover, for bases the tables never considered, and for recomputing a published value
+rather than trusting it.
 
 **Near-misses.** Writing \(a^{p-1} = 1 + Ap \pmod{p^2}\), the residue \(A\) is the
 Fermat quotient and \(A=0\) is a hit. Published searches also report small \(|A|\),

@@ -107,8 +107,8 @@ rigorous primality test, congruence, or exhaustive test for the supplied input.
 | 51 | `wagstaff` | Wagstaff | Exact recognition of `(2^q + 1) / 3` with odd prime `q`. |
 | 52 | `wieferich` | Wieferich | Exact base-two congruence modulo `p^2`. |
 | 53 | `williams` | Williams | Exact form test for the catalogue's tested bases 3 through 9. |
-| 54 | `wilson` | Wilson | Established members and exhaustive non-membership below `2 * 10^13`; larger inputs are inconclusive. |
-| 55 | `wolstenholme` | Wolstenholme | Established members and exhaustive non-membership below `10^9`; larger inputs are inconclusive. |
+| 54 | `wilson` | Wilson | Established members and exhaustive non-membership below `2 * 10^13`; larger inputs are inconclusive. The published search reaches further than any computation here can: `(p-1)! mod p^2` costs `O(p)`, so the [Fermat-quotient page](PRIMALITY_LAB.md#fermat-quotient-searches) computes it only below `2^32`, and about ten seconds per candidate near `10^9`. |
+| 55 | `wolstenholme` | Wolstenholme | Established members and exhaustive non-membership below `10^9`; larger inputs are inconclusive. As with Wilson, the published bound exceeds what is computable here: the harmonic criterion needs a modular inverse per term, so the [Fermat-quotient page](PRIMALITY_LAB.md#fermat-quotient-searches) computes it only below `2,642,246`. |
 | 56 | `woodall` | Woodall | Exact recognition of `n * 2^n - 1`. |
 
 ## API

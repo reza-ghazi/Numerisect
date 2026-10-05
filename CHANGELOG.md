@@ -5,6 +5,17 @@ binary packages are published.
 
 ## Unreleased
 
+- Recorded why the prime classifier keeps citing published searches for Wilson and
+  Wolstenholme instead of calling the new scanner, having measured both: the literature
+  settles Wilson below 2*10^13 and Wolstenholme below 10^9, while the O(p) cost per
+  candidate limits computation to 2^32 and 2,642,246 — about ten seconds for one
+  candidate near 10^9. Rerouting the classifier would have shrunk its definite range by
+  four orders of magnitude. The catalogue rows and the Fermat-quotient page now state
+  this, so the question does not get reopened from the wrong premise.
+- The summatory-functions page refused x above 10,000,000 without saying where to go.
+  Its cap comes from the Liouville sum, which factors every integer up to x; M(x) alone
+  reaches 10^13 on the Mertens page. The refusal and the result note now say so.
+
 - Guard tests for the two mistakes the 0.9.0 work made. Every `numerisect/native/*.c`
   must have a `build_<slug>_tool` in `native_tools.py`, must appear in the CodeQL manual
   build, and every library the builders ask pkg-config for must have its development
