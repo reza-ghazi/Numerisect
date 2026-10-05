@@ -20,8 +20,8 @@ host, while WHC owns only the redirect. Do not change the Pages custom domain to
 apex; doing so would reverse the canonical direction.
 
 The documentation deployment is separate from release preservation. Zenodo archives
-tagged source releases rather than this generated website. Numerisect `v0.11.0` is
-preserved under [DOI 10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705);
+tagged source releases rather than this generated website. Numerisect `v0.12.0` is
+preserved under [DOI 10.5281/zenodo.23172229](https://doi.org/10.5281/zenodo.23172229);
 the [citation guide](citation.md) documents the stable concept DOI used across versions.
 
 ## DNS

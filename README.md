@@ -851,9 +851,9 @@ being reproducible by anyone who clones the repository.
 Academic and educational users can cite the software using
 [CITATION.cff](CITATION.cff). GitHub renders this metadata through its
 **Cite this repository** interface. The permanent DOI for all Numerisect versions is
-[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.11.0`
+[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.12.0`
 snapshot specifically as
-[10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705).
+[10.5281/zenodo.23172229](https://doi.org/10.5281/zenodo.23172229).
 See the [citation guide](docs/about/citation.md) for the formatted software citation and
 the distinction between the project-level concept DOI and the immutable version DOI.
 
