@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.11.0 — 2026-10-05
+
 - Closed roadmap item 10, the last capability gap on the ledger. `cross_verify` already
   required YAFU and Msieve to agree on the factor multiset and rejected anything else;
   the comparison itself was then thrown away. The job now records each engine's factors

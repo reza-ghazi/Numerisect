@@ -4,7 +4,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22679026.svg)](https://doi.org/10.5281/zenodo.22679026)
 
-Numerisect 0.10.0 is a local web workbench for integer factorization, primality
+Numerisect 0.11.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
 
@@ -218,7 +218,8 @@ per-factor engine status, text report, and JSON reproducibility manifest.
 Unresolved composite factors can be submitted as linked child jobs. A result
 is accepted only when every returned factor divides the input and their product
 equals it; cross-check mode additionally requires identical YAFU and Msieve
-factor multisets.
+factor multisets, and records both engines side by side — each one's factors with
+the primality label it assigned, the cofactor it left and its elapsed time.
 
 ## Prime Tools
 

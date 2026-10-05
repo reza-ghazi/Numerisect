@@ -1,6 +1,6 @@
 # Factorization workspace
 
-Numerisect 0.10.0 keeps factorization in native engines while Python manages
+Numerisect 0.11.0 keeps factorization in native engines while Python manages
 validation, processes, persistence, cancellation, and result verification.
 
 ## Routing and manual strategies
@@ -39,7 +39,11 @@ terminal state.
 Every factor must divide the requested input, and the complete returned
 multiset must multiply to its absolute value. Cross-check mode runs YAFU and
 Msieve independently and accepts the result only when their sorted factor
-multisets are identical.
+multisets are identical. It also records what each engine answered: its
+factors with the primality label **that engine** assigned, the cofactor it
+left and its elapsed time. Agreement on the factors with disagreement on
+proven versus probable — `P` against `prp` — raises a warning naming the
+factor and both labels; see [Verification](VERIFICATION.md#factorization).
 
 Successful jobs save both:
 

@@ -1,17 +1,18 @@
 ---
-description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.10.0.
+description: A complete map of the workspaces, mathematical engines, guarantees and limits in Numerisect 0.11.0.
 ---
 
 # Capability index
 
 This page answers a practical question: **which part of Numerisect should I use?** It is
-an index of the released 0.10.0 interface, not a list of future intentions. The
+an index of the released 0.11.0 interface, not a list of future intentions. The
 [roadmap ledger](ROADMAP_STATUS.md) separately records partial, deferred and declined
 work.
 
-This capability inventory corresponds to the `v0.10.0` source release. Its archived
-snapshot is preserved at
-[DOI 10.5281/zenodo.23163322](https://doi.org/10.5281/zenodo.23163322).
+This capability inventory corresponds to the `v0.11.0` source release. Its archived
+snapshot is reachable through the concept
+[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026), which always
+resolves to the latest released version.
 
 The current application exposes five top-level workspaces, 136 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
@@ -47,7 +48,7 @@ The workspace is organized around a production pipeline and an expert laboratory
 |---|---|---|
 | Automatic routing | YAFU below the configured threshold; YAFU pretest followed by SIQS or CADO-NFS for a large residual | [Factorization](FACTORIZATION.md) |
 | Manual strategies | Trial division, Fermat, rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Msieve and direct CADO selection | [Mathematics](mathematics/factorization.md) |
-| Result verification | Every reported factor divides the input and the full multiset reconstructs it; optional YAFU/Msieve cross-check | [Verification](VERIFICATION.md) |
+| Result verification | Every reported factor divides the input and the full multiset reconstructs it; the optional YAFU/Msieve cross-check requires identical multisets and records both engines side by side, including where they disagree on proven versus probable | [Verification](VERIFICATION.md) |
 | SQUFOF | A bounded factor search for \(N<2^{62}\), implemented in C with GMP because no exposed engine routine supplies it | [Expert laboratory](FACTOR_LAB.md) |
 | Resumable ECM | A GMP-ECM campaign with saved stage-one residues and native factor reconciliation, with stage-2 shape, the base-2 reduction and a known group order all exposed | [Expert laboratory](FACTOR_LAB.md) |
 | Classical methods | CFRAC, Lehman's deterministic \(O(N^{1/3})\) method and Hart's one-line factorization, in C with GMP because no installed engine exposes any of them; offered for what they establish, never as the fast path | [Expert laboratory](FACTOR_LAB.md) |
