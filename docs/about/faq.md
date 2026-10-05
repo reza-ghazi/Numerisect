@@ -100,8 +100,8 @@ control on a network you trust.
 
 ### How should I cite Numerisect?
 
-For work performed with release `v0.10.0`, cite the immutable version DOI
-[10.5281/zenodo.23163322](https://doi.org/10.5281/zenodo.23163322). Use the concept DOI
+For work performed with release `v0.11.0`, cite the immutable version DOI
+[10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705). Use the concept DOI
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) only when referring
 to Numerisect across all versions. The [citation guide](citation.md) provides a formatted
 software citation and explains the reproducibility metadata to retain.
