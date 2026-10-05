@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.10.0 — 2026-10-05
+
 - Added `scripts/build_factor_catalogue.py`, which fills the local known-factor catalogue
   by factoring `b^n ± 1` here rather than importing a published table. The catalogue
   feature always worked and always searched zero files, because nothing is bundled; the

@@ -74,9 +74,10 @@ in five languages, and notebook integration.
   captured. Composite cofactors can be continued as linked child jobs, so the parent
   and child relationship exists in the data but is not drawn as a tree.
 - **4** — every algorithm the installed YAFU build exposes is selectable
-  (rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Fermat, trial division) with expert parameter
-  panels, and SQUFOF is supplied by `numerisect-squfof` because no installed library
-  provides it. SQUFOF is limited to inputs below 2^62 by its 64-bit cycle; larger inputs
+  (rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Fermat, trial division), and its 15 expert
+  bounds now reach the engine: they were validated and unit-tested but never passed to
+  YAFU until 0.9.1. SQUFOF is supplied by `numerisect-squfof` because no installed
+  library provides it. SQUFOF is limited to inputs below 2^62 by its 64-bit cycle; larger inputs
   are rejected explicitly rather than answered.
 - **10** — cross-verification compares YAFU and Msieve factor multisets and rejects a
   disagreement. Comparing cofactors, per-engine primality conclusions, and per-engine
@@ -87,8 +88,12 @@ in five languages, and notebook integration.
 - **14** — prime ranges and standard k-tuplets of sizes 2, 4 and 6 use primesieve.
   Sizes 3 and 5 stay on PARI: primesieve emits both admissible shapes together, and
   separating them would require offset arithmetic outside the engines.
-- **17** — CADO-NFS parameters are exposed and stage progress is parsed from its log.
-  Running an individual stage in isolation is not implemented.
+- **17** — CADO-NFS parameters are exposed, including the `tasks.polyselect.*` keys, and
+  stage progress is parsed from its log. **Polynomial selection** now runs in isolation
+  in Msieve, whole or one stage at a time, and reports the polynomial it chose. Running
+  CADO's own stages one at a time is still not implemented: its workflow is driven by the
+  Python harness upstream, and isolating a stage means reproducing that harness's
+  bookkeeping rather than passing a flag.
 - **29, 30, 37** — the taxonomy, Korselt analysis, and covering-set verification are
   complete within documented finite bounds; results beyond those bounds are
   inconclusive rather than negative.
