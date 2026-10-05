@@ -91,6 +91,11 @@ in five languages, and notebook integration.
 - **14** — prime ranges and standard k-tuplets of sizes 2, 4 and 6 use primesieve.
   Sizes 3 and 5 stay on PARI: primesieve emits both admissible shapes together, and
   separating them would require offset arithmetic outside the engines.
+- **17** — YAFU's own `-np` poly-search switch is deliberately not exposed: YAFU's
+  documentation states that its "multi-threaded polynomial selection is handled via
+  msieve library function calls", and its log confirms it, so the switch is a second
+  front end to the selection already reachable through the `msieve_poly` strategy. It
+  would add neither a capability nor an independent check.
 - **17** — CADO-NFS parameters are exposed, including the `tasks.polyselect.*` keys, and
   stage progress is parsed from its log. **Polynomial selection** now runs in isolation
   in Msieve, whole or one stage at a time, and reports the polynomial it chose. Running

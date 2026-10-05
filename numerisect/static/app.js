@@ -583,6 +583,7 @@ const toolAliases = {
   'congruence-solver': 'solve polynomial congruence composite modulus p(x)=0 mod m',
   'dlog-lab': 'discrete logarithm methods compare pohlig hellman baby step kangaroo',
   'finite-field': 'finite field galois gf(p^m) f_p extension arithmetic',
+  'factor-stages': 'distinct degree square free cantor zassenhaus equal degree stages polynomial factorization finite field berlekamp factormod',
   'eisenstein-prime': 'eisenstein integer omega hexagonal a+bw cube root unity',
   'quadratic-decomposition': 'prime ideal split inert ramified quadratic field',
   'quadratic-ring': 'quadratic integer ring norm unit q(sqrt d) fundamental unit',
@@ -643,7 +644,7 @@ const primeSections = {
   },
   modular: {
     label: 'Modular & polynomial algebra',
-    forms: ['character-symbol-form', 'tonelli-shanks-form', 'crt-form', 'modular-roots-form', 'hensel-roots-form', 'discrete-log-form', 'unit-group-form', 'order-distribution-form', 'power-residues-form', 'p-adic-valuation-form', 'polynomial-factor-form', 'cyclotomic-form', 'reciprocity-trace-form', 'congruence-solver-form', 'dlog-lab-form', 'finite-field-form'],
+    forms: ['character-symbol-form', 'tonelli-shanks-form', 'crt-form', 'modular-roots-form', 'hensel-roots-form', 'discrete-log-form', 'unit-group-form', 'order-distribution-form', 'power-residues-form', 'p-adic-valuation-form', 'polynomial-factor-form', 'cyclotomic-form', 'reciprocity-trace-form', 'congruence-solver-form', 'dlog-lab-form', 'factor-stages-form', 'finite-field-form'],
   },
   algebraic: {
     label: 'Quadratic forms & number fields',
@@ -754,7 +755,7 @@ function renderPalette() {
 }
 
 function updatePalette(query) {
-  // An empty query is an invitation, not a dump of 138 rows.
+  // An empty query is an invitation, not a dump of 139 rows.
   commandPalette.matches = searchTools(query).slice(0, query.trim() ? 40 : 12);
   commandPalette.active = 0;
   renderPalette();
@@ -2907,6 +2908,14 @@ $('#dlog-lab-form').addEventListener('submit', (event) => {
     step_limit: Number($('#dlog-steps').value),
     timeout_seconds: Number($('#dlog-timeout').value),
   }, (data) => `Discrete logarithm: ${data.status}`, 'table');
+});
+
+$('#factor-stages-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitPrimeForm(event.currentTarget, '/api/algebra/factor-stages', {
+    coefficients: $('#factor-stages-coefficients').value.split(',').map((value) => value.trim()).filter(Boolean),
+    prime_modulus: $('#factor-stages-modulus').value.trim(),
+  }, (data) => `${data.polynomial} over 𝔽_${data.modulus}`, 'table');
 });
 
 $('#finite-field-form').addEventListener('submit', (event) => {

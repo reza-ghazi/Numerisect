@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20261005-independent-checks" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20261005-independent-checks" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261005-factor-stages" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261005-factor-stages" />
   </head>
   <body>
     <header class="topbar">
@@ -2203,6 +2203,19 @@
             <button class="primary" type="submit"><span>Solve discrete logarithm</span><span>→</span></button>
           </form>
 
+          <form id="factor-stages-form" class="panel utility-card">
+            <p class="eyebrow">THREE STAGES</p>
+            <h2>Factor over 𝔽_p stage by stage</h2>
+            <p><code>factormod</code> answers in one step; the algorithm behind it has three, and each asks a different question. <strong>Square-free</strong> decomposition separates repeated factors, <strong>distinct-degree</strong> splits each square-free part into blocks sharing one degree, and <strong>equal-degree</strong> splitting (Cantor–Zassenhaus) finishes the job. The second stage is only defined for a square-free argument, so it runs on the parts rather than on the input. PARI/GP verifies that the irreducible factors multiply back.</p>
+            <div class="controls-grid">
+              <label>Coefficients, ascending<input id="factor-stages-coefficients" type="text" spellcheck="false" value="2, 1, 4, 2, 2, 1" required />
+                <span class="field-note">Comma-separated; <code>1, 0, 1</code> is x² + 1</span>
+              </label>
+              <label>Prime modulus p<input id="factor-stages-modulus" type="text" spellcheck="false" value="7" required /></label>
+            </div>
+            <div class="actions"><button class="primary" type="submit"><span>Run the three stages</span><span>&rarr;</span></button></div>
+          </form>
+
           <form id="finite-field-form" class="panel utility-card utility-wide">
             <p class="eyebrow">FINITE FIELDS</p>
             <h2>Compute in 𝔽ₚ and 𝔽_{pᵐ}</h2>
@@ -2945,6 +2958,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20261005-independent-checks" defer></script>
+    <script src="/assets/app.js?v=20261005-factor-stages" defer></script>
   </body>
 </html>

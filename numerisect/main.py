@@ -20,6 +20,7 @@ from .algebra_lab import (
     cornacchia_representations,
     discrete_logarithm_lab,
     divisor_lattice,
+    factorization_stages,
     finite_field_arithmetic,
     number_field_analysis,
     quadratic_ring_analysis,
@@ -5752,6 +5753,12 @@ class DiscreteLogLabRequest(BaseModel):
     timeout_seconds: int = Field(default=60, ge=1, le=3600)
 
 
+class FactorStagesRequest(BaseModel):
+    coefficients: list[str] = Field(min_length=2, max_length=101)
+    prime_modulus: str = Field(default="7", min_length=1, max_length=40)
+    timeout_seconds: int = Field(default=60, ge=1, le=3600)
+
+
 class FiniteFieldRequest(BaseModel):
     characteristic: str = Field(default="2", min_length=1, max_length=100)
     degree: int = Field(default=3, ge=1, le=16)
@@ -5891,6 +5898,21 @@ def calculate_finite_field(request: FiniteFieldRequest) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _save_manipulation_report(
         "finite-field-arithmetic", "Finite-field arithmetic", result
+    )
+
+
+@app.post("/api/algebra/factor-stages")
+def calculate_factor_stages(request: FactorStagesRequest) -> dict:
+    """Factor over F_p one classical stage at a time."""
+
+    try:
+        result = factorization_stages(
+            request.coefficients, request.prime_modulus, request.timeout_seconds
+        )
+    except (ValueError, PrimeEngineError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _save_manipulation_report(
+        "factor-stages", "Staged polynomial factorization over F_p", result
     )
 
 

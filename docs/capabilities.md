@@ -13,7 +13,7 @@ This capability inventory corresponds to the `v0.11.0` source release. Its archi
 snapshot is preserved at
 [DOI 10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705).
 
-The current application exposes five top-level workspaces, 138 individually routed
+The current application exposes five top-level workspaces, 139 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
 API total is checked against the running FastAPI application by the test suite, so adding
 or removing a route without updating the public reference fails validation.
@@ -77,7 +77,7 @@ a bookmarkable `#primes/<tool>` route.
 | **Analytic distribution & counting** | 18 | \(\pi(x)\) approximations, summatory functions, PNT convergence, nth-prime bounds, prime races, progression deviations, singular series, Hardy–Littlewood and Bateman–Horn predictions, maximal gaps, Maier matrices, density surfaces, algorithm comparisons, the Mertens function with its sign changes, and Brun-type reciprocal sums |
 | **Reciprocals, Gaussian & digits** | 7 | Exact reciprocal periods, circular/absolute and Paterson primes, full-reptend primes, Gaussian primes and modular wheels |
 | **Divisors & arithmetic functions** | 20 | Factor-strategy advice; arithmetic functions; divisor, aliquot, coprime, smoothness, record-number and weird-number structure; perfect powers; modular arithmetic; Miller–Rabin witnesses; Cornacchia; PARI predicates and factoring strategies |
-| **Modular & polynomial algebra** | 16 | Legendre/Jacobi/Kronecker symbols, Tonelli–Shanks, CRT, modular and Hensel roots, discrete logarithms, unit groups, orders, power residues, p-adic valuations, polynomial/cyclotomic factorization, congruences and finite fields |
+| **Modular & polynomial algebra** | 17 | Legendre/Jacobi/Kronecker symbols, Tonelli–Shanks, CRT, modular and Hensel roots, discrete logarithms, unit groups, orders, power residues, p-adic valuations, polynomial/cyclotomic factorization and its three classical stages over F_p, congruences and finite fields |
 | **Quadratic forms & number fields** | 13 | Eisenstein primes; quadratic and general number fields; prime decomposition; Chebotarev experiments; binary quadratic forms and class groups; continued fractions and Pell equations |
 | **Digit & sequence explorations** | 6 | Prime pyramids, corrected related-number sequences, digit-substring primes, bounded equation searches, Euler's prime polynomial and palindrome-derived candidates |
 | **Visualization & education** | 8 | Ulam/Sacks/polar spirals, Eisenstein lattices, modular wheels, residue heatmaps, gap timelines, prime-race animation, sieve traces and measured complexity views |

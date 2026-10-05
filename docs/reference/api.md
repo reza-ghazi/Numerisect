@@ -32,7 +32,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (220)
+## Routes (221)
 
 ### Engine adapters
 
@@ -49,6 +49,7 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/algebra/cornacchia` | Solve x² + dy² = n by Cornacchia. Solve r² ≡ −d for every square divisor of n, run the Euclidean descent with a full step trace, and cross-check the complete solution set against PARI's qfbsolve. |
 | `POST` | `/api/algebra/discrete-log` | Solve gˣ ≡ h (mod n) by a chosen method. Run baby-step/giant-step, Pohlig–Hellman, Pollard rho, or PARI's native znlog under an explicit budget of group operations. |
 | `POST` | `/api/algebra/divisor-lattice` | Enumerate every divisor and factor pair. List each divisor with its cofactor and Ω value, and build the covering relation of the divisor lattice when the divisor count stays inside the configured cap. |
+| `POST` | `/api/algebra/factor-stages` | Factor a polynomial over F_p one classical stage at a time: square-free decomposition, distinct-degree factorization of each part, then equal-degree splitting, with the reconstruction verified by the engine. |
 | `POST` | `/api/algebra/finite-field` | Compute in 𝔽ₚ and 𝔽_{pᵐ}. Build the field from a supplied irreducible reduction polynomial or from PARI's ffinit, then add, subtract, multiply, divide, exponentiate, and report orders, minimal polynomials, and Frobenius images. |
 | `POST` | `/api/algebra/number-field` | Split rational primes in a number field. Build the maximal order of a monic irreducible polynomial and report splitting, inertia, ramification, ideal norms, an element's ideal factorization, and the class group. |
 | `POST` | `/api/algebra/quadratic-ring` | Norms, units, and primes in ℚ(√d). Compute the norm and trace of a + bω, decide whether it is a unit or a prime of the ring, report the fundamental unit, roots of unity, and class group, and split a rational prime with explicit generators. |

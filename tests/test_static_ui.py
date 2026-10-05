@@ -154,8 +154,8 @@ def test_every_prime_tool_belongs_to_exactly_one_navigation_section():
     )[0]
     categorized_forms = re.findall(r"'([^']+-form)'", page_catalogue)
 
-    assert len(html_forms) == len(set(html_forms)) == 138
-    assert len(categorized_forms) == len(set(categorized_forms)) == 138
+    assert len(html_forms) == len(set(html_forms)) == 139
+    assert len(categorized_forms) == len(set(categorized_forms)) == 139
     assert set(categorized_forms) == set(html_forms)
 
 
@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20261005-independent-checks' in INDEX
-    assert '/assets/app.js?v=20261005-independent-checks' in INDEX
-    assert '/assets/favicon.svg?v=20261005-independent-checks' in INDEX
+    assert '/assets/styles.css?v=20261005-factor-stages' in INDEX
+    assert '/assets/app.js?v=20261005-factor-stages' in INDEX
+    assert '/assets/favicon.svg?v=20261005-factor-stages' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20261005-independent-checks#primes/prime-check' in RUNNER
+    assert '?ui=20261005-factor-stages#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -255,7 +255,7 @@ def test_documentation_check_runs_for_dependency_and_workflow_updates():
     assert '".github/workflows/docs.yml"' in pull_request_paths
 
 
-# --- Finding a tool among 138 -------------------------------------------------------
+# --- Finding a tool among 139 -------------------------------------------------------
 
 CONCEPT_CASES = [
     # A label chosen by this project is rarely the word someone arrives with.

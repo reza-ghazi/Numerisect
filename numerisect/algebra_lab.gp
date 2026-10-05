@@ -316,6 +316,54 @@ al_ff_element(name, e, p, m) =
   );
 };
 
+/* The three classical stages of factoring a polynomial over F_p.
+ *
+ * factormod answers in one step. The algorithm behind it has three, and each asks a
+ * different question:
+ *
+ *   1. SQUARE-FREE: write f as a product of square-free parts with multiplicities.
+ *      Everything after this assumes a square-free input.
+ *   2. DISTINCT-DEGREE: split each square-free part into blocks whose irreducible
+ *      factors all share one degree. PARI's factormodDDF is documented for a
+ *      square-free argument, which is why it runs on the parts and never on f itself.
+ *   3. EQUAL-DEGREE: split each block into its irreducible factors, by Cantor and
+ *      Zassenhaus's method.
+ *
+ * The reconstruction is checked here: the irreducible factors, raised to the
+ * multiplicities stage 1 found, must multiply back to f modulo p.
+ */
+al_factor_stages(coefficients, p) =
+{
+  my(f = 0, squarefree, blocks, irreducible, product = Mod(1, p), verified);
+  for(i = 1, #coefficients, f += coefficients[i] * x^(i - 1));
+  f = f * Mod(1, p);
+  print("POLYNOMIAL:", lift(f));
+  print("DEGREE:", poldegree(f));
+  if (poldegree(f) < 1, print("DONE:0"); return());
+
+  squarefree = factormodSQF(f, p);
+  for(i = 1, matsize(squarefree)[1],
+    print("SQF:", i, "|", lift(squarefree[i, 1]), "|", squarefree[i, 2]);
+    /* Stage 2 runs on this square-free part, never on f. */
+    blocks = factormodDDF(squarefree[i, 1], p);
+    for(j = 1, matsize(blocks)[1],
+      print("DDF:", i, "|", lift(blocks[j, 1]), "|", blocks[j, 2]);
+      /* Stage 3 splits the block into factors of that one degree. */
+      irreducible = factorcantor(blocks[j, 1], p);
+      for(k = 1, matsize(irreducible)[1],
+        print("IRRED:", i, "|", blocks[j, 2], "|", lift(irreducible[k, 1]), "|",
+              squarefree[i, 2] * irreducible[k, 2]);
+        product *= irreducible[k, 1]^(squarefree[i, 2] * irreducible[k, 2]);
+      );
+    );
+  );
+  /* The stages are only trustworthy if they rebuild the input. */
+  verified = if (lift(product - f) == 0, 1, 0);
+  print("VERIFIED:", verified);
+  print("PARTS:", matsize(squarefree)[1]);
+  print("DONE:1");
+};
+
 al_finite_field(p, m, modulus_coefficients, a_coefficients, b_coefficients, exponent) =
 {
   if(p < 2 || !isprime(p), error("The field characteristic must be a proven prime"));

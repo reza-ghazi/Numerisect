@@ -17,6 +17,7 @@ and writes its report to `output/<filename>`, which the result panel displays.
 | Linear/polynomial congruences (48) | `factor`, `polrootsmod`, `chinese`, `deriv`, `subst` |
 | Discrete logarithms (50) | `znlog`, `znorder`, `factor`, `chinese` |
 | Finite fields (57) | `ffinit`, `ffgen`, `fforder`, `ffprimroot`, `minpoly`, `polisirreducible` |
+| Staged factorization over 𝔽_p | `factormodSQF`, `factormodDDF`, `factorcantor` |
 | Divisor enumeration and lattice (61) | `factor`, `divisors`, `sigma`, `numdiv`, `bigomega`, `isprime` |
 | Smoothness and roughness (68) | `factor` |
 | Divisor records (69) | `numdiv`, `sigma`, `nextprime`, `log` at 80 digits |
@@ -72,6 +73,27 @@ three-way:
   logarithm exists;
 - `inconclusive` — the step budget was exhausted first. This is not a proof of
   insolubility.
+
+### Staged factorization over 𝔽_p
+
+`factormod` answers in one step. The algorithm behind it has three, and
+`POST /api/algebra/factor-stages` shows each in turn:
+
+1. **Square-free decomposition** (`factormodSQF`) separates repeated factors and records
+   their multiplicities. Everything after this assumes a square-free input.
+2. **Distinct-degree factorization** (`factormodDDF`) splits each square-free part into
+   blocks whose irreducible factors all share one degree. PARI documents this step for a
+   square-free argument, which is why it runs on the parts and never on the input
+   polynomial — calling it on a polynomial with a repeated factor is undefined.
+3. **Equal-degree splitting** (`factorcantor`) divides each block into its irreducible
+   factors by Cantor and Zassenhaus's method.
+
+The engine then checks the result: the irreducible factors, raised to the multiplicities
+stage 1 found, must multiply back to the input modulo `p`. A reconstruction that fails
+reports nothing rather than a partial answer.
+
+For `(x^2+1)^2(x+2)` over 𝔽₇, stage 1 is the interesting one: it is what separates the
+squared factor so the later stages are defined at all.
 
 ### Finite fields (57)
 

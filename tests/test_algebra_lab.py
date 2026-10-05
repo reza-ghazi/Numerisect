@@ -630,3 +630,85 @@ def test_algebra_api_failures_do_not_save(endpoint, payload, tmp_path, monkeypat
     response = local_client().post(f"/api/algebra/{endpoint}", json=payload)
     assert response.status_code == 422, response.text
     assert list(tmp_path.iterdir()) == []
+
+
+# --- The three classical stages of factoring over F_p -----------------------------------
+
+
+def test_the_three_stages_rebuild_a_non_squarefree_polynomial():
+    """(x^2+1)^2 (x+2) over F_7: stage 1 has work to do, which is the point.
+
+    Calling distinct-degree factorization on the input directly would be undefined, so
+    the engine runs it on the square-free parts instead.
+    """
+
+    from numerisect.algebra_lab import factorization_stages
+
+    # (x^2+1)^2 (x+2) = x^5 + 2x^4 + 2x^3 + 4x^2 + x + 2
+    result = factorization_stages(["2", "1", "4", "2", "2", "1"], "7")
+    assert result["verified"] is True
+    assert result["parts"] == "2"
+    squarefree = {(row["polynomial"], row["multiplicity"]) for row in result["squarefree"]}
+    assert squarefree == {("x + 2", "1"), ("x^2 + 1", "2")}
+    irreducible = {(row["polynomial"], row["multiplicity"]) for row in result["irreducible"]}
+    assert irreducible == {("x + 2", "1"), ("x^2 + 1", "2")}
+    assert "Cantor-Zassenhaus" in result["note"]
+
+
+def test_a_polynomial_that_splits_into_linear_factors_is_split():
+    """x^2 + 1 = (x+2)(x+3) over F_5, which equal-degree splitting finds."""
+
+    from numerisect.algebra_lab import factorization_stages
+
+    result = factorization_stages(["1", "0", "1"], "5")
+    assert [row["polynomial"] for row in result["irreducible"]] == ["x + 2", "x + 3"]
+    assert all(row["degree"] == "1" for row in result["irreducible"])
+
+
+def test_an_irreducible_polynomial_survives_every_stage():
+    """x^2 + 1 is irreducible over F_7, so each stage returns it unchanged."""
+
+    from numerisect.algebra_lab import factorization_stages
+
+    result = factorization_stages(["1", "0", "1"], "7")
+    assert [row["polynomial"] for row in result["irreducible"]] == ["x^2 + 1"]
+    assert result["irreducible"][0]["degree"] == "2"
+
+
+def test_distinct_degree_blocks_are_labelled_by_their_degree():
+    """x^6 + x^5 + x^4 + x^3 + x^2 + 3x + 2 over F_7 has factors of degree 1, 2 and 3."""
+
+    from numerisect.algebra_lab import factorization_stages
+
+    result = factorization_stages(["2", "3", "1", "1", "1", "1", "1"], "7")
+    degrees = sorted(row["degree"] for row in result["distinct_degree"])
+    assert degrees == ["1", "2", "3"]
+    assert result["verified"] is True
+
+
+@pytest.mark.parametrize("coefficients,modulus,message", [
+    (["1"], "7", "2–101 coefficients"),
+    (["1", "0"], "7", "leading coefficient must be nonzero"),
+    (["1", "1"], "1", "prime between 2 and"),
+])
+def test_invalid_staged_requests_are_refused(coefficients, modulus, message):
+    from numerisect.algebra_lab import factorization_stages
+
+    with pytest.raises(ValueError, match=message):
+        factorization_stages(coefficients, modulus)
+
+
+def test_a_failed_reconstruction_reports_nothing(monkeypatch):
+    """If the stages did not multiply back to the input, no result is worth showing."""
+
+    from numerisect import algebra_lab
+
+    monkeypatch.setattr(
+        algebra_lab, "_execute",
+        lambda call, timeout: [
+            "POLYNOMIAL:x^2 + 1", "DEGREE:2", "SQF:1|x^2 + 1|1", "DDF:1|x^2 + 1|2",
+            "IRRED:1|2|x^2 + 1|1", "VERIFIED:0", "PARTS:1", "DONE:1",
+        ],
+    )
+    with pytest.raises(PrimeEngineError, match="do not reconstruct"):
+        algebra_lab.factorization_stages(["1", "0", "1"], "7")

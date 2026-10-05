@@ -481,6 +481,97 @@ def discrete_logarithm_lab(
 
 
 # ------------------------------------------------------------------ item 57
+def factorization_stages(
+    coefficients: list[str], prime_modulus: str, timeout: int = 60
+) -> dict:
+    """Factor a polynomial over ``F_p`` one classical stage at a time.
+
+    ``factormod`` answers in a single step. The algorithm behind it has three, and each
+    asks a different question: square-free decomposition, then distinct-degree
+    factorization of each square-free part, then equal-degree splitting of each block by
+    Cantor and Zassenhaus's method. PARI/GP performs every stage; this module supplies
+    the polynomial and reads the tagged output.
+
+    The order matters and is enforced in the engine: ``factormodDDF`` is documented for a
+    square-free argument, so it runs on the parts stage 1 produced and never on the input.
+
+    Args:
+        coefficients: Ascending coefficients, so ``[1, 0, 1]`` is ``x^2 + 1``.
+        prime_modulus: The prime ``p``, as a decimal string.
+        timeout: Wall-clock limit in seconds.
+
+    Returns:
+        A dict with ``polynomial``, ``degree``, ``modulus``, ``parts``, the three stage
+        tables, ``verified`` and a note.
+
+    Raises:
+        ValueError: On a bad coefficient list or modulus.
+        PrimeEngineError: If PARI/GP fails, omits its marker, or the stages do not
+            rebuild the input.
+    """
+
+    if not 2 <= len(coefficients) <= 101:
+        raise ValueError("Supply 2–101 coefficients in ascending order")
+    values = [decimal_integer(value) for value in coefficients]
+    if values[-1] == 0:
+        raise ValueError("The leading coefficient must be nonzero")
+    modulus = decimal_integer(prime_modulus)
+    if not 2 <= modulus < 2**64:
+        raise ValueError("The modulus must be a prime between 2 and 2^64")
+    lines = _execute(
+        f"al_factor_stages({_vector(values)},{modulus})", timeout
+    )
+    squarefree = _records(lines, "SQF", 3)
+    distinct = _records(lines, "DDF", 3)
+    irreducible = _records(lines, "IRRED", 4)
+    polynomial = _text(lines, "POLYNOMIAL")
+    if polynomial is None or not irreducible:
+        raise PrimeEngineError("PARI/GP returned no factorization stages")
+    if _text(lines, "VERIFIED") != "1":
+        # The stages are only worth showing if they multiply back to the input.
+        raise PrimeEngineError(
+            "The staged factors do not reconstruct the input polynomial; no result is "
+            "reported"
+        )
+    return {
+        "polynomial": polynomial,
+        "degree": _text(lines, "DEGREE") or "0",
+        "modulus": str(modulus),
+        "parts": _text(lines, "PARTS") or "0",
+        "squarefree": [
+            {"part": index, "polynomial": factor, "multiplicity": multiplicity}
+            for index, factor, multiplicity in squarefree
+        ],
+        "distinct_degree": [
+            {"part": index, "polynomial": factor, "degree": degree}
+            for index, factor, degree in distinct
+        ],
+        "irreducible": [
+            {"part": index, "degree": degree, "polynomial": factor,
+             "multiplicity": multiplicity}
+            for index, degree, factor, multiplicity in irreducible
+        ],
+        "verified": True,
+        "columns": ["Stage", "Factor", "Detail"],
+        "rows": (
+            [["1 · square-free", row[1], f"multiplicity {row[2]}"] for row in squarefree]
+            + [["2 · distinct-degree", row[1], f"degree {row[2]}"] for row in distinct]
+            + [
+                ["3 · irreducible", row[2], f"degree {row[1]}, multiplicity {row[3]}"]
+                for row in irreducible
+            ]
+        ),
+        "note": (
+            f"PARI/GP factored this polynomial over F_{modulus} in three stages: "
+            "square-free decomposition, distinct-degree factorization of each square-free "
+            "part, then equal-degree splitting by Cantor-Zassenhaus. The distinct-degree "
+            "step is documented for a square-free argument, so it runs on the parts rather "
+            "than on the input. The irreducible factors, raised to the multiplicities "
+            "stage 1 found, were verified by the engine to multiply back to the input."
+        ),
+    }
+
+
 def finite_field_arithmetic(
     characteristic: str,
     degree: int,

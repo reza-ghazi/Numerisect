@@ -5,6 +5,23 @@ binary packages are published.
 
 ## Unreleased
 
+- Added **staged polynomial factorization over F_p** (`POST /api/algebra/factor-stages`),
+  using three PARI routines the application never called: `factormodSQF`, `factormodDDF`
+  and `factorcantor`. `factormod` answers in one step; the algorithm behind it has three,
+  and each asks a different question — square-free decomposition, distinct-degree
+  factorization of each square-free part, then equal-degree splitting by
+  Cantor-Zassenhaus. The order is enforced in the engine, because the distinct-degree step
+  is documented for a square-free argument and is undefined on a polynomial with a
+  repeated factor. The engine verifies that the irreducible factors, raised to the
+  multiplicities stage 1 found, multiply back to the input; a failed reconstruction
+  reports nothing rather than a partial answer. One new Prime Tools page, bringing the
+  catalogue to 139.
+- Recorded why YAFU's `-np` poly-search switch is **not** exposed: YAFU's own
+  documentation says its "multi-threaded polynomial selection is handled via msieve
+  library function calls", and its log confirms it. The switch is a second front end to
+  the selection already reachable through the `msieve_poly` strategy, so it would add
+  neither a capability nor an independent check.
+
 - Added three independent cross-checks, from an audit of what YAFU and primesieve expose
   against what the application called:
   - **YAFU's APR-CL** joins the primality cross-check as a *second proof engine*. PARI's
