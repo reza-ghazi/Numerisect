@@ -1,5 +1,15 @@
 # 150-item roadmap status
 
+!!! info "Two roadmap files, and what each holds"
+
+    **This file** is the item-by-item ledger: every proposal item, its status, and the
+    precise gap where one remains.
+
+    **[Roadmap and scope](about/roadmap.md)** is the short overview: the status counts,
+    what was declined and why, and
+    [what stands between 0.x and 1.0](about/roadmap.md#what-stands-between-0x-and-10).
+    The 1.0 questions are there, not here.
+
 The 150-item feature proposal this file tracks is a roadmap, not a claim that every
 research system can safely be
 delivered in one pre-release. This file is the authoritative scope boundary: it records
@@ -67,6 +77,10 @@ desktop notifications, declarative engine adapters, performance history, client 
 in five languages, and notebook integration.
 
 ## Partially implemented
+
+These are the twelve items the 1.0 discussion weighs; see
+[what stands between 0.x and 1.0](about/roadmap.md#what-stands-between-0x-and-10) for how
+they divide into gaps that can be closed and limits that are permanent.
 
 - **1 and 116** — the factor view shows the input, every factor with its exponent,
   primality status and discovering engine, and one total elapsed time. It renders as

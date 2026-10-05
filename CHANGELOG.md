@@ -5,6 +5,14 @@ binary packages are published.
 
 ## Unreleased
 
+- Cross-linked the two roadmap files, which have confusingly similar names.
+  `docs/ROADMAP_STATUS.md` (the 150-item ledger) now opens with a note saying which file
+  holds what and links to the 1.0 questions, and its partial-items list points at the
+  section that weighs those twelve gaps. `docs/about/roadmap.md` (the overview) names the
+  ledger by path and marks that the 1.0 section lives there rather than in the ledger.
+  Looking for the 1.0 questions in the larger, more obvious file found nothing, with no
+  hint of where they were.
+
 - Corrected the roadmap's 1.0 section, which overstepped. It had been written in 0.11.0 as
   four numbered commitments — a stable API, the closeable gaps built or declined, the
   permanent limits restated, the artifact exercised per platform — and closed with "this

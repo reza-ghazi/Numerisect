@@ -4,7 +4,10 @@ Numerisect was built against a 150-item feature proposal. The ledger records exa
 was implemented, what is partial with the specific gap named, and what was declined with
 the reasoning, so a decision can be revisited rather than rediscovered.
 
-[:octicons-arrow-right-24: The full ledger](../ROADMAP_STATUS.md)
+[:octicons-arrow-right-24: The full ledger: `docs/ROADMAP_STATUS.md`](../ROADMAP_STATUS.md)
+
+This page holds the summary, the declined items and the 1.0 questions. The ledger holds
+every item's status and the precise gap where one remains.
 
 ## Summary
 
@@ -47,6 +50,9 @@ once said this factors that way, and we checked the division". Local catalogue f
 remain the supported offline route.
 
 ## What stands between 0.x and 1.0
+
+*This section lives here, in `docs/about/roadmap.md`, not in the
+[150-item ledger](../ROADMAP_STATUS.md).*
 
 Numerisect is at 0.x: the minor number carries the weight, and the version text says so.
 **The bar for 1.0 has not been set**, and this section does not set it — it records what
