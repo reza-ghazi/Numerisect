@@ -152,6 +152,27 @@ a tendency, not a theorem, and its exceptions are catalogued.
 : The continued-fraction factoring method: relations come from the convergents of
   \(\sqrt N\) rather than from a sieving interval.
 
+**Coppersmith's method**
+: Finds small roots of a polynomial modulo an *unknown* divisor, by lattice reduction.
+  Its cost depends on how much of a factor is unknown rather than on the size of the
+  modulus, which is why it reaches sizes no sieve does.
+
+**Proven validity window**
+: The bound within which Coppersmith's method is guaranteed to find a root,
+  \(X \le \exp((\log B)^2/(\deg P\log N))\). Outside it, finding nothing says nothing.
+
+**Square-free decomposition**
+: The first stage of factoring a polynomial over \(\mathbb{F}_p\): separate repeated
+  factors and record their multiplicities. The later stages assume a square-free input.
+
+**Distinct-degree factorization**
+: The second stage: split a square-free polynomial into blocks whose irreducible factors
+  all share one degree.
+
+**Equal-degree splitting**
+: The third stage, by Cantor and Zassenhaus: divide a block into its irreducible factors
+  of that one degree.
+
 ## Engines
 
 **Tagged output**

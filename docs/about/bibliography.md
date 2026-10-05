@@ -67,6 +67,16 @@ list.
   deterministic \(O(N^{1/3})\) method.
 - W. B. Hart. "A one line factoring algorithm". *Journal of the Australian Mathematical
   Society* 92 (2012).
+- D. Coppersmith. "Small solutions to polynomial equations, and low exponent RSA
+  vulnerabilities". *Journal of Cryptology* 10 (1997). The lattice method behind
+  recovering a factor from its leading bits.
+- A. May. "Using LLL-reduction for solving RSA and factorization problems". *The LLL
+  Algorithm*, Springer (2010). A survey of what partial knowledge of a factor buys.
+- D. G. Cantor and H. Zassenhaus. "A new algorithm for factoring polynomials over finite
+  fields". *Mathematics of Computation* 36 (1981). The equal-degree stage.
+- V. Shoup. *A Computational Introduction to Number Theory and Algebra*, 2nd edition,
+  Cambridge (2009). Chapter 20 for the square-free, distinct-degree and equal-degree
+  stages in the order they must run.
 
 ## Summatory functions and Brun-type constants
 
