@@ -5,6 +5,17 @@ binary packages are published.
 
 ## Unreleased
 
+- Added `scripts/build_factor_catalogue.py`, which fills the local known-factor catalogue
+  by factoring `b^n ± 1` here rather than importing a published table. The catalogue
+  feature always worked and always searched zero files, because nothing is bundled; the
+  obvious fix would have been to vendor the Cunningham tables, whose licence and
+  provenance would then have to be argued. PARI/GP factors each number, proves every
+  factor prime and verifies the product against the input, and each entry records its
+  expression and the engine version that produced it, so a locally computed entry is
+  distinguishable from an imported one. A number the per-number budget cannot finish is
+  listed under `skipped` and absent from the entries rather than stored half-factored.
+  `--min-exponent` allows a catalogue to be extended in slices.
+
 - Exposed NFS **polynomial selection**, the audit's last open item. Selection is the first
   phase of the number field sieve and the one whose result is reused, and neither engine's
   controls were reachable: only the choice of CADO `params.cNN` was.

@@ -138,7 +138,9 @@ is visible and can be revisited.
   It also buys little: numbers FactorDB knows are usually ones these engines factor
   quickly anyway, and for numbers it does not know it says nothing. Local catalogue
   files under `STATE_DIR/catalogues` remain the supported way to use known-factor
-  tables, entirely offline.
+  tables, entirely offline — and `scripts/build_factor_catalogue.py` now fills one by
+  factoring \(b^n \pm 1\) with PARI/GP here, so the feature is useful without importing
+  anyone's table or trusting anyone's claim.
 - **143, side-by-side engine comparison — declined.** The correctness half is already
   covered: `cross_verify` runs YAFU and Msieve independently and rejects a factor
   multiset disagreement. The timing half would present a single sample as a comparison,

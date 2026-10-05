@@ -179,6 +179,29 @@ POST /api/catalogues/oeis       {"terms": ["2","3","5","7"], "confirm_network": 
 POST /api/catalogues/factors    {"expression": "2^101-1", "remote": false}
 ```
 
+### Building a local catalogue instead of importing one
+
+Nothing is bundled, so a fresh installation searches zero catalogue files. The obvious
+way to fill that gap would be to ship the Cunningham tables, and this project does not
+vendor third-party data whose licence and provenance would have to be argued. The
+engines here can produce the same factorizations and say where each one came from:
+
+```bash
+python scripts/build_factor_catalogue.py                      # 2,3,5,6,7,10 up to n=48
+python scripts/build_factor_catalogue.py --bases 2 --max-exponent 128 --seconds 20
+```
+
+PARI/GP factors each \(b^n \pm 1\), proves every factor prime, and verifies the product
+against the input; the script only orchestrates and writes the file. Each entry records
+its expression and the engine version that produced it, so a locally computed entry is
+distinguishable from an imported one. A number the per-number budget cannot finish is
+listed under `skipped` and **absent** from the entries rather than stored half-factored.
+
+The file lands in `catalogues/cunningham.json` inside the state directory, which the
+lookup reads with no network access. Catalogue claims stay labelled unverified wherever
+they are displayed: a catalogue is a source, not an authority, and Numerisect re-checks
+divisibility with an engine before using one.
+
 Local catalogue files in `STATE_DIR/catalogues` (`.txt` as `N = p * q` lines, or
 `.json`) are read with no network access at all, which is the recommended way to use
 Cunningham-project tables.
