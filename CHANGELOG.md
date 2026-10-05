@@ -5,6 +5,21 @@ binary packages are published.
 
 ## Unreleased
 
+- Closed roadmap item 10, the last capability gap on the ledger. `cross_verify` already
+  required YAFU and Msieve to agree on the factor multiset and rejected anything else;
+  the comparison itself was then thrown away. The job now records each engine's factors
+  with the primality label **that engine** assigned, the cofactor it left and its elapsed
+  time, shown under the factor tree, in the saved report and as `verification` in the job
+  API. Two engines agreeing on the factors while disagreeing on proven versus probable —
+  `P` against `prp` — raises a warning naming the factor and both labels, which is a
+  difference in what each engine undertook to establish rather than a contradiction. The
+  times are single measurements of two runs on one machine and are labelled as such.
+- Documented **what 1.0 would require**, since the remaining distance is not more
+  mathematics: a stable API, the closeable presentation gaps built or declined in writing,
+  the permanent bounded-search limits stated as limits, and the published artifact
+  exercised on each supported platform. The twelve remaining ledger gaps are separated
+  into those that can be closed and those that are the honest shape of the question.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23163322` for the `v0.10.0`
   source release across `CITATION.cff`, the README, the installation guides, the
   capability index, the citation page, the FAQ, the publishing guide and the release

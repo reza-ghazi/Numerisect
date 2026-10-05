@@ -135,3 +135,93 @@ def test_ecm_campaign_passes_the_stage_two_and_special_form_flags(tmp_path, monk
     assert command[command.index("-k") + 1] == "4"
     assert command[command.index("-base2") + 1] == "-101"
     assert command[command.index("-go") + 1] == "2*101"
+
+
+def _cross_verify_job(tmp_path, monkeypatch, yafu_output, msieve_output):
+    """Run a cross-check with both engines stubbed, and return the job row."""
+
+    monkeypatch.setattr(jobs, "executable_path", lambda name: f"/usr/bin/{name}")
+    manager = _manager(tmp_path, monkeypatch)
+
+    def fake_run(job, command, **kwargs):
+        return 0, msieve_output if command[0] == "msieve" else yafu_output
+
+    monkeypatch.setattr(manager, "_run_process", fake_run)
+    try:
+        created = manager.create(
+            expression="10403", number=10403, requested_backend="cross_verify", threads=1,
+            pretest_level=20, trial_bound=100, cado_parameter_size=None,
+        )
+        manager._futures[created["id"]].result(timeout=60)
+        return manager.database.get_job(created["id"])
+    finally:
+        manager.shutdown()
+
+
+def test_the_cross_check_records_both_engines_side_by_side(tmp_path, monkeypatch):
+    """Agreement on the multiset was always enforced; the comparison was discarded.
+
+    Each engine's own primality verdict, its leftover cofactor and its elapsed time are
+    now kept, which is what roadmap item 10 asked for.
+    """
+
+    row = _cross_verify_job(
+        tmp_path, monkeypatch,
+        "***factors found***\n\nP3 = 101\nP3 = 103\n",
+        "prp3: 101\nprp3: 103\n",
+    )
+    assert row["status"] == "completed"
+    comparison = json.loads(row["verification_json"])
+    assert comparison["agreement"] is True
+    assert [side["engine"] for side in comparison["engines"]] == ["YAFU", "Msieve"]
+    for side in comparison["engines"]:
+        assert side["count"] == 2
+        assert side["cofactor"] == "1"
+        assert side["elapsed_seconds"] >= 0
+    # Each engine's own label is preserved, not flattened to one verdict.
+    assert [item["status"] for item in comparison["engines"][0]["factors"]] == ["prime", "prime"]
+    assert [item["status"] for item in comparison["engines"][1]["factors"]] == [
+        "probable_prime", "probable_prime",
+    ]
+    assert "not a benchmark" in comparison["note"]
+
+
+def test_a_primality_disagreement_is_surfaced_rather_than_hidden(tmp_path, monkeypatch):
+    """Both engines agreeing on the factors while disagreeing on proof is informative."""
+
+    row = _cross_verify_job(
+        tmp_path, monkeypatch,
+        "***factors found***\n\nP3 = 101\nP3 = 103\n",
+        "prp3: 101\np3: 103\n",
+    )
+    assert row["status"] == "completed"
+    assert "101 differently (prime against probable_prime)" in (row["warning"] or "")
+
+
+def test_a_factor_disagreement_still_rejects_the_result(tmp_path, monkeypatch):
+    """The strict rule stays: no verified result is accepted on a mismatch."""
+
+    row = _cross_verify_job(
+        tmp_path, monkeypatch,
+        "***factors found***\n\nP3 = 101\nP3 = 103\n",
+        "p5: 10403\n",
+    )
+    assert row["status"] == "failed"
+    assert "different factor multisets" in (row["error"] or "")
+    # The comparison is recorded even when it rejects, so the disagreement is inspectable.
+    comparison = json.loads(row["verification_json"])
+    assert comparison["agreement"] is False
+
+
+def test_the_report_carries_the_comparison(tmp_path, monkeypatch):
+    row = _cross_verify_job(
+        tmp_path, monkeypatch,
+        "***factors found***\n\nP3 = 101\nP3 = 103\n",
+        "prp3: 101\nprp3: 103\n",
+    )
+    report = (tmp_path / "output" / f"factorization-{row['id'][:12]}.txt").read_text(
+        encoding="utf-8"
+    )
+    assert "Independent verification" in report
+    assert "Factor multisets: agree" in report
+    assert "101 [prime]" in report and "101 [probable_prime]" in report

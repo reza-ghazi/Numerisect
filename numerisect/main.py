@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -1034,6 +1035,14 @@ def _public_job(job: dict[str, object]) -> dict[str, object]:
         "parent_job_id",
     }
     result = {key: value for key, value in job.items() if key in allowed}
+    # The cross-check comparison is stored as JSON and published as structure, so the
+    # browser never parses engine output itself.
+    stored = job.get("verification_json")
+    if stored:
+        try:
+            result["verification"] = json.loads(str(stored))
+        except json.JSONDecodeError:
+            result["verification"] = None
     result["result_available"] = bool(job.get("result_path"))
     if job.get("result_path"):
         manifest = Path(str(job["result_path"])).with_suffix(".json")

@@ -45,6 +45,35 @@ Baillie-PSW plus Miller-Rabin implementation. The response marks which results a
 and which are probable. A disagreement between a proof and a probabilistic test would be
 either a genuine discovery or, far more likely, a broken engine build.
 
+### Factorization
+
+The `cross_verify` strategy factors the input twice, with YAFU and with Msieve, and
+accepts nothing unless the two factor multisets are identical. That rule is strict and
+unchanged: a disagreement fails the job rather than picking a winner.
+
+What the job now records is the comparison itself, side by side:
+
+| Column | What it shows |
+|---|---|
+| Factors | how many each engine reported |
+| Values and verdicts | each factor with the primality label **that engine** assigned |
+| Cofactor left | what each engine did not resolve |
+| Elapsed | how long that engine's run took |
+
+The primality column is the interesting one. Two engines can agree on exactly which
+numbers the factors are while disagreeing on whether a factor is *proven* prime or only
+*probable* — YAFU reporting `P` where Msieve reports `prp`, for instance. That is a
+difference in what each engine undertook to establish, not a contradiction, and it used
+to be discarded along with the timings. When it happens, the job carries a warning naming
+the factor and both labels.
+
+The elapsed times are single measurements of these two runs on this machine. They are not
+a benchmark of the engines, and the documentation says so wherever they appear: thread
+count, ECM luck and the specific input dominate.
+
+The comparison appears under the factor tree in the browser, in the saved report, and as
+`verification` in the job's API response.
+
 ## Engine self-test
 
 `POST /api/verify/self-test` asks each installed engine questions whose answers are

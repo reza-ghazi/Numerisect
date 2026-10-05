@@ -146,6 +146,33 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
             polynomial_block = "\nPolynomial:\n" + "\n".join(f"  {line}" for line in lines) + "\n"
 
     command = " ".join(job.get("command") or [])
+    # The cross-check comparison, when the job recorded one: each engine's own answer,
+    # including the primality labels it assigned and how long it took.
+    verification_block = ""
+    stored = job.get("verification_json")
+    if stored:
+        try:
+            comparison = json.loads(str(stored))
+        except (TypeError, json.JSONDecodeError):
+            comparison = None
+        if comparison:
+            lines = [
+                "",
+                "Independent verification",
+                "------------------------",
+                f"Factor multisets: {'agree' if comparison.get('agreement') else 'disagree'}",
+            ]
+            for side in comparison.get("engines", []):
+                labelled = ", ".join(
+                    f"{item['value']} [{item['status']}]" for item in side.get("factors", [])
+                )
+                lines += [
+                    f"  {side['engine']}: {side['count']} factor(s) in "
+                    f"{side['elapsed_seconds']} s; cofactor {side['cofactor']}",
+                    f"    {labelled}" if labelled else "    (none reported)",
+                ]
+            lines += ["", str(comparison.get("note", ""))]
+            verification_block = "\n".join(lines) + "\n"
     manifest_path = path.with_suffix(".json")
     manifest = _factorization_manifest(job, factors, equation)
     _atomic_write(
@@ -163,6 +190,7 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
         f"{equation}\n\n"
         f"{'Result' if reporting else 'Factors'}:\n{details}\n"
         f"{polynomial_block}\n"
+        f"{verification_block}"
         f"Last engine command: {command}\n"
         f"Reproducible manifest: output/{manifest_path.name}\n"
         f"Requested strategy: {job['requested_backend']}\n"

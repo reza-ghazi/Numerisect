@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import resource
@@ -650,6 +651,127 @@ class JobManager:
             }
         ]
 
+    def _run_cross_verify(
+        self, job: dict[str, Any], number: int
+    ) -> list[dict[str, object]]:
+        """Factor with YAFU and Msieve independently and record both answers.
+
+        The multisets must be identical or nothing is accepted; that was already true.
+        What is recorded now is the comparison itself: each engine's factors with the
+        primality label **that engine** assigned, its leftover cofactor, and how long it
+        took. Two engines agreeing on the factors while disagreeing on whether a factor
+        is proven prime or only probable is a real and interesting outcome, and it used
+        to be discarded along with the timings.
+
+        Elapsed times are single measurements of these two runs on this machine, not a
+        benchmark of the engines.
+
+        Returns:
+            The verified factor records. The comparison is stored on the job row.
+
+        Raises:
+            RuntimeError: If the two engines disagree on the factor multiset.
+        """
+
+        started = time.monotonic()
+        known, residual = self._run_yafu(job, number, pretest_only=False)
+        yafu_seconds = time.monotonic() - started
+        if residual != 1:
+            known.append(
+                {
+                    "value": str(residual),
+                    "digits": len(str(residual)),
+                    "status": "composite",
+                    "engine": "YAFU",
+                }
+            )
+        started = time.monotonic()
+        independent = self._run_msieve(job, number)
+        msieve_seconds = time.monotonic() - started
+
+        left = sorted(int(str(item["value"])) for item in known)
+        right = sorted(int(str(item["value"])) for item in independent)
+        comparison = {
+            "engines": [
+                self._verification_side("YAFU", known, residual, yafu_seconds, number),
+                self._verification_side("Msieve", independent, None, msieve_seconds, number),
+            ],
+            "agreement": left == right,
+            "note": (
+                "Each engine factored the input independently. Agreement is on the factor "
+                "multiset; the primality column is each engine's own conclusion, and the "
+                "elapsed times are single measurements of these runs on this machine, not "
+                "a benchmark."
+            ),
+        }
+        self.database.update_job(job["id"], verification_json=json.dumps(comparison))
+        if left != right:
+            raise RuntimeError(
+                "YAFU and Msieve returned different factor multisets; "
+                "no verified result was accepted"
+            )
+        labels = self._primality_disagreements(known, independent)
+        if labels:
+            self.database.update_job(
+                job["id"],
+                warning=(
+                    "The engines agree on the factors and label "
+                    + "; ".join(labels)
+                    + ". A factor is reported with the stronger of the two labels only "
+                    "where PARI/GP confirms it."
+                ),
+            )
+        return [
+            {**item, "engine": "YAFU + Msieve (independently verified)"}
+            for item in known
+        ]
+
+    @staticmethod
+    def _verification_side(
+        engine: str,
+        records: list[dict[str, object]],
+        residual: int | None,
+        seconds: float,
+        number: int,
+    ) -> dict[str, object]:
+        """Summarise one engine's answer for the side-by-side comparison."""
+
+        values = [abs(int(str(record["value"]))) for record in records]
+        product = math.prod(values) if values else 0
+        return {
+            "engine": engine,
+            "factors": [
+                {"value": str(record["value"]), "status": str(record["status"])}
+                for record in records
+            ],
+            "count": len(records),
+            # The cofactor each engine left: YAFU reports a residual directly, and for
+            # any engine a product short of the input means something is missing.
+            "cofactor": (
+                str(residual) if residual not in (None, 1)
+                else ("1" if product == abs(number) else str(abs(number) // product))
+                if product and abs(number) % product == 0
+                else "unknown"
+            ),
+            "elapsed_seconds": round(seconds, 3),
+        }
+
+    @staticmethod
+    def _primality_disagreements(
+        left: list[dict[str, object]], right: list[dict[str, object]]
+    ) -> list[str]:
+        """Describe factors the two engines labelled differently."""
+
+        def labels(records: list[dict[str, object]]) -> dict[str, str]:
+            return {str(record["value"]): str(record["status"]) for record in records}
+
+        first, second = labels(left), labels(right)
+        return [
+            f"{value} differently ({first[value]} against {second[value]})"
+            for value in sorted(set(first) & set(second))
+            if first[value] != second[value]
+        ]
+
     def _run_tune(self, job: dict[str, Any]) -> list[dict[str, object]]:
         """Run YAFU's own `tune` and report the crossover it measures.
 
@@ -1038,28 +1160,7 @@ class JobManager:
             elif backend == "pari_trial":
                 factors.extend(self._run_pari_trial(job, number))
             elif backend == "cross_verify":
-                known, residual = self._run_yafu(job, number, pretest_only=False)
-                if residual != 1:
-                    known.append(
-                        {
-                            "value": str(residual),
-                            "digits": len(str(residual)),
-                            "status": "composite",
-                            "engine": "YAFU",
-                        }
-                    )
-                independent = self._run_msieve(job, number)
-                left = sorted(int(str(item["value"])) for item in known)
-                right = sorted(int(str(item["value"])) for item in independent)
-                if left != right:
-                    raise RuntimeError(
-                        "YAFU and Msieve returned different factor multisets; "
-                        "no verified result was accepted"
-                    )
-                factors.extend(
-                    {**item, "engine": "YAFU + Msieve (independently verified)"}
-                    for item in known
-                )
+                factors.extend(self._run_cross_verify(job, number))
             elif backend == "tune":
                 factors.extend(self._run_tune(job))
             elif backend == "msieve_poly":

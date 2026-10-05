@@ -178,6 +178,20 @@ function renderFactors(job) {
   const tree = $('#factor-tree');
   tree.innerHTML = `<div class="factor-tree-root"><span>Input</span><code>${job.negative ? '−' : ''}${escapeHtml(shortNumber(job.number, 64))}</code><small>${job.digits} digits${elapsed === null ? '' : ` · ${elapsed.toFixed(3)} s total`}</small></div><div class="factor-tree-branches">${[...grouped.values()].map((factor) => `<article class="factor-tree-leaf ${escapeHtml(factor.status)}"><span>${escapeHtml(factor.status.replace('_', ' '))}</span><code>${escapeHtml(shortNumber(factor.value, 64))}${factor.exponent > 1 ? `<sup>${factor.exponent}</sup>` : ''}</code><small>${factor.digits} digits · ${escapeHtml(factor.engine || job.selected_backend)}</small></article>`).join('')}</div>`;
   tree.classList.remove('hidden');
+
+  // Cross-engine verification: each engine's own answer, side by side. Agreement is on
+  // the factor multiset; the primality column is each engine's own conclusion, and the
+  // times are single measurements rather than a benchmark.
+  const comparison = $('#verification-comparison');
+  const verification = job.verification;
+  if (verification && Array.isArray(verification.engines) && verification.engines.length) {
+    const rows = verification.engines.map((side) => `<tr><td>${escapeHtml(side.engine)}</td><td>${side.count}</td><td>${side.factors.map((item) => `${escapeHtml(shortNumber(item.value, 28))} <small>${escapeHtml(String(item.status).replace('_', ' '))}</small>`).join('<br />')}</td><td><code>${escapeHtml(shortNumber(String(side.cofactor), 28))}</code></td><td>${Number(side.elapsed_seconds).toFixed(3)} s</td></tr>`).join('');
+    comparison.innerHTML = `<table class="result-table"><caption>Independent verification · ${verification.agreement ? 'factor multisets agree' : 'factor multisets disagree'}</caption><thead><tr><th scope="col">Engine</th><th scope="col">Factors</th><th scope="col">Values and each engine's primality verdict</th><th scope="col">Cofactor left</th><th scope="col">Elapsed</th></tr></thead><tbody>${rows}</tbody></table><p class="field-note">${escapeHtml(verification.note || '')}</p>`;
+    comparison.classList.remove('hidden');
+  } else {
+    comparison.innerHTML = '';
+    comparison.classList.add('hidden');
+  }
 }
 
 function renderDetail(job) {

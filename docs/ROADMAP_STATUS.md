@@ -79,9 +79,12 @@ in five languages, and notebook integration.
   YAFU until 0.9.1. SQUFOF is supplied by `numerisect-squfof` because no installed
   library provides it. SQUFOF is limited to inputs below 2^62 by its 64-bit cycle; larger inputs
   are rejected explicitly rather than answered.
-- **10** — cross-verification compares YAFU and Msieve factor multisets and rejects a
-  disagreement. Comparing cofactors, per-engine primality conclusions, and per-engine
-  timings side by side is not yet done.
+- **10 — now complete.** Cross-verification compares YAFU and Msieve factor multisets and
+  rejects a disagreement, and the comparison is recorded side by side: each engine's
+  factors with the primality label that engine assigned, the cofactor it left, and its
+  elapsed time. A primality disagreement on an agreed factor set raises a warning naming
+  the factor and both labels. The times are single measurements, not a benchmark, and are
+  labelled as such.
 - **13** — certificates are generated and independently verified for every prime factor
   of a completed job. Certifying a factor that is only a probable prime still depends on
   PARI proving it first.
