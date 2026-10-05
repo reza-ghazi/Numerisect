@@ -5,6 +5,17 @@ binary packages are published.
 
 ## Unreleased
 
+- Corrected the roadmap's 1.0 section, which overstepped. It had been written in 0.11.0 as
+  four numbered commitments — a stable API, the closeable gaps built or declined, the
+  permanent limits restated, the artifact exercised per platform — and closed with "this
+  section is the author's standing position". The author had agreed to none of that; the
+  criteria were the assistant's and were published as policy. The section is now titled
+  "What stands between 0.x and 1.0", states plainly that **the bar for 1.0 has not been
+  set**, and puts the same four points as open questions rather than commitments. The
+  factual half, which comes from the ledger — twelve named gaps, none of them a missing
+  computation, split into closeable presentation items and permanent bounded searches —
+  is unchanged, because it is verifiable.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23172885` for the `v0.12.1`
   source release across `CITATION.cff`, the README, the installation guides, the
   capability index, the citation page, the FAQ, the publishing guide and the release

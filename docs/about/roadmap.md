@@ -46,12 +46,15 @@ database of unverified community claims turns "your machine factored this" into 
 once said this factors that way, and we checked the division". Local catalogue files
 remain the supported offline route.
 
-## What 1.0 would require
+## What stands between 0.x and 1.0
 
-Numerisect is deliberately at 0.x: the minor number carries the weight, and the version
-text says so. The remaining distance to 1.0 is **not** more mathematics. Of the twelve
-items that still carry a named gap, none is a missing computation; they divide into two
-kinds, and only one kind can be closed:
+Numerisect is at 0.x: the minor number carries the weight, and the version text says so.
+**The bar for 1.0 has not been set**, and this section does not set it — it records what
+is actually left, so that whoever sets it is choosing from facts.
+
+The remaining distance is **not** more mathematics. Of the twelve items that still carry
+a named gap, none is a missing computation; they divide into two kinds, and only one kind
+can be closed:
 
 **Presentation, and therefore closeable.** The factor view renders as a flat
 root-plus-leaves list rather than a tree, although the parent/child relationship already
@@ -66,20 +69,23 @@ number-field work are all complete *within documented finite bounds*, and report
 inconclusive beyond them. That is the honest shape of those questions, not a defect
 waiting to be fixed, and 1.0 should not pretend otherwise.
 
-So a 1.0 is a commitment about the interface and about stability, which is why it has not
-been declared yet. It would mean:
+So whatever 1.0 comes to mean here, it is a decision about the interface and about
+stability rather than about capability. Four questions are open, and none has been
+answered yet:
 
-1. **A stable API.** Route paths and response keys would not change without a major
-   version. Today they can, and several have within 0.x.
-2. **The closeable presentation gaps either built or declined in writing**, so no item
-   sits in an indefinite "partial" state.
-3. **The permanent limits stated as limits**, in the capability index as well as the
-   ledger, so a reader does not mistake a bounded search for an unfinished one.
-4. **The published artifact installed and exercised on each supported platform**, from the
-   release archive rather than from a checkout, which CI does not currently do.
+- **Does 1.0 promise a stable API?** Route paths and response keys can change today, and
+  several have within 0.x. Promising otherwise is the single largest commitment on this
+  list, because it binds every future release.
+- **Do the closeable presentation gaps have to be built, or is declining them in writing
+  enough?** Either settles an item; leaving it "partial" indefinitely does not.
+- **Should the permanent limits be restated outside this ledger**, in the capability index,
+  so a reader cannot mistake a bounded search for an unfinished one?
+- **Does the published artifact need to be installed and exercised on each supported
+  platform** from the release archive rather than from a checkout? CI does not do that
+  today.
 
-This section is the author's standing position, not a schedule. Until those four hold, a
-feature release raises the minor number.
+Until someone decides, the practical rule is unchanged and comes from the version text
+rather than from this page: a feature release raises the minor number.
 
 ## Honest limits
 
