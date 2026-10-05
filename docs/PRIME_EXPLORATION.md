@@ -1,6 +1,6 @@
 # Prime exploration and notebook problems
 
-Numerisect 0.12.0 extends this workspace with rigorously proven Mersenne,
+Numerisect 0.12.1 extends this workspace with rigorously proven Mersenne,
 Fermat, Cullen, Woodall, Wagstaff, decimal-repunit, primorial ± 1, and
 factorial ± 1 family searches, both Cunningham-chain recurrences, and
 exact-bit-length NTT-friendly primes. These operations are implemented in

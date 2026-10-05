@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.12.1 — 2026-10-05
+
 - Added the references and glossary entries for the 0.12.0 mathematics: Coppersmith
   (1997) and May's survey of what partial knowledge of a factor buys; Cantor and
   Zassenhaus (1981) and Shoup's chapter on the three stages in the order they must run.
