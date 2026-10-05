@@ -85,9 +85,10 @@ def test_text_that_is_not_a_real_is_rejected(text):
     assert pari_real(text) is None
 
 
-def test_the_approximation_comparison_works_where_it_used_to_fail():
+def test_the_approximation_comparison_works_where_it_used_to_fail(require_engine):
     """x = 10^11 and above reach exponential notation in the relative error."""
 
+    require_engine("primecount")
     from numerisect.number_theory import prime_approximation_comparison
 
     for x in ("100000000000", "10000000000000"):
@@ -99,9 +100,10 @@ def test_the_approximation_comparison_works_where_it_used_to_fail():
         assert float(riemann[3]) < 0
 
 
-def test_primesieve_r_of_x_is_compared_with_primecounts():
+def test_primesieve_r_of_x_is_compared_with_primecounts(require_engine):
     """primesieve implements R(x) in a separate codebase from primecount's."""
 
+    require_engine("primecount")
     from numerisect.number_theory import prime_approximation_comparison
 
     result = prime_approximation_comparison("1000000000", 2)
@@ -174,7 +176,10 @@ def test_an_out_of_range_exponent_is_refused(exponent):
     (1_000_000, "15485863"),          # the millionth prime
     (1_000_000_000, "22801763489"),
 ])
-def test_the_nth_prime_agrees_across_engines(index, expected):
+def test_the_nth_prime_agrees_across_engines(index, expected, require_engine):
+    # Either engine alone can answer; with neither there is nothing to compare.
+    if not (shutil.which("primecount") or shutil.which("primesieve")):
+        require_engine("primecount", "primesieve")
     result = cross_check_nth_prime(index, timeout=600)
     assert result["prime"] == expected
     assert result["agree"] is True
