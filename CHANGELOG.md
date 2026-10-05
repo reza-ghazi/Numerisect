@@ -5,7 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
-No changes yet.
+- Recorded the Zenodo version DOI `10.5281/zenodo.23148620` for the `v0.9.0` source
+  release across `CITATION.cff`, the README, the installation guides, the capability
+  index, the citation page, the FAQ, the publishing guide and the release history. The
+  0.8.1, 0.8.0 and 0.7.0 DOIs stay listed on the citation page.
 
 ## 0.9.0 — 2026-10-04
 
