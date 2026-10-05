@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .prime_manipulation import decimal_integer
-from .primes import PrimeEngineError, _run_gp, _tagged_values, prime_count
+from .primes import PrimeEngineError, _run_gp, _tagged_values, pari_real, prime_count
 
 PROGRAM = Path(__file__).with_name("number_theory.gp")
 _SAFE_TEXT = re.compile(r"[0-9A-Za-z_+*/^()., \[\]~-]+")
@@ -412,6 +412,30 @@ def _primecount_option(value: int, option: str, threads: int, timeout: int) -> i
     return int(output)
 
 
+def _primesieve_riemann(value: int, timeout: int) -> str | None:
+    """Ask primesieve for R(x), or ``None`` when it is not installed.
+
+    primesieve prints fractional digits where primecount rounds, which is why the two
+    are compared on the integer part rather than for equality.
+    """
+
+    executable = shutil.which("primesieve")
+    if not executable:
+        return None
+    try:
+        result = subprocess.run(
+            [executable, str(value), "--RiemannR", "-q"], stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout, check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    output = result.stdout.strip()
+    if result.returncode or not re.fullmatch(r"\d+(?:\.\d+)?", output):
+        return None
+    return output
+
+
 def prime_approximation_comparison(x: str, threads: int, timeout: int = 300) -> dict:
     value = decimal_integer(x)
     if not 3 <= value <= 10**31:
@@ -421,18 +445,56 @@ def prime_approximation_comparison(x: str, threads: int, timeout: int = 300) -> 
     exact = prime_count(value, threads)
     li = _primecount_option(value, "--Li", threads, timeout)
     riemann = _primecount_option(value, "--RiemannR", threads, timeout)
+    # primesieve implements R(x) in a separate codebase, so its value is an independent
+    # check on primecount's rather than another algorithm inside the same library.
+    independent = _primesieve_riemann(value, timeout)
     lines = _execute(f"nt_prime_approximations({value},{exact},{li},{riemann})", timeout)
     rows = [line[len("APPROX:"):].split("|") for line in lines if line.startswith("APPROX:")]
-    numeric = re.compile(r"[+-]?(?:\d+(?:\.\d*)?)(?:e[+-]?\d+)?", re.I)
-    if len(rows) != 4 or any(
-        len(row) != 4 or not all(numeric.fullmatch(item) for item in row[1:]) for row in rows
-    ):
+    # PARI prints an exponent with a space before it, so the shared parser validates
+    # and normalises each value rather than a local pattern rejecting the engine's own
+    # notation.
+    if len(rows) != 4:
         raise PrimeEngineError("Native engines returned an invalid approximation comparison")
+    for row in rows:
+        if len(row) != 4:
+            raise PrimeEngineError(
+                "Native engines returned an invalid approximation comparison"
+            )
+        for index in (1, 2, 3):
+            normalized = pari_real(row[index])
+            if normalized is None:
+                raise PrimeEngineError(
+                    "Native engines returned an invalid approximation comparison"
+                )
+            row[index] = normalized
+    metrics = {"x": str(value), "Exact π(x)": str(exact), "CPU threads": str(threads)}
+    note = (
+        "primecount computed exact π(x), Li(x), and Riemann R(x); PARI/GP computed "
+        "x/log(x) and every signed and relative error at high precision."
+    )
+    if independent is not None:
+        metrics["R(x), primesieve"] = independent
+        # primecount reports R(x) as an integer and primesieve prints fractional digits,
+        # so the comparison is on the leading digits of the integer part, as text. A
+        # mismatch there is an implementation disagreement rather than rounding.
+        left = str(riemann)
+        right = independent.split(".", 1)[0]
+        agree = left[:12] == right[:12] and len(left) == len(right)
+        metrics["R(x) agreement"] = "yes" if agree else "NO — engines disagree"
+        note += (
+            " primesieve's independent R(x) implementation "
+            + (
+                "agrees with primecount's on the leading digits; primecount rounds to an "
+                "integer, primesieve prints fractional digits."
+                if agree else
+                "DISAGREES with primecount's. One build is wrong; run the engine self-test."
+            )
+        )
     return {
-        "metrics": {"x": str(value), "Exact π(x)": str(exact), "CPU threads": str(threads)},
+        "metrics": metrics,
         "columns": ["Method", "Estimate", "Signed error", "Relative error (%)"],
         "rows": rows,
-        "note": "primecount computed exact π(x), Li(x), and Riemann R(x); PARI/GP computed x/log(x) and every signed and relative error at high precision.",
+        "note": note,
     }
 
 
@@ -450,9 +512,10 @@ def summatory_functions(x: str, timeout: int = 300) -> dict:
     decimals: dict[str, str] = {}
     for tag in ("THETA", "PSI"):
         matches = [line[len(tag) + 1:] for line in lines if line.startswith(f"{tag}:")]
-        if len(matches) != 1 or not re.fullmatch(r"[+-]?\d+(?:\.\d*)?(?:e[+-]?\d+)?", matches[0], re.I):
+        normalized = pari_real(matches[0]) if len(matches) == 1 else None
+        if normalized is None:
             raise PrimeEngineError(f"PARI/GP returned an invalid {tag} value")
-        decimals[tag] = matches[0]
+        decimals[tag] = normalized
     metrics = {
         "Endpoint x": str(value), "Mertens M(x)": str(_one(lines, "MERTENS")),
         "Summatory Liouville L(x)": str(_one(lines, "SUM_LIOUVILLE")),

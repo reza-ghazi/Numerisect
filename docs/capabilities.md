@@ -13,7 +13,7 @@ This capability inventory corresponds to the `v0.11.0` source release. Its archi
 snapshot is preserved at
 [DOI 10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705).
 
-The current application exposes five top-level workspaces, 136 individually routed
+The current application exposes five top-level workspaces, 138 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 212 HTTP API operations. The
 API total is checked against the running FastAPI application by the test suite, so adding
 or removing a route without updating the public reference fails validation.
@@ -70,7 +70,7 @@ a bookmarkable `#primes/<tool>` route.
 
 | Group | Pages | Included operations |
 |---|---:|---|
-| **Primality & navigation** | 10 | Single and batch primality; 56-class classification; nearby, interval, nth and counted primes; cross-checks; arbitrary-offset interval sieving |
+| **Primality & navigation** | 12 | Single and batch primality; 56-class classification; nearby, interval, nth and counted primes; cross-checks of primality, pi(x), Mersenne primality and the n-th prime; arbitrary-offset interval sieving |
 | **Primality laboratories** | 15 | Certificate verification; eight-test comparison; deterministic Miller–Rabin bounds; Pocklington, Pratt, Proth, Lucas/Frobenius/Morrison and ECPP; pseudoprime and Carmichael analysis; covering sets; Lucas–Lehmer traces |
 | **Prime generation** | 17 | Fixed-digit and structured primes; safe, Sophie Germain, Blum, congruence and NTT primes; progressions and random samples; perfect numbers and primorials; Proth, Chernick, repunit, Sierpiński/Riesel, bi-twin, ladder and constrained searches; Wieferich, Wall–Sun–Sun, Wilson and Wolstenholme searches |
 | **Gaps, tuples & Goldbach** | 6 | Consecutive gaps, twin/k-tuple patterns, Cunningham chains, gap statistics, density/residue summaries and Goldbach partitions |

@@ -43,7 +43,7 @@ from typing import Sequence
 
 from .evaluator import ExpressionError, evaluate_arbitrary_integer
 from .prime_manipulation import decimal_integer
-from .primes import PrimeEngineError, _run_gp, _tagged_values
+from .primes import PrimeEngineError, _run_gp, _tagged_values, pari_real
 
 PROGRAM = Path(__file__).with_name("counting_lab.gp")
 
@@ -150,9 +150,10 @@ def _one(lines: list[str], tag: str) -> int:
 def _decimal(lines: list[str], tag: str) -> str:
     prefix = f"{tag}:"
     values = [line[len(prefix):] for line in lines if line.startswith(prefix)]
-    if len(values) != 1 or not _DECIMAL.fullmatch(values[0]):
+    normalized = pari_real(values[0]) if len(values) == 1 else None
+    if normalized is None:
         raise PrimeEngineError(f"PARI/GP returned an invalid {tag.lower()} value")
-    return values[0]
+    return normalized
 
 
 def _records(lines: Sequence[str], tag: str, width: int) -> list[list[str]]:
@@ -449,8 +450,13 @@ def nth_prime_inverses(
     if _one(lines, "DONE") != len(parsed) or len(parsed) != 2:
         raise PrimeEngineError("PARI/GP returned an incomplete n-th prime comparison")
     for row in parsed:
-        if len(row) != 4 or not all(_DECIMAL.fullmatch(field) for field in row):
+        if len(row) != 4:
             raise PrimeEngineError("PARI/GP returned an invalid n-th prime error record")
+        for index, field in enumerate(row):
+            normalized = pari_real(field)
+            if normalized is None:
+                raise PrimeEngineError("PARI/GP returned an invalid n-th prime error record")
+            row[index] = normalized
     names = ["Li⁻¹(n)", "R⁻¹(n)"]
     routines = ["primecount --Li-inverse", "primecount --RiemannR-inverse"]
     measured = [li_seconds, r_seconds]

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20261005-polyselect" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20261005-polyselect" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261005-independent-checks" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261005-independent-checks" />
   </head>
   <body>
     <header class="topbar">
@@ -863,6 +863,22 @@
             <h2>Cross-check primality</h2>
             <p>Decides primality with PARI's proof, PARI's Baillie-PSW test, and an independent GMP implementation, then compares them. A disagreement between a proof and a probabilistic test would mean a broken engine build.</p>
             <label>Integer expression<input id="verify-primality-n" type="text" spellcheck="false" placeholder="2^89-1" required /></label>
+            <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
+          </form>
+
+          <form id="verify-mersenne-form" class="panel utility-card">
+            <p class="eyebrow">INDEPENDENT AGREEMENT</p>
+            <h2>Cross-check a Mersenne number</h2>
+            <p>Decides whether 2<sup>p</sup> − 1 is prime with two unrelated Lucas–Lehmer implementations: PARI/GP's and YAFU's. The test is deterministic for a prime exponent, so each engine proves its answer and a disagreement means one build is broken. M<sub>p</sub> is never constructed outside the modulus.</p>
+            <label>Exponent p<input id="verify-mersenne-p" type="number" min="2" max="10000000" value="2203" required /></label>
+            <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
+          </form>
+
+          <form id="verify-nth-prime-form" class="panel utility-card">
+            <p class="eyebrow">INDEPENDENT AGREEMENT</p>
+            <h2>Cross-check the n-th prime</h2>
+            <p>Computes the n-th prime exactly with primecount and with primesieve, which are separate codebases. The π(x) comparison cannot make that claim for its first six sources: those are distinct algorithms inside one library.</p>
+            <label>Index n<input id="verify-nth-prime-n" type="text" spellcheck="false" value="10^9" required /></label>
             <div class="actions"><button class="primary" type="submit"><span>Cross-check</span><span>&rarr;</span></button></div>
           </form>
 
@@ -2929,6 +2945,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20261005-polyselect" defer></script>
+    <script src="/assets/app.js?v=20261005-independent-checks" defer></script>
   </body>
 </html>

@@ -219,6 +219,8 @@ from .security import (
 )
 from .sievers import report as siever_report
 from .verification import (
+    cross_check_mersenne,
+    cross_check_nth_prime,
     cross_check_primality,
     cross_check_prime_count,
     self_test,
@@ -5364,6 +5366,16 @@ class CrossCheckCountRequest(BaseModel):
     timeout_seconds: int = Field(600, ge=1, le=3600)
 
 
+class CrossCheckMersenneRequest(BaseModel):
+    exponent: int = Field(..., ge=2, le=10_000_000)
+    timeout_seconds: int = Field(600, ge=1, le=3600)
+
+
+class CrossCheckNthPrimeRequest(BaseModel):
+    index: str = Field(..., min_length=1, max_length=100)
+    timeout_seconds: int = Field(600, ge=1, le=3600)
+
+
 class CrossCheckPrimalityRequest(BaseModel):
     expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
     timeout_seconds: int = Field(300, ge=1, le=3600)
@@ -5427,6 +5439,60 @@ def verify_primality(request: CrossCheckPrimalityRequest) -> dict:
         for row in result["sources"]
     )
     path = save_prime_output("verify-primality", "Independent primality cross-check", lines)
+    return {**result, "output_file": path.name}
+
+
+@app.post("/api/verify/mersenne")
+def verify_mersenne(request: CrossCheckMersenneRequest) -> dict:
+    """Decide 2^p - 1 with two independent Lucas-Lehmer implementations."""
+
+    try:
+        result = cross_check_mersenne(request.exponent, request.timeout_seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [
+        f"Exponent: {result['exponent']}",
+        f"2^p - 1 prime: {result['prime']}",
+        f"Engines answering: {result['engines']}",
+        "",
+        "Engine | Verdict | Seconds",
+    ]
+    lines.extend(
+        f"{row['engine']} | {row['prime'] if row['error'] is None else row['error']} | "
+        f"{row['seconds']}"
+        for row in result["sources"]
+    )
+    lines += ["", str(result["note"])]
+    path = save_prime_output("verify-mersenne", "Independent Mersenne cross-check", lines)
+    return {**result, "output_file": path.name}
+
+
+@app.post("/api/verify/nth-prime")
+def verify_nth_prime(request: CrossCheckNthPrimeRequest) -> dict:
+    """Compute the n-th prime with two unrelated exact implementations."""
+
+    try:
+        index = evaluate_arbitrary_integer(request.index)
+        result = cross_check_nth_prime(index, request.timeout_seconds)
+    except (ExpressionError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    lines = [
+        f"Index n: {result['index']}",
+        f"n-th prime: {result['prime']}",
+        f"Engines answering: {result['engines']}",
+        "",
+        "Engine | Value | Seconds",
+    ]
+    lines.extend(
+        f"{row['engine']} | {row['value'] or row['error']} | {row['seconds']}"
+        for row in result["sources"]
+    )
+    lines += ["", str(result["note"])]
+    path = save_prime_output("verify-nth-prime", "Independent n-th prime cross-check", lines)
     return {**result, "output_file": path.name}
 
 

@@ -14,6 +14,12 @@ checks almost-perfect/multiperfect conditions and an amicable partner. Aliquot
 iteration reports termination, a detected cycle, or an explicitly incomplete
 step-limited run.
 
+The approximation comparison reports Riemann's \(R(x)\) from primecount and, when it is
+installed, again from **primesieve**, whose implementation is a separate codebase;
+primecount rounds to an integer while primesieve prints fractional digits, so the two are
+compared on the leading digits and a mismatch there would be an implementation
+disagreement rather than rounding.
+
 The analytic pages combine exact parallel primecount results with PARI/GP
 error arithmetic and bounded native sums for Mertens, Liouville, and Chebyshev
 functions. The combined summatory page remains a bounded PARI/GP sum; the

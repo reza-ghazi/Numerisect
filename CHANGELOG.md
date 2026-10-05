@@ -5,6 +5,35 @@ binary packages are published.
 
 ## Unreleased
 
+- Added three independent cross-checks, from an audit of what YAFU and primesieve expose
+  against what the application called:
+  - **YAFU's APR-CL** joins the primality cross-check as a *second proof engine*. PARI's
+    `isprime` was the only proof; everything else there is probabilistic. Two independent
+    proofs agreeing is a stronger statement, and the response now names the proof engines
+    that answered. YAFU documents APR-CL as a proof below 6021 digits and a BPSW test
+    above it, so the claim is only made inside that range.
+  - **`POST /api/verify/mersenne`** decides `2^p - 1` with PARI/GP's and YAFU's unrelated
+    Lucas-Lehmer implementations. The test is deterministic for a prime exponent, so each
+    verdict is a proof. A composite exponent is refused rather than answered: `M_p` is
+    composite then for an algebraic reason, not a Lucas-Lehmer one, and YAFU returns that
+    verdict happily — which would leave one engine's answer looking cross-checked.
+  - **`POST /api/verify/nth-prime`** computes it exactly with primecount and primesieve,
+    two separate codebases. The pi(x) comparison cannot claim that for its first six
+    sources, which are distinct algorithms inside one library. The approximation page also
+    gained primesieve's independent `R(x)` beside primecount's.
+- Fixed a defect class this uncovered: **four validators rejected PARI/GP's own number
+  format.** PARI prints an exponent with a space before it (`1.0000 E-5`,
+  `-5.63e-5` as `-5.63 e-5`), and each of `number_theory.py` (twice), `counting_lab.py`
+  and `distribution_lab.py` matched `1e-5` instead. The approximation comparison therefore
+  failed outright at x = 10^11 although the page advertises 10^31, and the same trap sat
+  under every other page that can reach exponential notation. A shared `pari_real` parser
+  in `primes.py` now validates and normalises these values in one place.
+- Reading YAFU needs care, and the code says so: YAFU prints primality verdicts as English
+  prose and returns the *input* in `ans`, so `aprcl(1000003)` prints "Input is prime." and
+  sets `ans = 1000003`. Reading `ans` would make every verdict truthy. `llt` is the one
+  function whose verdict really is the returned value.
+- Two new Prime Tools pages, bringing the catalogue to 138.
+
 - Added **Coppersmith's method** (`POST /api/factor-lab/coppersmith`, PARI/GP
   `zncoppersmith`), which recovers a divisor of `N` from partial knowledge of it. Unlike
   every other method here, its cost depends on how much of the factor is unknown rather

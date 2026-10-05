@@ -118,6 +118,31 @@ def _run_gp(program: str, timeout: int | None = 3600) -> list[str]:
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
+#: A real number as PARI/GP actually prints one.
+#:
+#: PARI separates the exponent with a space and may capitalise it: ``print(1.0*10^-5)``
+#: gives ``1.0000... E-5`` and ``Strprintf("%.20g", ...)`` gives ``1.0000... e-5``. Four
+#: separate validators in this package assumed ``1e-5``, so every page that could reach
+#: exponential notation rejected its own engine's output; the approximation comparison
+#: failed at x = 10^11 although it advertised 10^31. Parse with this, not with a local
+#: pattern.
+PARI_REAL = re.compile(r"[+-]?\d+(?:\.\d*)?(?:\s*[eE][+-]?\d+)?")
+
+
+def pari_real(value: str) -> str | None:
+    """Validate one real as PARI printed it and return it without the inner space.
+
+    Returns ``None`` when the text is not a real number, so a caller can reject engine
+    output rather than pass a malformed value on. The space is removed so the result is
+    both displayable and accepted by ``float``; no digit is changed.
+    """
+
+    text = value.strip()
+    if not PARI_REAL.fullmatch(text):
+        return None
+    return re.sub(r"\s+", "", text)
+
+
 def _tagged_values(lines: list[str], tag: str) -> list[int]:
     prefix = f"{tag}:"
     values: list[int] = []

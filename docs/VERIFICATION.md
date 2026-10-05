@@ -39,11 +39,33 @@ thread count and one set of builds, not a benchmark of the algorithms.
 
 ### Primality
 
-`POST /api/verify/primality` decides primality three ways: PARI's `isprime`, which is a
-proof; PARI's `ispseudoprime`, which is Baillie-PSW; and GMP's independent
+`POST /api/verify/primality` decides primality four ways: PARI's `isprime`, which is a
+proof; **YAFU's APR-CL**, which is a second, unrelated proof below 6021 digits and a BPSW
+test above it; PARI's `ispseudoprime`, which is Baillie-PSW; and GMP's independent
 Baillie-PSW plus Miller-Rabin implementation. The response marks which results are proofs
-and which are probable. A disagreement between a proof and a probabilistic test would be
-either a genuine discovery or, far more likely, a broken engine build.
+and which are probable, and names the proof engines that answered. Two independent proofs
+agreeing is a stronger statement than a proof agreeing with a probabilistic test. A
+disagreement between a proof and a probabilistic test would be either a genuine discovery
+or, far more likely, a broken engine build.
+
+### Mersenne primality
+
+`POST /api/verify/mersenne` asks two unrelated Lucas–Lehmer implementations — PARI/GP's
+and YAFU's `llt` — whether \(2^p-1\) is prime. The test is deterministic for a prime
+exponent, so each engine *proves* its answer and a disagreement means one build is
+broken rather than that the question is hard. \(M_p\) is never constructed outside the
+modulus.
+
+A composite exponent is **refused rather than answered**. \(M_p\) is composite then for
+an algebraic reason — \(2^a-1\) divides \(2^{ab}-1\) — which is not a Lucas–Lehmer
+result, and YAFU would return that verdict happily, leaving a single engine's answer
+looking like a cross-checked proof.
+
+### The n-th prime
+
+`POST /api/verify/nth-prime` computes it exactly with primecount and with primesieve.
+Those are separate codebases, which the \(\pi(x)\) comparison above cannot claim for its
+first six sources: those are mathematically distinct algorithms inside one library.
 
 ### Factorization
 

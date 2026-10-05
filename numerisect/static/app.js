@@ -481,6 +481,8 @@ const toolAliases = {
   'prime-count': 'pi(x) prime counting function primecount how many primes below',
   'verify-count': 'cross check pi(x) independent agreement disagreement verify counting',
   'verify-primality': 'cross check primality independent second opinion verify',
+  'verify-mersenne': 'mersenne cross check lucas lehmer two engines independent agreement yafu pari 2^p-1 proof',
+  'verify-nth-prime': 'nth prime cross check independent primecount primesieve agreement exact index',
   'sieve-interval': 'large interval above 2^64 huge range segmented sieve enumerate',
   'certificate-verify': 'check a certificate primecertisvalid validate proof',
   'primality-lab': 'compare tests laboratory side by side',
@@ -613,7 +615,7 @@ const toolAliases = {
 const primeSections = {
   essentials: {
     label: 'Primality & navigation',
-    forms: ['prime-check-form', 'prime-batch-form', 'prime-classify-form', 'prime-nearby-form', 'prime-range-form', 'prime-nth-form', 'prime-count-form', 'verify-count-form', 'verify-primality-form', 'sieve-interval-form'],
+    forms: ['prime-check-form', 'prime-batch-form', 'prime-classify-form', 'prime-nearby-form', 'prime-range-form', 'prime-nth-form', 'prime-count-form', 'verify-count-form', 'verify-primality-form', 'verify-mersenne-form', 'verify-nth-prime-form', 'sieve-interval-form'],
   },
   proofs: {
     label: 'Primality laboratories',
@@ -752,7 +754,7 @@ function renderPalette() {
 }
 
 function updatePalette(query) {
-  // An empty query is an invitation, not a dump of 136 rows.
+  // An empty query is an invitation, not a dump of 138 rows.
   commandPalette.matches = searchTools(query).slice(0, query.trim() ? 40 : 12);
   commandPalette.active = 0;
   renderPalette();
@@ -4313,6 +4315,46 @@ if ($('#verify-primality-form')) {
         data);
     } catch (error) {
       showVerificationError($('#verify-primality-form'), error.message);
+    }
+  });
+}
+
+if ($('#verify-mersenne-form')) {
+  $('#verify-mersenne-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const data = await api('/api/verify/mersenne', {
+        method: 'POST',
+        body: JSON.stringify({ exponent: Number($('#verify-mersenne-p').value) }),
+      });
+      renderAgreement($('#verify-mersenne-form'),
+        `2^${data.exponent} − 1 is ${data.prime === null ? 'undecided' : (data.prime ? 'prime' : 'composite')}`,
+        data.sources.map((r) => [
+          r.engine,
+          r.prime === null ? (r.error || 'no answer') : (r.prime ? 'prime' : 'composite'),
+          r.seconds,
+        ]),
+        data);
+    } catch (error) {
+      showVerificationError($('#verify-mersenne-form'), error.message);
+    }
+  });
+}
+
+if ($('#verify-nth-prime-form')) {
+  $('#verify-nth-prime-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      const data = await api('/api/verify/nth-prime', {
+        method: 'POST',
+        body: JSON.stringify({ index: $('#verify-nth-prime-n').value.trim() }),
+      });
+      renderAgreement($('#verify-nth-prime-form'),
+        `Prime number ${Number(data.index).toLocaleString()} is ${data.prime || 'undecided'}`,
+        data.sources.map((r) => [r.engine, r.value || r.error || 'no answer', r.seconds]),
+        data);
+    } catch (error) {
+      showVerificationError($('#verify-nth-prime-form'), error.message);
     }
   });
 }

@@ -50,7 +50,7 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - Multithreaded `primesieve` intervals and `primecount` exact counts/indexed primes
 - The nth proven prime strictly before or after an arbitrary-size integer
 - Batch primality checks, interval residue-class searches, and exact prime-modulus arithmetic
-- 136 individually routed Prime Tools pages in 11 searchable groups with local results
+- 138 individually routed Prime Tools pages in 11 searchable groups with local results
 - Wieferich (any base), Wall–Sun–Sun, Wilson and Wolstenholme prime searches in a
   compiled scanner, with Fermat-quotient near-misses and explicit refusal past each
   congruence's supported modulus
@@ -90,10 +90,10 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20261005-polyselect#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20261005-polyselect#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20261005-polyselect#diagnostics>. The dedicated Mersenne
-factor search is at <http://127.0.0.1:8765/?ui=20261005-polyselect#factor/mersenne>.
+<http://127.0.0.1:8765/?ui=20261005-independent-checks#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20261005-independent-checks#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20261005-independent-checks#diagnostics>. The dedicated Mersenne
+factor search is at <http://127.0.0.1:8765/?ui=20261005-independent-checks#factor/mersenne>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -228,7 +228,7 @@ the primality label it assigned, the cofactor it left and its elapsed time.
 Prime operations use PARI/GP by default, with `primesieve` for eligible 64-bit
 intervals and `primecount` for large exact counts and indexed-prime requests.
 
-Prime Tools has 136 pages with searchable navigation in 11 groups. Every
+Prime Tools has 138 pages with searchable navigation in 11 groups. Every
 operation has its own page and direct hash URL, such as
 `#primes/prime-check`, `#primes/prime-reciprocal`, or
 `#primes/integer-profile`; only the selected operation is displayed. On narrow
@@ -764,7 +764,7 @@ helper. They fail clearly when the corresponding native prerequisites are unavai
 
 The suite includes API security, installer-manifest, native-engine, report,
 and interface checks. Static navigation coverage verifies one registered form
-for each of the 136 Prime Tools pages and all 22 Zeta pages, local result
+for each of the 138 Prime Tools pages and all 22 Zeta pages, local result
 placement, saved-report notices, diagnostics, and cache-busted assets.
 
 ## Documentation

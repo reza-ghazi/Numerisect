@@ -32,7 +32,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (218)
+## Routes (220)
 
 ### Engine adapters
 
@@ -343,6 +343,8 @@ in-process. See the [command-line reference](cli.md).
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/verify/mersenne` | Decide 2^p - 1 with PARI/GP's and YAFU's independent Lucas-Lehmer implementations and compare them; the test is deterministic for a prime exponent, so each verdict is a proof. |
+| `POST` | `/api/verify/nth-prime` | Compute the n-th prime exactly with primecount and primesieve, two separate codebases, and compare them. |
 | `POST` | `/api/verify/primality` | Decide primality with independent implementations and compare them. |
 | `POST` | `/api/verify/prime-count` | Compare every available pi(x) method across as many as three engine implementations. |
 | `POST` | `/api/verify/self-test` | Ask each installed engine questions with published answers. |

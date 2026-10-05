@@ -6,7 +6,7 @@ linked or bookmarked.
 | View | Route | What it holds |
 |---|---|---|
 | **Factor integers** | `#factor` | Single and batch factorization, the expert laboratory, SQUFOF, ECM campaigns, distributed sieving |
-| **Prime tools** | `#primes/<tool>` | 136 individually routed pages in 11 searchable groups |
+| **Prime tools** | `#primes/<tool>` | 138 individually routed pages in 11 searchable groups |
 | **Riemann zeta** | `#zeta/<tool>` | 22 pages covering rigorous evaluation, zeros, and L-functions |
 | **System diagnostics** | `#diagnostics` | Engine availability, versions, prerequisites, and the engine self-test |
 | **Workspaces & history** | `#workspaces` | Saved sessions, searchable job and report history, performance history, notifications |
@@ -24,7 +24,7 @@ replaces the sidebar.
 
 ## Finding a tool
 
-136 tools is more than anyone can scan, so the primary route is not the sidebar.
+138 tools is more than anyone can scan, so the primary route is not the sidebar.
 
 **Press <kbd>Ctrl</kbd>+<kbd>K</kbd>** (or <kbd>⌘</kbd>+<kbd>K</kbd>, or just `/` when you
 are not typing in a field) to open the command palette from anywhere in the application,

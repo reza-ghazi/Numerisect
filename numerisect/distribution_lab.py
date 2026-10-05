@@ -32,7 +32,14 @@ from typing import Iterable, Sequence
 
 from .number_theory import _primecount_option
 from .prime_manipulation import decimal_integer
-from .primes import PrimeEngineError, _run_gp, _tagged_values, nth_prime, prime_count
+from .primes import (
+    PrimeEngineError,
+    _run_gp,
+    _tagged_values,
+    nth_prime,
+    pari_real,
+    prime_count,
+)
 
 PROGRAM = Path(__file__).with_name("distribution_lab.gp")
 
@@ -76,9 +83,10 @@ def _one(lines: list[str], tag: str) -> int:
 def _decimal(lines: list[str], tag: str) -> str:
     prefix = f"{tag}:"
     values = [line[len(prefix):] for line in lines if line.startswith(prefix)]
-    if len(values) != 1 or not _REAL.fullmatch(values[0]):
+    normalized = pari_real(values[0]) if len(values) == 1 else None
+    if normalized is None:
         raise PrimeEngineError(f"PARI/GP returned an invalid {tag.lower()} value")
-    return values[0]
+    return normalized
 
 
 def _records(lines: Iterable[str], tag: str, width: int) -> list[list[str]]:
