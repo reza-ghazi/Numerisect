@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+- Removed the two regexes left dead by the `pari_real` refactor, in `counting_lab.py` and
+  `distribution_lab.py`. CodeQL flagged both as unused globals, which they were: the
+  shared parser replaced them and the definitions stayed behind.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23172229` for the `v0.12.0`
   source release across `CITATION.cff`, the README, the installation guides, the
   capability index, the citation page, the FAQ, the publishing guide and the release

@@ -82,7 +82,6 @@ FACTORINT_FLAGS: dict[int, str] = {
 }
 
 _SECONDS = re.compile(r"\d+(?:\.\d+)?")
-_DECIMAL = re.compile(r"-?\d+(?:\.\d+)?(?:e[+-]?\d+)?", re.IGNORECASE)
 
 _LOCAL_TIMING_NOTE = (
     "Every elapsed time is a single measurement of one run on this machine, taken by "

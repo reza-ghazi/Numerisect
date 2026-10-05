@@ -43,7 +43,6 @@ from .primes import (
 
 PROGRAM = Path(__file__).with_name("distribution_lab.gp")
 
-_REAL = re.compile(r"-?\d+(?:\.\d+)?(?:e[+-]?\d+)?", re.IGNORECASE)
 _LABEL = re.compile(r"[0-9A-Za-z_+*/^()., \[\]-]+")
 _UINT64 = 18_446_744_073_709_551_615
 
