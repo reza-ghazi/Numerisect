@@ -419,6 +419,34 @@
           <div class="actions"><button class="primary" type="submit"><span>Run SQUFOF</span><span>→</span></button></div>
         </form>
 
+        <form id="factor-lab-coppersmith-form">
+          <p class="eyebrow">COPPERSMITH</p>
+          <h2>Recover a factor from part of it</h2>
+          <p>Coppersmith's method finds small roots of a polynomial modulo an <em>unknown</em> divisor, which turns partial knowledge of a prime factor into the whole factor. Given the leading bits of p, the rest falls out by lattice reduction in PARI/GP — no sieving, and at sizes no general method reaches: a 1024-bit modulus splits in milliseconds when 200 bits of its 512-bit factor are unknown. The method is only valid while the search bound stays inside a proven window, which is computed and reported; outside it, finding nothing means nothing.</p>
+          <label>Modulus N<input id="coppersmith-n" type="text" spellcheck="false" placeholder="2^128+10^20 * ..." required /></label>
+          <div class="controls-grid">
+            <label>Known part of the factor
+              <input id="coppersmith-known" type="text" spellcheck="false" placeholder="p with its low bits zeroed" required />
+              <span class="field-note">The polynomial is <code>known + x</code></span>
+            </label>
+            <label>Unknown bits
+              <input id="coppersmith-bits" type="number" min="1" max="1024" value="40" required />
+              <span class="field-note">Searches |x| ≤ 2<sup>bits</sup></span>
+            </label>
+          </div>
+          <details>
+            <summary>Advanced</summary>
+            <div class="controls-grid">
+              <label>Divisor lower bound
+                <input id="coppersmith-bound" type="text" spellcheck="false" value="0" />
+                <span class="field-note">0 lets PARI/GP derive it from the known part</span>
+              </label>
+              <label>Timeout (seconds)<input id="coppersmith-timeout" type="number" min="1" max="3600" value="120" /></label>
+            </div>
+          </details>
+          <div class="actions"><button class="primary" type="submit"><span>Search for the factor</span><span>→</span></button></div>
+        </form>
+
         <form id="factor-lab-classic-form">
           <p class="eyebrow">CLASSICAL METHODS</p>
           <h2>CFRAC, Lehman and Hart</h2>

@@ -730,6 +730,7 @@ prime part. See [Independent verification](../VERIFICATION.md) and
 | SQUFOF | `POST /api/factor-lab/squfof`, `squfof` backend | `numerisect-squfof`, a C program in this project using GMP; \( N < 2^{62} \) |
 | The forms behind SQUFOF | [Forms laboratory](../FORMS_LAB.md) | PARI `Qfb`, `qfbred`, `quadclassunit`, `qfbclassno` |
 | SIQS | `yafu_siqs` backend | YAFU `siqs`, `-siqsB`, `-siqsTF`, `-siqsR`, `-siqsT`, `-siqsNB`, `-siqsM` |
+| Partial knowledge of a factor | Coppersmith (`/api/factor-lab/coppersmith`) | PARI `zncoppersmith`; valid while \(X \le \exp((\log B)^2/(\deg P\log N))\) |
 | MPQS, second opinion | `msieve` and `cross_verify` backends | Msieve; `cross_verify` keeps both engines' factors, primality labels, cofactors and times |
 | GNFS | `yafu_nfs`, `cado`, `hybrid` backends | YAFU `nfs`; CADO-NFS with an installed parameter set |
 | SNFS | `yafu_snfs` backend | YAFU `snfs` |

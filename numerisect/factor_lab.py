@@ -287,6 +287,133 @@ CLASSIC_METHODS: dict[str, dict[str, Any]] = {
 }
 
 
+#: Highest polynomial degree accepted for Coppersmith's method. The validity window
+#: shrinks as the degree grows, so a high degree is rarely usable in practice.
+MAX_COPPERSMITH_DEGREE = 10
+MAX_COPPERSMITH_UNKNOWN_BITS = 1024
+
+
+def coppersmith_small_roots(
+    number: int,
+    coefficients: list[int],
+    unknown_bits: int,
+    lower_bound: int = 0,
+    timeout: int = 120,
+) -> dict[str, Any]:
+    """Find small roots of a polynomial modulo an unknown divisor of ``number``.
+
+    PARI's ``zncoppersmith`` performs the lattice work. With the polynomial
+    ``known + x`` this is the partial-key-exposure attack: given the leading bits of a
+    prime factor, the rest is recovered, and no amount of sieving is involved. It
+    reaches sizes no general factoring method can: a 1024-bit modulus splits in
+    milliseconds when 200 bits of its 512-bit factor are unknown.
+
+    Args:
+        number: The modulus ``N``.
+        coefficients: Polynomial coefficients in ascending order, so ``[known, 1]`` is
+            ``known + x``. At most degree :data:`MAX_COPPERSMITH_DEGREE`.
+        unknown_bits: Search ``|x| <= 2**unknown_bits``.
+        lower_bound: Report a root only when ``gcd(N, P(x))`` reaches this. 0 asks
+            PARI/GP to derive it: for ``known + x`` the divisor has about as many bits
+            as the known part, and otherwise the modulus itself is used.
+        timeout: Wall-clock budget in seconds.
+
+    Returns:
+        A dict carrying ``number``, ``degree``, ``polynomial``, ``x_bound``,
+        ``x_limit``, ``feasible``, ``lower_bound``, ``roots`` (each with its divisor,
+        cofactor and both primality verdicts), ``trivial``, ``found`` and ``note``.
+
+    Raises:
+        ValueError: On a modulus below 4, an empty or over-long coefficient list, a
+            degree above the limit, or an out-of-range bit count or budget.
+        PrimeEngineError: If PARI/GP fails or omits its completion marker.
+    """
+
+    if number < 4:
+        raise ValueError("Coppersmith's method needs a modulus of at least 4")
+    if len(coefficients) < 2:
+        raise ValueError("The polynomial needs at least two coefficients, as in 'known + x'")
+    if len(coefficients) > MAX_COPPERSMITH_DEGREE + 1:
+        raise ValueError(f"The degree may not exceed {MAX_COPPERSMITH_DEGREE}")
+    if coefficients[-1] == 0:
+        raise ValueError("The leading coefficient must not be zero")
+    if not 1 <= unknown_bits <= MAX_COPPERSMITH_UNKNOWN_BITS:
+        raise ValueError(
+            f"The unknown-bit count must be between 1 and {MAX_COPPERSMITH_UNKNOWN_BITS:,}"
+        )
+    if lower_bound < 0:
+        raise ValueError("The lower bound must not be negative")
+    if not 1 <= timeout <= 3600:
+        raise ValueError("The timeout must be between 1 and 3,600 seconds")
+
+    vector = "[" + ",".join(str(int(value)) for value in coefficients) + "]"
+    lines = _gp_call(
+        f"fl_coppersmith({int(number)}, {vector}, 2^{int(unknown_bits)}, "
+        f"{int(lower_bound)}, {int(timeout)})",
+        timeout + 30,
+    )
+    roots: list[dict[str, Any]] = []
+    for record in _tagged(lines, "ROOT"):
+        root, divisor, cofactor, divisor_prime, cofactor_prime = record.split("|")
+        roots.append(
+            {
+                "root": root,
+                "divisor": divisor,
+                "cofactor": cofactor,
+                "divisor_status": "proven_prime" if divisor_prime == "1" else "composite",
+                "cofactor_status": "proven_prime" if cofactor_prime == "1" else "composite",
+            }
+        )
+    trivial = [record.split("|")[0] for record in _tagged(lines, "TRIVIAL")]
+    reported = int(_one(lines, "ROOTS", "0"))
+    if reported != len(roots) + len(trivial):
+        raise PrimeEngineError(
+            "PARI/GP reported a root count that disagrees with the roots it printed"
+        )
+    feasible = _one(lines, "FEASIBLE", "0") == "1"
+    found = int(_one(lines, "FOUND", "0"))
+    refusal = _one(lines, "ENGINE_REFUSED", "")
+
+    notes = [
+        "PARI/GP performed the lattice reduction; each divisor is gcd(N, P(root)) and "
+        "its primality is PARI's own verdict."
+    ]
+    if not feasible:
+        notes.append(
+            "The request is outside the method's proven window: it needs the search "
+            f"bound at or below {_one(lines, 'X_LIMIT', 'the stated limit')}, so the "
+            "search was not attempted and nothing here says anything about the input."
+        )
+    elif refusal:
+        notes.append(f"PARI/GP declined the request: {refusal}. No search was completed.")
+    elif not found:
+        notes.append(
+            "No root inside the bound yielded a proper divisor. Within the window that "
+            "is evidence about this polynomial and bound, not about the modulus."
+        )
+    if trivial:
+        notes.append(
+            f"{len(trivial)} root(s) gave a trivial gcd and are reported separately; "
+            "they prove nothing."
+        )
+    return {
+        "number": str(number),
+        "degree": _one(lines, "DEGREE", "0"),
+        "polynomial": _one(lines, "POLYNOMIAL", ""),
+        "x_bound": f"2^{unknown_bits}",
+        "x_limit": _one(lines, "X_LIMIT", ""),
+        "feasible": feasible,
+        "lower_bound": _one(lines, "LOWER_BOUND", ""),
+        "lower_bound_derived": _one(lines, "LOWER_BOUND_DERIVED", "0") == "1",
+        "roots": roots,
+        "trivial": trivial,
+        "found": str(found),
+        "engine_refusal": refusal,
+        "engine": "PARI/GP zncoppersmith",
+        "note": " ".join(notes),
+    }
+
+
 def _classic_primality(factor: str, cofactor: str, timeout: int) -> tuple[str, str]:
     """Label both parts of a split, decided by PARI/GP in ``fl_label_split``.
 

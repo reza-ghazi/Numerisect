@@ -61,6 +61,8 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 - CFRAC, Lehman's deterministic method and Hart's one-line factorization in a compiled
   helper, none of them offered as the fast path and each for what the fast engines cannot
   show
+- Coppersmith's method, which recovers a factor from its leading bits: a 1024-bit modulus
+  splits in milliseconds when 200 bits of its 512-bit prime are unknown
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches

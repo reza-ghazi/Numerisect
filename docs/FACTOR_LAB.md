@@ -71,6 +71,38 @@ forms of `D = 7268 = 4 · 1817` gives a principal cycle of 28 forms containing
 behind CFRAC, which the classical-methods page below runs; SIQS still supersedes it at
 every size, so it is offered for what it shows rather than as the fast path.
 
+## Coppersmith: recovering a factor from part of it
+
+Every other method here scales with the size of \(N\). This one scales with how much of
+a factor is **unknown**, which is why it reaches sizes nothing else does:
+
+| \(N\) | Factor sought | Bits unknown | Result |
+|---|---|---|---|
+| 155 digits | 256-bit \(p\) | 100 | recovered |
+| 309 digits (1024-bit) | 512-bit \(p\) | 200 | recovered, in milliseconds |
+
+`POST /api/factor-lab/coppersmith` asks PARI/GP's `zncoppersmith` for every integer
+\(x\) with \(|x| \le X\) such that \(\gcd(N, P(x))\) reaches a stated bound. With
+\(P(x) = \text{known} + x\) that is the classical partial-key-exposure attack: supply the
+leading bits of a prime factor and the rest follows from lattice reduction, with no
+sieving at all. Each root is reported with \(\gcd(N, P(x))\) — the divisor itself — its
+cofactor, and PARI's primality verdict on both.
+
+**The proven window is part of the answer.** The method is valid only while
+\(X \le \exp\!\left((\log B)^2 / (\deg P \cdot \log N)\right)\), where \(B\) is the
+lower bound on the divisor. That limit is computed by the engine and reported alongside
+the result. A request outside it is **refused before the engine is called**, because PARI
+raises "bound too large" rather than returning nothing, and because a search that never
+ran must not be presented as a search that found nothing.
+
+**A wrong premise finds nothing.** If the supplied leading bits are not in fact the
+factor's, no root yields a proper divisor and the result says so. Within the window that
+is evidence about the polynomial and bound given — not about the modulus.
+
+The divisor bound may be left at 0, in which case PARI/GP derives it: for
+\(\text{known} + x\) the divisor has about as many bits as the known part. No bit length
+is computed outside an engine.
+
 ## NFS polynomial selection
 
 Selection is the first phase of the number field sieve and the one whose result is

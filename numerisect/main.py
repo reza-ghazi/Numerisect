@@ -95,6 +95,7 @@ from .factor_lab import (
     algorithm_trace,
     batch_certificates,
     classic_factor,
+    coppersmith_small_roots,
     mersenne_factor_hunt,
     mersenne_factors,
     special_form_analysis,
@@ -4960,6 +4961,16 @@ def continue_composite_cofactor(
 # provides it. Every other operation here is performed by PARI/GP or GMP-ECM.
 
 
+class CoppersmithRequest(BaseModel):
+    expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
+    # Ascending coefficients: [known, 1] is the partial-factor attack. Supplied as
+    # expressions so a known part can be written as 2^512 + ... rather than pasted.
+    coefficients: list[str] = Field(..., min_length=2, max_length=11)
+    unknown_bits: int = Field(..., ge=1, le=1024)
+    lower_bound: str = Field("0", max_length=MAX_EXPRESSION_CHARACTERS)
+    timeout_seconds: int = Field(120, ge=1, le=3600)
+
+
 class ClassicMethodRequest(BaseModel):
     expression: str = Field(..., min_length=1, max_length=MAX_EXPRESSION_CHARACTERS)
     method: Literal["cfrac", "lehman", "hart"] = "cfrac"
@@ -5155,6 +5166,46 @@ def factor_lab_squfof(request: SqufofRequest) -> dict:
     if result["factor"]:
         rows.append(f"Factor: {result['factor']} x {result['cofactor']}")
     return _save_factor_lab_report("squfof", "SQUFOF factorization", result, rows)
+
+
+@app.post("/api/factor-lab/coppersmith")
+def factor_lab_coppersmith(request: CoppersmithRequest) -> dict:
+    """Recover a divisor from partial knowledge of it, by Coppersmith's method."""
+
+    try:
+        number = evaluate_integer(request.expression)
+        coefficients = [
+            evaluate_arbitrary_integer(value) for value in request.coefficients
+        ]
+        lower_bound = evaluate_arbitrary_integer(request.lower_bound)
+        result = coppersmith_small_roots(
+            number, coefficients, request.unknown_bits, lower_bound,
+            request.timeout_seconds,
+        )
+    except (ExpressionError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    rows = [
+        f"Modulus: {result['number']}",
+        f"Polynomial: {result['polynomial']} (degree {result['degree']})",
+        f"Search bound: |x| <= {result['x_bound']}",
+        f"Proven window: |x| <= {result['x_limit']}",
+        f"Within the window: {'yes' if result['feasible'] else 'no'}",
+        f"Divisor bound: {result['lower_bound']}"
+        + (" (derived)" if result["lower_bound_derived"] else ""),
+        f"Divisors found: {result['found']}",
+    ]
+    for root in result["roots"]:
+        rows.append(
+            f"  x = {root['root']}: {root['divisor']} ({root['divisor_status']}) x "
+            f"{root['cofactor']} ({root['cofactor_status']})"
+        )
+    for root in result["trivial"]:
+        rows.append(f"  x = {root}: trivial gcd, proves nothing")
+    return _save_factor_lab_report(
+        "coppersmith", "Coppersmith small-root search", result, rows
+    )
 
 
 @app.post("/api/factor-lab/classic")

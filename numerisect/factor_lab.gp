@@ -298,6 +298,66 @@ fl_trace(expr, kind, steps, seconds) =
  *
  * The C helper verifies a divisor by dividing, which says nothing about primality.
  * This decides it, so no caller has to. */
+/* Coppersmith's method: small roots of a polynomial modulo an unknown divisor.
+ *
+ * PARI's zncoppersmith(P, N, X, B) returns every integer x with |x| <= X such that
+ * gcd(N, P(x)) >= B. With P(x) = known + x and B a lower bound on the factor sought,
+ * that is exactly the partial-key-exposure attack: given the high bits of a prime
+ * factor, recover the rest. Numerisect supplies the parameters and reads the roots.
+ *
+ * The method is only valid while X <= exp((log B)^2 / (deg P * log N)); the bound is
+ * computed here and reported, so an infeasible request is labelled rather than
+ * silently returning nothing. A root is reported with gcd(N, P(root)), which is the
+ * divisor itself, and with PARI's primality verdict on it.
+ */
+fl_coppersmith(n, coefficients, x_bound, lower_bound, seconds) =
+{
+  my(poly = 0, degree, limit, roots = List(), divisor, found = 0, feasible);
+  for(i = 1, #coefficients, poly += coefficients[i] * x^(i - 1));
+  degree = poldegree(poly);
+  print("DEGREE:", degree);
+  print("POLYNOMIAL:", poly);
+  if (degree < 1, print("DONE:0"); return());
+  /* A lower bound of 0 or 1 means "derive it": for P(x) = known + x the divisor sought
+   * has about as many bits as the known part, and for any other polynomial PARI's own
+   * default is the modulus itself. The derivation stays here so no bit length is
+   * computed outside an engine. */
+  if (lower_bound <= 1,
+    lower_bound = if (degree == 1 && coefficients[1] > 1,
+                      2^(#binary(coefficients[1]) - 1), n);
+    print("LOWER_BOUND_DERIVED:1");
+  , print("LOWER_BOUND_DERIVED:0"));
+  print("LOWER_BOUND:", lower_bound);
+  /* The validity window, as PARI documents it. */
+  limit = exp(log(lower_bound)^2 / (degree * log(n)));
+  feasible = if (x_bound <= limit, 1, 0);
+  print("X_LIMIT:", Strprintf("%.6g", limit));
+  print("FEASIBLE:", feasible);
+  /* Outside the window PARI raises "bound too large" rather than returning nothing,
+   * so the request is refused here instead of being turned into an engine error. A
+   * refusal inside the window is still caught: iferr reports it as the engine's, not
+   * as an empty result. */
+  if (feasible,
+    alarm(seconds,
+      iferr(roots = zncoppersmith(poly, n, x_bound, lower_bound),
+            e, print("ENGINE_REFUSED:", component(e, 1)));
+    );
+  , print("ENGINE_REFUSED:bound outside the proven window; not attempted"));
+  for(i = 1, #roots,
+    divisor = gcd(n, subst(poly, x, roots[i]));
+    if (divisor > 1 && divisor < n,
+      found++;
+      print("ROOT:", roots[i], "|", divisor, "|", n / divisor, "|",
+            if(isprime(divisor), 1, 0), "|", if(isprime(n / divisor), 1, 0));
+    , /* a trivial gcd proves nothing and is reported as such */
+      print("TRIVIAL:", roots[i], "|", divisor);
+    );
+  );
+  print("ROOTS:", #roots);
+  print("FOUND:", found);
+  print("DONE:1");
+};
+
 fl_label_split(a, b, seconds) =
 {
   my(parts = [a, b], verdict);

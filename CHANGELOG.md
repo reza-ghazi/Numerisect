@@ -5,6 +5,22 @@ binary packages are published.
 
 ## Unreleased
 
+- Added **Coppersmith's method** (`POST /api/factor-lab/coppersmith`, PARI/GP
+  `zncoppersmith`), which recovers a divisor of `N` from partial knowledge of it. Unlike
+  every other method here, its cost depends on how much of the factor is unknown rather
+  than on the size of `N`: measured, a 155-digit modulus splits with 100 bits of a
+  256-bit factor unknown, and a 309-digit (1024-bit) modulus splits in milliseconds with
+  200 bits of its 512-bit factor unknown. Each root is reported with gcd(N, P(x)), its
+  cofactor and PARI's primality verdict on both.
+  - The proven validity window is computed by the engine and reported. A request outside
+    it is refused **before** the engine is called, because PARI raises "bound too large"
+    rather than returning nothing, and a search that never ran must not look like one
+    that found nothing.
+  - A wrong known part yields no proper divisor and says so: within the window that is
+    evidence about the polynomial and bound supplied, not about the modulus.
+  - The divisor bound may be left at 0, in which case PARI/GP derives it from the known
+    part, so no bit length is computed outside an engine.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23168705` for the `v0.11.0`
   source release across `CITATION.cff`, the README, the installation guides, the
   capability index, the citation page, the FAQ, the publishing guide and the release

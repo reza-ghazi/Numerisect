@@ -4055,6 +4055,27 @@ bindFactorLab('#factor-lab-squfof-form', '/api/factor-lab/squfof', () => ({
   return rows;
 }, 'SQUFOF');
 
+bindFactorLab('#factor-lab-coppersmith-form', '/api/factor-lab/coppersmith', () => ({
+  expression: $('#coppersmith-n').value.trim(),
+  // Ascending coefficients: the partial-factor attack is the polynomial known + x.
+  coefficients: [$('#coppersmith-known').value.trim(), '1'],
+  unknown_bits: Number($('#coppersmith-bits').value),
+  lower_bound: $('#coppersmith-bound').value.trim() || '0',
+  timeout_seconds: Number($('#coppersmith-timeout').value),
+}), (data) => {
+  const rows = [['Polynomial', `${data.polynomial} (degree ${data.degree})`],
+    ['Search bound', `|x| ≤ ${data.x_bound}`],
+    ['Proven window', `|x| ≤ ${data.x_limit}`],
+    ['Within the window', data.feasible ? 'yes' : 'no'],
+    ['Divisor bound', `${data.lower_bound}${data.lower_bound_derived ? ' (derived)' : ''}`],
+    ['Divisors found', data.found]];
+  data.roots.forEach((root) => {
+    rows.push([`x = ${root.root}`, `${root.divisor} (${root.divisor_status.replace('_', ' ')}) × ${root.cofactor} (${root.cofactor_status.replace('_', ' ')})`]);
+  });
+  data.trivial.forEach((root) => rows.push([`x = ${root}`, 'trivial gcd; proves nothing']));
+  return rows;
+}, 'Coppersmith');
+
 bindFactorLab('#factor-lab-classic-form', '/api/factor-lab/classic', () => ({
   expression: $('#classic-expression').value.trim(),
   method: $('#classic-method').value,
