@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.12.0 — 2026-10-05
+
 - Added **staged polynomial factorization over F_p** (`POST /api/algebra/factor-stages`),
   using three PARI routines the application never called: `factormodSQF`, `factormodDDF`
   and `factorcantor`. `factormod` answers in one step; the algorithm behind it has three,
