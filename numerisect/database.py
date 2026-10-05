@@ -48,7 +48,8 @@ JOB_COLUMNS = {
 
 ECM_COLUMNS = {"ecm_b1", "ecm_b2", "ecm_curves", "ecm_sigma", "ecm_param", "ecm_curves_done",
                "ecm_maxmem", "ecm_stage2_steps", "ecm_base2", "ecm_group_order",
-               "yafu_options_json", "distributed_json"}
+               "yafu_options_json", "polyselect_stage", "polyselect_options_json",
+               "distributed_json"}
 WORKSPACE_COLUMNS = {"name", "notes", "job_ids_json", "report_files_json", "ui_state_json"}
 JOB_SORT_COLUMNS = {
     "created_at",
@@ -165,6 +166,8 @@ class Database:
             "ecm_base2": "INTEGER",
             "ecm_group_order": "TEXT",
             "yafu_options_json": "TEXT",
+            "polyselect_stage": "TEXT",
+            "polyselect_options_json": "TEXT",
             "distributed_json": "TEXT",
         }
         for column, definition in additions.items():

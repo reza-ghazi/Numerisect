@@ -235,3 +235,170 @@ def parse_ecm_output(output: str) -> dict[str, object]:
         "sigmas": sigmas,
     }
 
+
+
+#: Msieve's own polynomial-selection options, verified against `msieve -h`. They are
+#: passed as one parameter string after the stage flag, which is how Msieve takes them.
+MSIEVE_POLYSELECT_PARAMETERS: dict[str, tuple[str, int, int]] = {
+    "degree": ("polydegree", 4, 6),
+    "min_coeff": ("min_coeff", 1, 10**18),
+    "max_coeff": ("max_coeff", 1, 10**18),
+    "stage1_norm": ("stage1_norm", 1, 10**30),
+    "stage2_norm": ("stage2_norm", 1, 10**30),
+    "min_evalue": ("min_evalue", 1, 10**30),
+    "deadline": ("poly_deadline", 1, 86400),
+}
+
+#: The stage flags. Only `full` yields a finished polynomial; the others are the
+#: individual stages, useful for splitting a long selection or inspecting its parts.
+MSIEVE_POLYSELECT_STAGES: dict[str, str] = {
+    "full": "-np",
+    "stage1": "-np1",
+    "size": "-nps",
+    "root": "-npr",
+}
+
+#: CADO-NFS polynomial-selection keys, verified against the installed `params.cNN`
+#: files. Values are passed as `tasks.polyselect.<key>=<value>` overrides, which
+#: cado-nfs.py accepts on the command line.
+CADO_POLYSELECT_PARAMETERS: dict[str, tuple[float, float]] = {
+    "degree": (4, 6),
+    "P": (100, 10**9),
+    "admin": (0, 10**15),
+    "admax": (1, 10**15),
+    "incr": (1, 10**6),
+    "nrkeep": (1, 10_000),
+    "adrange": (1, 10**12),
+    "nq": (1, 10**6),
+    "sopteffort": (0, 100),
+    "ropteffort": (0, 100),
+}
+
+
+def validate_msieve_polyselect_parameters(options: dict[str, object]) -> str:
+    """Render Msieve's selection options as the single parameter string it expects.
+
+    Args:
+        options: Request fields keyed by the names in
+            :data:`MSIEVE_POLYSELECT_PARAMETERS`; ``None`` values are ignored.
+
+    Returns:
+        The parameter string, empty when nothing was requested.
+
+    Raises:
+        ValueError: If a field is unknown, not an integer, out of range, or if the
+            coefficient range is inverted.
+    """
+
+    parts: list[str] = []
+    numbers: dict[str, int] = {}
+    for field, value in options.items():
+        if value is None:
+            continue
+        if field not in MSIEVE_POLYSELECT_PARAMETERS:
+            raise ValueError(f"'{field}' is not a supported Msieve polyselect parameter")
+        key, low, high = MSIEVE_POLYSELECT_PARAMETERS[field]
+        try:
+            number = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"'{field}' must be an integer") from exc
+        if not low <= number <= high:
+            raise ValueError(f"'{field}' must be between {low:,} and {high:,}")
+        numbers[field] = number
+        parts.append(f"{key}={number}")
+    if "min_coeff" in numbers and "max_coeff" in numbers:
+        if numbers["min_coeff"] > numbers["max_coeff"]:
+            raise ValueError("min_coeff must not exceed max_coeff")
+    return " ".join(parts)
+
+
+def validate_cado_polyselect_parameters(options: dict[str, object]) -> list[str]:
+    """Render CADO polynomial-selection overrides as `key=value` arguments.
+
+    Raises:
+        ValueError: If a key is unknown, not numeric, out of range, or if the leading
+            coefficient range is inverted.
+    """
+
+    assignments: list[str] = []
+    numbers: dict[str, float] = {}
+    for key, value in options.items():
+        if value is None:
+            continue
+        if key not in CADO_POLYSELECT_PARAMETERS:
+            raise ValueError(f"'{key}' is not a supported CADO polyselect parameter")
+        low, high = CADO_POLYSELECT_PARAMETERS[key]
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"'{key}' must be a number") from exc
+        if not low <= number <= high:
+            raise ValueError(f"'{key}' must be between {low:g} and {high:g}")
+        numbers[key] = number
+        # Integral values are written without a decimal point: CADO reads both, and the
+        # parameter files use plain integers everywhere except the effort knobs.
+        rendered = f"{number:g}" if number != int(number) else str(int(number))
+        assignments.append(f"tasks.polyselect.{key}={rendered}")
+    if "admin" in numbers and "admax" in numbers and numbers["admin"] >= numbers["admax"]:
+        raise ValueError("admin must be below admax")
+    return assignments
+
+
+def parse_msieve_polynomial(output: str) -> dict[str, object]:
+    """Read the polynomial, its quality metrics and the candidate count from Msieve.
+
+    Only the full selection prints a finished polynomial; the individual stages print
+    saved candidates instead, so a missing polynomial is reported as such rather than
+    inferred.
+
+    Returns:
+        ``{"complete", "skew", "rational", "algebraic", "degree", "size", "alpha",
+        "combined", "rroots", "candidates"}``.
+    """
+
+    rational: dict[int, str] = {}
+    algebraic: dict[int, str] = {}
+    quality: dict[str, str] = {}
+    candidates = 0
+    complete = False
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("save "):
+            candidates += 1
+            continue
+        if stripped == "polynomial selection complete":
+            complete = True
+            continue
+        rational_match = re.fullmatch(r"R(\d+)[: ]\s*(-?\d+)", stripped)
+        if rational_match:
+            rational[int(rational_match.group(1))] = rational_match.group(2)
+            continue
+        algebraic_match = re.fullmatch(r"A(\d+)[: ]\s*(-?\d+)", stripped)
+        if algebraic_match:
+            algebraic[int(algebraic_match.group(1))] = algebraic_match.group(2)
+            continue
+        summary = re.fullmatch(
+            r"skew ([\d.]+), size ([\d.eE+-]+), alpha (-?[\d.]+), "
+            r"combined = ([\d.eE+-]+) rroots = (\d+)",
+            stripped,
+        )
+        if summary:
+            quality = {
+                "skew": summary.group(1),
+                "size": summary.group(2),
+                "alpha": summary.group(3),
+                "combined": summary.group(4),
+                "rroots": summary.group(5),
+            }
+    return {
+        "complete": complete,
+        "skew": quality.get("skew"),
+        "rational": [rational[index] for index in sorted(rational)],
+        "algebraic": [algebraic[index] for index in sorted(algebraic)],
+        "degree": (max(algebraic) if algebraic else None),
+        "size": quality.get("size"),
+        "alpha": quality.get("alpha"),
+        "combined": quality.get("combined"),
+        "rroots": quality.get("rroots"),
+        "candidates": candidates,
+    }

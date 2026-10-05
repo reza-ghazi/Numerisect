@@ -52,6 +52,7 @@ The workspace is organized around a production pipeline and an expert laboratory
 | Resumable ECM | A GMP-ECM campaign with saved stage-one residues and native factor reconciliation, with stage-2 shape, the base-2 reduction and a known group order all exposed | [Expert laboratory](FACTOR_LAB.md) |
 | Classical methods | CFRAC, Lehman's deterministic \(O(N^{1/3})\) method and Hart's one-line factorization, in C with GMP because no installed engine exposes any of them; offered for what they establish, never as the fast path | [Expert laboratory](FACTOR_LAB.md) |
 | YAFU expert bounds | The 15 per-algorithm bounds YAFU accepts, validated when the job is created rather than when a worker starts | [Expert laboratory](FACTOR_LAB.md) |
+| NFS polynomial selection | Msieve's selection as its own job, whole or one stage at a time, reporting the polynomial and its quality; CADO's `tasks.polyselect.*` keys inside a factoring run | [Expert laboratory](FACTOR_LAB.md) |
 | Special-form analysis | Perfect powers and \(a^k\!\pm1\) without a base limit, plus bounded cyclotomic/Aurifeuillean analysis and SNFS advice | [Expert laboratory](FACTOR_LAB.md) |
 | Mersenne trial factoring | Searches \(q=2kp+1\) for prime exponents and every \(q=2kd+1\) order progression for odd composite exponents, without materializing \(M_p\) | [Mersenne numbers](MERSENNE.md) |
 | Staged Mersenne factor hunt | Reconciles exact multiplicities and the cofactor in PARI/GP after bounded trial, P−1, P+1, and GMP-ECM stages | [Mersenne numbers](MERSENNE.md) |

@@ -5,6 +5,30 @@ binary packages are published.
 
 ## Unreleased
 
+- Exposed NFS **polynomial selection**, the audit's last open item. Selection is the first
+  phase of the number field sieve and the one whose result is reused, and neither engine's
+  controls were reachable: only the choice of CADO `params.cNN` was.
+  - A new `msieve_poly` strategy runs Msieve's selection as its own job, whole or one
+    stage at a time (`-np`, `-np1`, `-nps`, `-npr`), and reports the polynomial with the
+    quality metrics Msieve prints, written in its own field order so it can be pasted into
+    a factor-base file. A single stage reports how many candidates it saved and claims no
+    polynomial; a full run that ends without one is an error, not an empty success.
+  - CADO's `tasks.polyselect.*` keys (`degree`, `P`, `admin`, `admax`, `incr`, `nrkeep`,
+    `adrange`, `nq`, `sopteffort`, `ropteffort`) now reach `cado` and `hybrid` runs, with
+    ranges taken from the installed `params.cNN` files.
+  - Each set is validated against the engine that will receive it, when the job is created
+    rather than when a worker starts, so an Msieve-only parameter cannot be queued for a
+    CADO job or the reverse. Stored options are validated again on a resume.
+- Fixed a defect this work uncovered: **a successful `tune` job was always marked failed.**
+  Its result is a measured crossover, which cannot multiply back to the input, but the
+  completeness gate was applied anyway, so every run ended as "failed" with "The returned
+  factors do not multiply to the input." Backends whose result is a report rather than a
+  factorization are now named in `JobManager.REPORTING_BACKENDS` and judged on whether the
+  engine delivered its report. The gate stays strict everywhere it applies, which a test
+  pins.
+- A report-only job's saved file now says `Report for N` instead of `N = <the report>`,
+  which was a false statement about the input, and prints the polynomial when there is one.
+
 - Recorded why the prime classifier keeps citing published searches for Wilson and
   Wolstenholme instead of calling the new scanner, having measured both: the literature
   settles Wilson below 2*10^13 and Wolstenholme below 10^9, while the O(p) cost per

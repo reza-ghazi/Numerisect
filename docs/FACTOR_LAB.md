@@ -71,6 +71,46 @@ forms of `D = 7268 = 4 · 1817` gives a principal cycle of 28 forms containing
 behind CFRAC, which the classical-methods page below runs; SIQS still supersedes it at
 every size, so it is offered for what it shows rather than as the fast path.
 
+## NFS polynomial selection
+
+Selection is the first phase of the number field sieve and the one whose result is
+reused: a better polynomial shortens sieving, filtering and linear algebra alike. Both
+installed NFS engines expose it, and until now neither set of controls was reachable —
+only the choice of CADO `params.cNN` was.
+
+**Msieve, as its own job.** The `msieve_poly` strategy runs selection alone and reports
+the polynomial it chose, with the quality metrics Msieve prints and the coefficients in
+its own field order, ready to paste into a factor-base file:
+
+| Field | Meaning | Bounds |
+|---|---|---|
+| `polyselect_stage` | `full`, or one stage: `stage1`, `size`, `root` | only `full` finishes a polynomial |
+| `degree` | `polydegree` | 4 to 6 |
+| `deadline` | `poly_deadline`, seconds | 1 to 86,400 |
+| `min_coeff`, `max_coeff` | leading-coefficient range for stage 1 | 1 to 10^18, and min ≤ max |
+| `stage1_norm`, `stage2_norm` | maximum norm per stage | 1 to 10^30 |
+| `min_evalue` | minimum score of a saved polynomial | 1 to 10^30 |
+
+A single stage saves candidates rather than finishing a polynomial, and is reported that
+way: the job says how many candidates were saved and claims no polynomial. A full run
+that ends without one is an error, not an empty success.
+
+**CADO, inside a factoring run.** The same request field tunes selection for the `cado`
+and `hybrid` strategies, passed as `tasks.polyselect.<key>` overrides, which
+`cado-nfs.py` accepts on the command line: `degree`, `P`, `admin`, `admax`, `incr`,
+`nrkeep`, `adrange`, `nq`, `sopteffort` and `ropteffort`. Ranges come from the installed
+`params.cNN` files.
+
+Each set is validated against the engine that will receive it, when the job is created
+rather than when a worker starts, so an Msieve-only parameter cannot be queued for a CADO
+job or the reverse. The stored options are validated again on a resume.
+
+**A selection job reports; it does not factor.** Its result is a polynomial, so the
+completeness check that every factorization must pass — the factors multiply back to the
+input — cannot apply, and the saved report says `Report for N` rather than stating a false
+equation. The same now holds for `tune`, which measures a crossover: before this it was
+marked failed on every successful run.
+
 ## Classical methods: CFRAC, Lehman and Hart
 
 Three methods that no installed engine provides, in `numerisect-classic` (C/GMP) through

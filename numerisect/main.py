@@ -329,7 +329,7 @@ app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 Backend = Literal[
     "auto", "yafu", "hybrid", "cado", "msieve", "cross_verify",
     "pari_trial", "squfof", "ecm_campaign", "tune", "yafu_rho", "yafu_pm1", "yafu_pp1",
-    "yafu_ecm", "yafu_siqs", "yafu_nfs", "yafu_snfs", "yafu_fermat",
+    "yafu_ecm", "yafu_siqs", "yafu_nfs", "yafu_snfs", "yafu_fermat", "msieve_poly",
 ]
 
 
@@ -357,6 +357,10 @@ class JobRequest(BaseModel):
     # YAFU expert bounds, keyed by the field names in factor_lab.YAFU_PARAMETERS;
     # each value is range-checked there before the job is accepted.
     yafu_options: dict[str, int] | None = None
+    # NFS polynomial selection: the stage applies to the msieve_poly backend, and the
+    # options are validated against whichever engine will receive them.
+    polyselect_stage: Literal["full", "stage1", "size", "root"] = "full"
+    polyselect_options: dict[str, float] | None = None
 
 
 class BatchJobRequest(BaseModel):
@@ -1022,6 +1026,7 @@ def _public_job(job: dict[str, object]) -> dict[str, object]:
         "ecm_base2",
         "ecm_group_order",
         "ecm_curves_done",
+        "polyselect_stage",
         "cado_parameter_size",
         "factors",
         "warning",
@@ -4751,6 +4756,8 @@ def create_job(request: JobRequest) -> dict[str, object]:
             ecm_base2=request.ecm_base2,
             ecm_group_order=request.ecm_group_order,
             yafu_options=request.yafu_options,
+            polyselect_stage=request.polyselect_stage,
+            polyselect_options=request.polyselect_options,
         )
         return _public_job(job)
     except (ExpressionError, ValueError) as exc:

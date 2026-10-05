@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20261004-native-searches" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20261004-native-searches" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261005-polyselect" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261005-polyselect" />
   </head>
   <body>
     <header class="topbar">
@@ -82,6 +82,7 @@
                   <option value="yafu_snfs">SNFS · special number field sieve</option>
                   <option value="yafu_fermat">Fermat · near-square search</option>
                   <option value="ecm_campaign">ECM campaign · GMP-ECM, resumable</option>
+                  <option value="msieve_poly">NFS polynomial selection · Msieve</option>
                 </optgroup>
               </select>
             </label>
@@ -170,6 +171,73 @@
                 <span class="field-note">
                   A divisor of q−1 known from the number's form; P−1 and P+1 only
                 </span>
+              </label>
+            </div>
+          </details>
+
+          <details>
+            <summary>NFS polynomial selection</summary>
+            <p class="field-note">
+              Selection is the first phase of the number field sieve and the one whose
+              result is reused: a better polynomial shortens every later phase. The
+              <strong>NFS polynomial selection</strong> strategy runs it alone in Msieve and
+              reports the polynomial. The CADO keys below tune selection inside a
+              <strong>CADO-NFS</strong> or <strong>YAFU pretest → CADO</strong> run.
+            </p>
+            <div class="controls-grid advanced">
+              <label>
+                Msieve stage
+                <select id="polyselect-stage">
+                  <option value="full">Full selection</option>
+                  <option value="stage1">Stage 1 only</option>
+                  <option value="size">Size optimization only</option>
+                  <option value="root">Root optimization only</option>
+                </select>
+                <span class="field-note">Only a full run yields a finished polynomial</span>
+              </label>
+              <label>
+                Polynomial degree
+                <input id="polyselect-degree" type="number" min="4" max="6" data-polyselect="degree" />
+              </label>
+              <label>
+                Deadline (seconds) <span class="field-note">Msieve only</span>
+                <input id="polyselect-deadline" type="number" min="1" max="86400" data-polyselect-msieve="deadline" />
+              </label>
+              <label>
+                Minimum leading coefficient <span class="field-note">Msieve only</span>
+                <input id="polyselect-min-coeff" type="number" min="1" data-polyselect-msieve="min_coeff" />
+              </label>
+              <label>
+                Maximum leading coefficient <span class="field-note">Msieve only</span>
+                <input id="polyselect-max-coeff" type="number" min="1" data-polyselect-msieve="max_coeff" />
+              </label>
+              <label>
+                P · lc(g) prime bound <span class="field-note">CADO only</span>
+                <input id="polyselect-p" type="number" min="100" data-polyselect-cado="P" />
+              </label>
+              <label>
+                admin · minimum lc(f) <span class="field-note">CADO only</span>
+                <input id="polyselect-admin" type="number" min="0" data-polyselect-cado="admin" />
+              </label>
+              <label>
+                admax · maximum lc(f) <span class="field-note">CADO only</span>
+                <input id="polyselect-admax" type="number" min="1" data-polyselect-cado="admax" />
+              </label>
+              <label>
+                adrange · task size <span class="field-note">CADO only</span>
+                <input id="polyselect-adrange" type="number" min="1" data-polyselect-cado="adrange" />
+              </label>
+              <label>
+                nq <span class="field-note">CADO only</span>
+                <input id="polyselect-nq" type="number" min="1" data-polyselect-cado="nq" />
+              </label>
+              <label>
+                nrkeep · stage-1 survivors <span class="field-note">CADO only</span>
+                <input id="polyselect-nrkeep" type="number" min="1" max="10000" data-polyselect-cado="nrkeep" />
+              </label>
+              <label>
+                ropteffort <span class="field-note">CADO only</span>
+                <input id="polyselect-ropteffort" type="number" min="0" max="100" step="0.1" data-polyselect-cado="ropteffort" />
               </label>
             </div>
           </details>
@@ -2832,6 +2900,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20261004-native-searches" defer></script>
+    <script src="/assets/app.js?v=20261005-polyselect" defer></script>
   </body>
 </html>

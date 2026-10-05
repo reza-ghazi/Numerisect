@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20261004-native-searches' in INDEX
-    assert '/assets/app.js?v=20261004-native-searches' in INDEX
-    assert '/assets/favicon.svg?v=20261004-native-searches' in INDEX
+    assert '/assets/styles.css?v=20261005-polyselect' in INDEX
+    assert '/assets/app.js?v=20261005-polyselect' in INDEX
+    assert '/assets/favicon.svg?v=20261005-polyselect' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20261004-native-searches#primes/prime-check' in RUNNER
+    assert '?ui=20261005-polyselect#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 

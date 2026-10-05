@@ -18,6 +18,7 @@ from .adapters import REGISTRY as ADAPTER_REGISTRY
 from .config import DEFAULT_CADO_THRESHOLD, JOBS_DIR, MAX_PARALLEL_JOBS
 from .database import Database, utc_now
 from .engines import (
+    MSIEVE_POLYSELECT_STAGES,
     CadoParameter,
     cado_parameter_warning,
     discover_cado_parameters,
@@ -25,10 +26,13 @@ from .engines import (
     parse_cado_factors,
     parse_ecm_output,
     parse_msieve_factors,
+    parse_msieve_polynomial,
     parse_yafu_factors,
     prime_factor_product,
     product_is_complete,
     select_cado_parameter,
+    validate_cado_polyselect_parameters,
+    validate_msieve_polyselect_parameters,
 )
 from .factor_lab import (
     parse_tune_info,
@@ -108,6 +112,13 @@ class JobManager:
         self._paused_total: dict[str, float] = {}
         self._limit_hits: dict[str, str] = {}
 
+    #: Backends whose result is a report, not a factorization: a measured crossover or
+    #: a polynomial. The completeness gate cannot apply to them, because there is no
+    #: factor multiset to reconstruct the input from. Before this existed, a perfectly
+    #: successful `tune` run was marked failed with "The returned factors do not
+    #: multiply to the input."
+    REPORTING_BACKENDS = frozenset({"tune", "msieve_poly"})
+
     def create(
         self,
         *,
@@ -133,6 +144,8 @@ class JobManager:
         ecm_base2: int | None = None,
         ecm_group_order: str | None = None,
         yafu_options: dict[str, int] | None = None,
+        polyselect_stage: str = "full",
+        polyselect_options: dict[str, Any] | None = None,
         distributed: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not 2 <= trial_bound <= 100_000_000:
@@ -150,6 +163,18 @@ class JobManager:
         # malformed expert flag must be refused outright, not queued and then failed.
         if yafu_options:
             validate_yafu_parameters(dict(yafu_options))
+        if polyselect_stage not in MSIEVE_POLYSELECT_STAGES:
+            raise ValueError(
+                "The polynomial-selection stage must be one of "
+                + ", ".join(sorted(MSIEVE_POLYSELECT_STAGES))
+            )
+        if polyselect_options:
+            # Validated against whichever engine will receive them, so an Msieve-only
+            # parameter cannot be queued for a CADO job or the reverse.
+            if requested_backend == "msieve_poly":
+                validate_msieve_polyselect_parameters(dict(polyselect_options))
+            else:
+                validate_cado_polyselect_parameters(dict(polyselect_options))
         if requested_backend.startswith("adapter:"):
             adapter = ADAPTER_REGISTRY.get(requested_backend.removeprefix("adapter:"))
             if adapter is None or adapter.builtin:
@@ -177,7 +202,9 @@ class JobManager:
             )
         if selected in yafu_modes and not executable_path("yafu"):
             raise RuntimeError("YAFU is not available")
-        if selected in {"msieve", "cross_verify"} and not executable_path("msieve"):
+        if selected in {"msieve", "cross_verify", "msieve_poly"} and not executable_path(
+            "msieve"
+        ):
             raise RuntimeError("Msieve is not available")
         if selected == "pari_trial" and not executable_path("gp"):
             raise RuntimeError("PARI/GP is not available")
@@ -235,6 +262,10 @@ class JobManager:
                 "ecm_base2": ecm_base2,
                 "ecm_group_order": ecm_group_order,
                 "yafu_options_json": json.dumps(yafu_options) if yafu_options else None,
+                "polyselect_stage": polyselect_stage,
+                "polyselect_options_json": (
+                    json.dumps(polyselect_options) if polyselect_options else None
+                ),
                 "distributed_json": json.dumps(distributed) if distributed else None,
             }
         )
@@ -532,6 +563,92 @@ class JobManager:
         if return_code != 0:
             raise RuntimeError(f"Msieve exited with status {return_code}")
         return [{**record, "engine": "Msieve"} for record in parse_msieve_factors(output)]
+
+    def _run_msieve_polyselect(
+        self, job: dict[str, Any], number: int
+    ) -> list[dict[str, object]]:
+        """Run Msieve's NFS polynomial selection and report the polynomial it chose.
+
+        Selection is the first phase of the number field sieve and the one whose result
+        is reused: a good polynomial shortens every later phase. Msieve exposes it as its
+        own step, and it can be run whole or one stage at a time.
+
+        Args:
+            job: The job row, carrying ``polyselect_stage`` and
+                ``polyselect_options_json``.
+            number: The integer whose polynomial is sought.
+
+        Returns:
+            One record describing the polynomial, or the candidates a single stage saved.
+            This is a report, not a factorization; see ``REPORTING_BACKENDS``.
+
+        Raises:
+            RuntimeError: If Msieve is unavailable, fails, or a full selection ends
+                without a polynomial.
+        """
+
+        if not executable_path("msieve"):
+            raise RuntimeError("Msieve is required for polynomial selection")
+        workdir = Path(job["workdir"])
+        stage = str(job.get("polyselect_stage") or "full")
+        flag = MSIEVE_POLYSELECT_STAGES.get(stage)
+        if flag is None:
+            raise RuntimeError(f"Unknown polynomial-selection stage '{stage}'")
+        stored = job.get("polyselect_options_json")
+        # Re-validated from the stored row: a resume must not reach the engine with a
+        # parameter creation would have rejected.
+        parameters = (
+            validate_msieve_polyselect_parameters(json.loads(stored)) if stored else ""
+        )
+        command = ["msieve", "-v", "-t", str(job["threads"]), flag]
+        if parameters:
+            # Msieve takes its selection options as one string after the stage flag.
+            command.append(parameters)
+        command += ["-nf", str(workdir / "poly.fb"), "-s", str(workdir / "msieve.dat"),
+                    str(number)]
+        self.database.update_job(
+            job["id"],
+            phase=f"Msieve polynomial selection ({stage})",
+            progress=10,
+        )
+        return_code, output = self._run_process(job, command, cwd=workdir)
+        if return_code != 0:
+            raise RuntimeError(f"Msieve exited with status {return_code}")
+        polynomial = parse_msieve_polynomial(output)
+        if stage == "full" and not polynomial["complete"]:
+            raise RuntimeError(
+                "Msieve finished without completing polynomial selection; this is "
+                "inconclusive, not a statement about the input"
+            )
+        algebraic = list(polynomial["algebraic"] or [])
+        rational = list(polynomial["rational"] or [])
+        detail = (
+            f"degree {polynomial['degree']}, skew {polynomial['skew']}, "
+            f"alpha {polynomial['alpha']}, combined {polynomial['combined']}, "
+            f"rroots {polynomial['rroots']}"
+            if polynomial["complete"]
+            else f"stage '{stage}' saved {polynomial['candidates']} candidate(s)"
+        )
+        return [
+            {
+                "value": detail,
+                "digits": 0,
+                "status": "polynomial" if polynomial["complete"] else "candidates",
+                "engine": f"Msieve polynomial selection ({stage})",
+                "polynomial": {
+                    "skew": polynomial["skew"],
+                    "rational": rational,
+                    "algebraic": algebraic,
+                    "degree": polynomial["degree"],
+                    "size": polynomial["size"],
+                    "alpha": polynomial["alpha"],
+                    "combined": polynomial["combined"],
+                    "rroots": polynomial["rroots"],
+                    "candidates": polynomial["candidates"],
+                    "stage": stage,
+                },
+            }
+        ]
 
     def _run_tune(self, job: dict[str, Any]) -> list[dict[str, object]]:
         """Run YAFU's own `tune` and report the crossover it measures.
@@ -844,6 +961,11 @@ class JobManager:
                     if client_threads:
                         command += ["--client-threads", str(int(client_threads))]
                     assignments = list(settings.get("parameters") or [])
+            # Polynomial-selection overrides, validated at creation and again here so a
+            # resume cannot smuggle in a key creation would have rejected.
+            stored = job.get("polyselect_options_json")
+            if stored:
+                assignments += validate_cado_polyselect_parameters(json.loads(stored))
             if not any(item.startswith("slaves.hostnames=") for item in assignments):
                 # Required whenever -p is passed; see the note in distributed.py.
                 assignments.append("slaves.hostnames=localhost")
@@ -940,6 +1062,8 @@ class JobManager:
                 )
             elif backend == "tune":
                 factors.extend(self._run_tune(job))
+            elif backend == "msieve_poly":
+                factors.extend(self._run_msieve_polyselect(job, number))
             elif backend == "ecm_campaign":
                 found = self._run_ecm_campaign(job, number)
                 if not found:
@@ -1040,18 +1164,29 @@ class JobManager:
             else:
                 raise RuntimeError(f"Unsupported backend: {backend}")
 
-            verification_factors = [
-                factor for factor in factors if factor.get("status") != "unit"
-            ]
-            complete = product_is_complete(verification_factors, number)
+            reporting = backend in self.REPORTING_BACKENDS
+            if reporting:
+                # Success here means the engine delivered its report.
+                complete = bool(factors)
+                failure = None if complete else "The engine produced no result to report."
+                phase = "Complete" if complete else "No result"
+            else:
+                verification_factors = [
+                    factor for factor in factors if factor.get("status") != "unit"
+                ]
+                complete = product_is_complete(verification_factors, number)
+                failure = (
+                    None if complete else "The returned factors do not multiply to the input."
+                )
+                phase = "Complete" if complete else "Incomplete factorization"
             finished_at = utc_now()
             self.database.update_job(
                 job_id,
                 status="completed" if complete else "failed",
-                phase="Complete" if complete else "Incomplete factorization",
+                phase=phase,
                 progress=100 if complete else 99,
                 factors_json=json.dumps(factors),
-                error=None if complete else "The returned factors do not multiply to the input.",
+                error=failure,
                 finished_at=finished_at,
             )
             if complete:

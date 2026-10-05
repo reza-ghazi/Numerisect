@@ -253,6 +253,23 @@ function optionalText(fields) {
   return body;
 }
 
+// The two engines take different selection parameters, and the server validates each
+// set against the engine that will receive it, so the markup marks which is which:
+// data-polyselect is common to both, and the -msieve/-cado variants are exclusive.
+function polyselectOptions(backend) {
+  const options = {};
+  const selectors = backend === 'msieve_poly'
+    ? '[data-polyselect], [data-polyselect-msieve]'
+    : '[data-polyselect], [data-polyselect-cado]';
+  for (const input of document.querySelectorAll(selectors)) {
+    const raw = input.value.trim();
+    if (raw === '') continue;
+    const key = input.dataset.polyselect || input.dataset.polyselectMsieve || input.dataset.polyselectCado;
+    options[key] = Number(raw);
+  }
+  return Object.keys(options).length ? { polyselect_options: options } : {};
+}
+
 // Collected by data-yafu attribute so the markup owns the field list: adding a knob to
 // index.html needs no change here. Validation and range checks belong to the server.
 function yafuExpertOptions() {
@@ -291,6 +308,8 @@ $('#factor-form').addEventListener('submit', async (event) => {
         }),
         ...optionalText({ ecm_b2: '#ecm-b2', ecm_sigma: '#ecm-sigma', ecm_group_order: '#ecm-group-order' }),
         ...yafuExpertOptions(),
+        polyselect_stage: $('#polyselect-stage').value,
+        ...polyselectOptions($('#backend').value),
       }),
     });
     state.selectedId = job.id;

@@ -112,12 +112,39 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
     path = OUTPUT_DIR / filename
     signed_number = f"-{job['number']}" if job["negative"] else job["number"]
     values = [str(factor["value"]) for factor in factors]
-    equation = f"{signed_number} = {' * '.join(values)}"
+    # A measurement or a polynomial is a report about the input, not a decomposition of
+    # it, so printing "N = <report>" would state something false.
+    reporting = any(
+        factor.get("status") in {"measurement", "polynomial", "candidates"}
+        for factor in factors
+    )
+    equation = (
+        f"Report for {signed_number}"
+        if reporting
+        else f"{signed_number} = {' * '.join(values)}"
+    )
     details = "\n".join(
         f"  {factor['value']}  [{factor['status']}, {factor['digits']} digits; "
         f"discovered by {factor.get('engine', job['selected_backend'])}]"
         for factor in factors
     )
+    # The polynomial itself, when one was found, written in Msieve's own field order so
+    # it can be pasted straight into a factor-base file.
+    polynomial_block = ""
+    for factor in factors:
+        polynomial = factor.get("polynomial")
+        if not isinstance(polynomial, dict):
+            continue
+        lines = [f"SKEW {polynomial['skew']}"] if polynomial.get("skew") else []
+        lines += [
+            f"R{index} {value}" for index, value in enumerate(polynomial.get("rational") or [])
+        ]
+        lines += [
+            f"A{index} {value}" for index, value in enumerate(polynomial.get("algebraic") or [])
+        ]
+        if lines:
+            polynomial_block = "\nPolynomial:\n" + "\n".join(f"  {line}" for line in lines) + "\n"
+
     command = " ".join(job.get("command") or [])
     manifest_path = path.with_suffix(".json")
     manifest = _factorization_manifest(job, factors, equation)
@@ -134,7 +161,8 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
         f"Strategy: {job['selected_backend']}\n"
         f"Status: completed\n\n"
         f"{equation}\n\n"
-        f"Factors:\n{details}\n\n"
+        f"{'Result' if reporting else 'Factors'}:\n{details}\n"
+        f"{polynomial_block}\n"
         f"Last engine command: {command}\n"
         f"Reproducible manifest: output/{manifest_path.name}\n"
         f"Requested strategy: {job['requested_backend']}\n"
