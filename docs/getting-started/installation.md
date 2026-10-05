@@ -2,12 +2,12 @@
 
 Numerisect is source-distributed. There are no official binary packages.
 
-Release `v0.9.0` is preserved as an immutable source snapshot at
-[DOI 10.5281/zenodo.23148620](https://doi.org/10.5281/zenodo.23148620). To reproduce
+Release `v0.10.0` is preserved as an immutable source snapshot at
+[DOI 10.5281/zenodo.23163322](https://doi.org/10.5281/zenodo.23163322). To reproduce
 that released version instead of following the moving `main` branch, use:
 
 ```bash
-git clone --branch v0.9.0 --depth 1 https://github.com/reza-ghazi/Numerisect.git
+git clone --branch v0.10.0 --depth 1 https://github.com/reza-ghazi/Numerisect.git
 ```
 
 !!! info "Verified platforms"

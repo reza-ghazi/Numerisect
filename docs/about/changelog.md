@@ -17,9 +17,10 @@ full version family. See [Citing Numerisect](citation.md) for when to use each o
 
 Version 0.8.0 is preserved at
 [DOI 10.5281/zenodo.22882181](https://doi.org/10.5281/zenodo.22882181), the 0.8.1 patch release at
-[DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791), and the 0.9.0
-feature release at [DOI 10.5281/zenodo.23148620](https://doi.org/10.5281/zenodo.23148620), to which
-the concept DOI now resolves.
+[DOI 10.5281/zenodo.22883791](https://doi.org/10.5281/zenodo.22883791), the 0.9.0 feature release at
+[DOI 10.5281/zenodo.23148620](https://doi.org/10.5281/zenodo.23148620), and 0.10.0 at
+[DOI 10.5281/zenodo.23163322](https://doi.org/10.5281/zenodo.23163322), to which the concept DOI
+now resolves.
 
 No official binary packages are published. Install from source, or use the versioned
 user-local installer, which keeps each release in its own directory with a stable
