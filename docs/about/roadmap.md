@@ -84,22 +84,23 @@ inconclusive beyond them. That is the honest shape of those questions, not a def
 waiting to be fixed, and 1.0 should not pretend otherwise.
 
 So whatever 1.0 comes to mean here, it is a decision about the interface and about
-stability rather than about capability. Four questions are open, and none has been
-answered yet:
+stability rather than about capability. The author settled the four open questions on
+2026-10-05:
 
-- **Does 1.0 promise a stable API?** Route paths and response keys can change today, and
-  several have within 0.x. Promising otherwise is the single largest commitment on this
-  list, because it binds every future release.
-- **Do the closeable presentation gaps have to be built, or is declining them in writing
-  enough?** Either settles an item; leaving it "partial" indefinitely does not.
-- **Should the permanent limits be restated outside this ledger**, in the capability index,
-  so a reader cannot mistake a bounded search for an unfinished one?
-- **Does the published artifact need to be installed and exercised on each supported
-  platform** from the release archive rather than from a checkout? CI does not do that
-  today.
+| Question | Decision |
+|---|---|
+| Does 1.0 promise a stable API? | **No.** Route paths and response keys stay free to change; the version number does not promise otherwise. |
+| Must the closeable presentation gaps be built, or is declining them enough? | **Built.** The five items below are to be implemented rather than declined. |
+| Should the permanent limits be restated outside this ledger? | **Yes**, in the capability index, so a bounded search is not mistaken for an unfinished one. |
+| Must CI install the published artifact on each platform? | **Yes**, from the built distribution rather than from a checkout. |
 
-Until someone decides, the practical rule is unchanged and comes from the version text
-rather than from this page: a feature release raises the minor number.
+The first answer is the consequential one: because the API is not frozen, a 1.0 here
+would signal that the application is complete and exercised, not that its routes are
+immutable. A later release may still rename a route, and the version number is not a
+promise that it will not.
+
+The practical rule is unchanged and comes from the version text rather than from this
+page: a feature release raises the minor number.
 
 ## Honest limits
 

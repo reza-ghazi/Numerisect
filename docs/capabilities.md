@@ -127,6 +127,26 @@ and the [API reference](reference/api.md).
 | **Inconclusive** | The operation stopped without settling the claim. It must not be read as “no”. |
 | **Exploratory** | A visualization, heuristic prediction, timing observation or midpoint sample intended for investigation rather than certification. |
 
+### Searches that are bounded by nature
+
+Several operations are complete *within a documented finite bound* and report
+**inconclusive** beyond it. That is the shape of the question, not an unfinished feature,
+and no future release will remove the bound:
+
+| Operation | What the bound is |
+|---|---|
+| Pseudoprime taxonomy, Carmichael and Korselt analysis | a base limit and a factoring budget; beyond them membership is undecided here |
+| Covering-set verification for Sierpiński and Riesel numbers | a period and candidate limit |
+| Record-divisor families and sociable cycles | a bounded search over the stated range |
+| Number-field splitting, inertia and class groups | bounded degree, with class-group work under a time budget |
+| Wilson and Wolstenholme searches | the modulus must stay inside 64 bits, so `p < 2^32` and `p < 2,642,246` respectively; the published tables reach further |
+| SQUFOF | inputs below \(2^{62}\), by its 64-bit cycle; wider inputs are refused, not answered |
+| Mersenne trial factoring | the configured \(k\) ceiling; an exhausted range is not a primality claim |
+| Coppersmith's method | the proven window \(X \le \exp((\log B)^2/(\deg P\log N))\); outside it the search is refused |
+| Brun-type sums | a truncation bound: these sums converge like \(1/\log x\), so no reachable bound fixes the constant |
+
+The [roadmap ledger](ROADMAP_STATUS.md) records each bound against its proposal item.
+
 Every successful Prime Tools calculation that persists output names its exact
 `output/<filename>` path in the local result panel. Large native streams—such as a full
 reciprocal repetend—go directly to the report rather than through Python, JSON or the DOM.

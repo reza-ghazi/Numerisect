@@ -5,6 +5,19 @@ binary packages are published.
 
 ## Unreleased
 
+- Recorded the author's answers to the four open questions about 1.0 (2026-10-05): the
+  version will not promise a stable API, the five closeable presentation gaps are to be
+  built rather than declined, the permanent limits are to be restated outside the ledger,
+  and platform CI is to install the published distribution rather than the checkout. The
+  roadmap overview now carries them as decisions instead of questions.
+
+- Stated in the capability index which searches are bounded by nature. A finite bound —
+  SQUFOF below 2^62, the Fermat-quotient ceilings at 2^32 and 2,642,246, Coppersmith's
+  proven window, the Mersenne k ceiling, a Brun truncation — reads as an unfinished
+  feature unless the index says it is the shape of the question. A guard reads the
+  ceilings out of `fermat_quotients.py`, so raising one without saying so fails the
+  suite; it was verified by weakening the row and watching it fail.
+
 - Added three guards against documentation drift, after two summary pages were found
   lagging behind the code in one day. Each time the feature's own guide was thorough and
   nothing failed when the summaries were not.

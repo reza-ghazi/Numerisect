@@ -518,3 +518,26 @@ def test_every_pinned_engine_and_c_helper_is_named_in_the_documentation():
         assert name in readme, f"{engine['name']} is not named in the README"
     for helper in sorted((ROOT / "numerisect" / "native").glob("*.c")):
         assert helper.stem in guides, f"{helper.name} is named in no guide"
+
+
+def test_the_capability_index_states_which_searches_are_bounded_by_nature():
+    """A finite bound reads as an unfinished feature unless the index says otherwise.
+
+    The ceilings are read out of the code rather than retyped, so raising one in
+    `fermat_quotients.py` without saying so fails here instead of leaving the reader
+    with a number the application no longer honours.
+    """
+
+    from numerisect.fermat_quotients import SEARCH_KINDS
+
+    page = (ROOT / "docs" / "capabilities.md").read_text(encoding="utf-8")
+    heading = "### Searches that are bounded by nature"
+    assert heading in page
+    section = page.split(heading, 1)[1].split("\n##", 1)[0]
+    for name in ("squfof", "coppersmith", "mersenne trial factoring", "brun"):
+        assert name in section.lower(), name
+    ceilings = [kind["ceiling"] for kind in SEARCH_KINDS.values() if kind["ceiling"]]
+    assert ceilings, "the fermat-quotient searches no longer declare a ceiling"
+    for ceiling in ceilings:
+        rendered = "2^32" if ceiling == 2**32 else f"{ceiling:,}"
+        assert rendered in section, rendered
