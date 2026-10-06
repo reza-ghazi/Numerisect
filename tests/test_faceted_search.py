@@ -144,7 +144,8 @@ def test_the_facets_route_is_not_swallowed_by_the_job_route(api):
     response = api.get("/api/jobs/facets")
     assert response.status_code == 200
     assert response.json()["total"] == 6
-    assert api.get("/api/jobs/a1").json()["expression"] == "8051"
+    job = api.get("/api/jobs/a1")
+    assert job.json()["expression"] == "8051"
 
 
 def test_the_facets_route_echoes_the_filters_it_counted_under(api):
@@ -159,11 +160,14 @@ def test_a_search_round_trips_through_the_api(api):
     )
     assert created.status_code == 201
     identifier = created.json()["id"]
-    assert [row["name"] for row in api.get("/api/searches").json()["searches"]] == [
-        "big failures"
-    ]
-    assert api.delete(f"/api/searches/{identifier}").status_code == 200
-    assert api.delete(f"/api/searches/{identifier}").status_code == 404
+    listed = api.get("/api/searches").json()["searches"]
+    assert [row["name"] for row in listed] == ["big failures"]
+    # Deleted outside the assertion: `python -O` strips asserts, and a request that
+    # only happens when assertions are enabled is not a test of anything.
+    deleted = api.delete(f"/api/searches/{identifier}")
+    assert deleted.status_code == 200
+    again = api.delete(f"/api/searches/{identifier}")
+    assert again.status_code == 404
 
 
 @pytest.mark.parametrize("query,message", [
@@ -189,4 +193,5 @@ def test_blank_filters_are_dropped_rather_than_stored(api):
 
 
 def test_a_nameless_search_is_refused(api):
-    assert api.post("/api/searches", json={"name": "", "query": {}}).status_code == 422
+    response = api.post("/api/searches", json={"name": "", "query": {}})
+    assert response.status_code == 422

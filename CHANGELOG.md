@@ -5,6 +5,10 @@ binary packages are published.
 
 ## Unreleased
 
+- Moved the HTTP calls in the new saved-search and tree tests out of their assertions,
+  which CodeQL flagged. `python -O` strips asserts, so a request that only happens when
+  assertions are enabled tests nothing.
+
 - Recorded the Zenodo version DOI `10.5281/zenodo.23175872` for the `v0.13.0` source
   snapshot in `CITATION.cff`, the README, the capability index, both installation
   guides, and the citation, FAQ, publishing and changelog pages. The concept DOI

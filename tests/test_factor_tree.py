@@ -278,4 +278,5 @@ def test_a_report_only_job_has_no_tree(api):
 
 
 def test_an_unknown_job_is_not_found(api):
-    assert api.get("/api/jobs/missing/tree").status_code == 404
+    response = api.get("/api/jobs/missing/tree")
+    assert response.status_code == 404
