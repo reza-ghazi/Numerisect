@@ -9,11 +9,11 @@ programs below, and each page of this documentation names the routine responsibl
 |---|---|---|
 | **PARI/GP** | The workhorse. Primality and proofs, factorization of moderate inputs, arithmetic functions, modular and algebraic structure, number fields, polynomial work, certificates, and most prime-structure searches. | GPL |
 | **FLINT / Arb** | Rigorous complex analysis. Zeta and L-function evaluation as ball enclosures, certified critical-line zeros, Turing-method zero counts, multithreaded plot sampling. | LGPL |
-| **YAFU** | Default factoring pipeline for small and medium inputs; small-factor work, ECM, SIQS, and its own strategies for rho, p−1, p+1, Fermat and NFS. | Public domain / MIT |
+| **YAFU** | Default factoring pipeline for small and medium inputs; small-factor work, ECM, SIQS, and its own strategies for rho, p−1, p+1, Fermat and NFS. Also a **second proof engine**: its APR-CL proves primality below 6021 digits, and its Lucas–Lehmer test cross-checks Mersenne verdicts. | Public domain / MIT |
 | **Msieve** | An independent general factoring pipeline, used on request and for cross-verification against YAFU. | Public domain |
 | **GMP-ECM** | The elliptic-curve method as a standalone campaign engine, with resumable stage-one residues. | GPL |
 | **CADO-NFS** | The number field sieve for large residual composites, including distributed sieving. | LGPL |
-| **primesieve** | Multithreaded, cache-aware prime enumeration and k-tuplet counting over 64-bit intervals. | BSD |
+| **primesieve** | Multithreaded, cache-aware prime enumeration and k-tuplet counting over 64-bit intervals, and an independent implementation of the n-th prime and Riemann's \(R(x)\) for cross-checking primecount. | BSD |
 | **primecount** | Exact \(\pi(x)\) to \(10^{31}\) and indexed primes to \(10^{29}\), with six mathematically distinct algorithm modes in one codebase. | BSD |
 
 Engine sources are pinned to immutable upstream commits recorded in
@@ -38,12 +38,18 @@ that justification in its own source header.
 
 ## Which engine answers which question
 
-**Is this prime?** PARI `isprime` for a proof, `ispseudoprime` for Baillie–PSW. GMP's
-independent test is available as a cross-check.
+**Is this prime?** PARI `isprime` for a proof and YAFU's APR-CL for a second, unrelated
+proof below 6021 digits; PARI `ispseudoprime` for Baillie–PSW. GMP's independent test is
+available as a further cross-check. For \(2^p-1\), two Lucas–Lehmer implementations,
+PARI's and YAFU's, each deterministic for a prime exponent.
 
 **Factor this.** Below the CADO threshold, YAFU. Above it, a YAFU ECM pretest and then
-SIQS or CADO-NFS depending on the residual. SQUFOF, Msieve, GMP-ECM campaigns and the
-individual YAFU strategies are all selectable directly.
+SIQS or CADO-NFS depending on the residual. SQUFOF, Msieve, GMP-ECM campaigns, the
+individual YAFU strategies, Msieve's polynomial selection on its own, and CFRAC, Lehman
+and Hart are all selectable directly.
+
+**I know part of a factor.** Coppersmith's method through PARI, which recovers the rest
+by lattice reduction and reports the window within which that is proven.
 
 **How many primes below x?** primecount, which is exact and enormously faster than
 sieving at large \(x\). primesieve when you need the primes themselves rather than the

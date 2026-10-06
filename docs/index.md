@@ -86,8 +86,8 @@ lead visitors to the same maintained content.
 
 | Area | Examples |
 |---|---|
-| **Factorization** | Automatic YAFU-to-CADO routing, SQUFOF, resumable ECM campaigns, SIQS and NFS with expert parameters, GGNFS siever diagnostics, distributed CADO-NFS, RSA Challenge verification, Mersenne trial factoring without constructing \(2^p-1\), and staged Mersenne cofactor hunts |
-| **Primality** | Rigorous proofs, Baillie–PSW, a comparison laboratory across eight tests, deterministic Miller–Rabin witness sets, Pocklington and Pratt certificates |
+| **Factorization** | Automatic YAFU-to-CADO routing, SQUFOF, resumable ECM campaigns, SIQS and NFS with expert parameters, GGNFS siever diagnostics, distributed CADO-NFS, RSA Challenge verification, Mersenne trial factoring without constructing \(2^p-1\), staged Mersenne cofactor hunts, NFS polynomial selection as its own job, Coppersmith recovery of a factor from its leading bits, and CFRAC, Lehman and Hart |
+| **Primality** | Rigorous proofs from two independent provers (PARI `isprime` and YAFU APR-CL), Baillie–PSW, a comparison laboratory across eight tests, deterministic Miller–Rabin witness sets, Pocklington and Pratt certificates, and Mersenne verdicts cross-checked across unrelated Lucas–Lehmer implementations |
 | **Prime structure** | A 56-class catalogue, exact reciprocal periods, Gaussian and Eisenstein primes, special families, Cunningham chains, covering sets, and constrained generation |
 | **Distribution** | Exact \(\pi(x)\) to \(10^{31}\), six mathematically distinct `primecount` algorithms plus independent PARI and primesieve cross-checks, nth-prime bounds, prime races, maximal gaps, and clearly labelled Hardy–Littlewood and Bateman–Horn predictions |
 | **Algebra** | Congruences over composite moduli, four discrete-logarithm algorithms, finite fields, number fields with prime-ideal decomposition, Chebotarev experiments |

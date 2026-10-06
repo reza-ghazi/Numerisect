@@ -63,6 +63,12 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
   show
 - Coppersmith's method, which recovers a factor from its leading bits: a 1024-bit modulus
   splits in milliseconds when 200 bits of its 512-bit prime are unknown
+- NFS polynomial selection as its own job in Msieve, whole or one stage at a time, and
+  CADO's `tasks.polyselect.*` keys inside a factoring run
+- Two independent proof engines for primality, PARI's `isprime` and YAFU's APR-CL, with
+  the Mersenne verdict and the n-th prime each cross-checked across unrelated codebases
+- Polynomial factorization over 𝔽_p shown stage by stage: square-free, distinct-degree,
+  then equal-degree splitting, with the reconstruction verified by the engine
 - Absolute/circular, Gaussian, Paterson, full-reptend, and perfect-number tools
 - Prime pyramids, corrected pseudoprime searches, and Miller–Rabin witness analysis
 - Native prime-gap statistics, primorials, Goldbach partitions, digit-substring primes, and bounded equation searches

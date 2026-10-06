@@ -5,6 +5,20 @@ binary packages are published.
 
 ## Unreleased
 
+- Swept every markdown file against ground truth computed from the code, after the roadmap
+  counts turned out to be wrong. The per-group tool counts in the capability index all
+  check out (11 groups summing to 139, plus 22 zeta pages), as do the version strings, the
+  engine and C-helper counts and the route tables. Four descriptions did not:
+  - The README's feature list omitted NFS polynomial selection, the second proof engine
+    and the two new cross-checks, and the landing page's factorization and primality rows
+    omitted the same work.
+  - `docs/concepts/engines.md` described YAFU as a factoring pipeline only, though it is
+    now also a proof engine (APR-CL) and a second Lucas-Lehmer; and primesieve as an
+    enumerator only, though its n-th prime and `R(x)` now cross-check primecount.
+  - "Which engine answers which question" still answered "Is this prime?" with one prover,
+    and its factoring answer predated Msieve's standalone selection and the classical
+    methods. It also gained the question Coppersmith answers: "I know part of a factor."
+
 - Made the roadmap summary verifiable. The table read "Fully implemented 131 / Working
   with a named gap 12 / Declined 4 / Deferred 0", which sums to 147 rather than 150 and
   mixed two units: the gap row counted *ledger entries* while the implemented row counted
