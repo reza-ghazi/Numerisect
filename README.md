@@ -556,6 +556,7 @@ Important routes include:
 
 ```text
 DELETE/api/cache
+DELETE/api/searches/{search_id}
 DELETE/api/workspaces/{workspace_id}
 GET  /api/adapters
 GET  /api/cache
@@ -566,14 +567,18 @@ GET  /api/docs
 GET  /api/exports/jobs
 GET  /api/exports/jobs/{job_id}
 GET  /api/exports/reports/{filename}
+GET  /api/factor/cado-stages
 GET  /api/history/performance
 GET  /api/jobs
+GET  /api/jobs/facets
 GET  /api/jobs/{job_id}
 GET  /api/jobs/{job_id}/export
 GET  /api/jobs/{job_id}/log
+GET  /api/jobs/{job_id}/tree
 GET  /api/outputs/{filename}
 GET  /api/queue
 GET  /api/reports
+GET  /api/searches
 GET  /api/session
 GET  /api/setup
 GET  /api/setup/log
@@ -630,6 +635,7 @@ POST /api/jobs
 POST /api/jobs/batch
 POST /api/jobs/batch-export
 POST /api/jobs/reorder
+POST /api/jobs/{job_id}/cado-stage
 POST /api/jobs/{job_id}/cancel
 POST /api/jobs/{job_id}/certificates
 POST /api/jobs/{job_id}/continue-cofactor
@@ -724,6 +730,7 @@ POST /api/primes/sieve-interval
 POST /api/primes/special-numbers
 POST /api/primes/tuples
 POST /api/primes/verify-certificate
+POST /api/searches
 POST /api/setup/install
 POST /api/structure/factorint-strategies
 POST /api/structure/lenstra-divisors
