@@ -414,3 +414,107 @@ def test_the_ecm_campaign_controls_are_present_and_optional():
         assert f'id="{selector}"' in INDEX, f"{selector} is missing from the form"
     assert "function optionalNumbers(" in APP
     assert "function optionalText(" in APP
+
+
+# --- Policy: a new capability must reach the summary pages, not only its own guide ------
+
+#: Routes that carry no mathematics and need no narrative page: job plumbing, exports,
+#: workspaces, setup and diagnostics. Everything else must be described somewhere a
+#: reader can find it.
+INFRASTRUCTURE_PREFIXES = (
+    "/api/jobs", "/api/exports", "/api/outputs", "/api/workspaces", "/api/session",
+    "/api/queue", "/api/reports", "/api/cache", "/api/history", "/api/setup",
+    "/api/adapters", "/api/capabilities", "/api/diagnostics", "/api/batch",
+    "/api/distributed",
+)
+
+
+def _narrative_guides() -> str:
+    """Every documentation page except the route reference, lowercased.
+
+    The reference table is excluded on purpose: a test already holds it equal to the
+    running application, so including it here would make this check pass trivially.
+    """
+
+    docs = ROOT / "docs"
+    reference = docs / "reference" / "api.md"
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(docs.rglob("*.md"))
+        if path != reference
+    ).lower()
+
+
+def test_every_mathematical_route_is_described_in_a_guide():
+    """A route documented only in the reference table is a capability nobody can find.
+
+    This is the drift that kept happening: a feature's own guide was written carefully
+    while the summary pages lagged, because nothing failed when they did.
+    """
+
+    from numerisect.main import app
+
+    guides = _narrative_guides()
+
+    def described(path: str) -> bool:
+        slug = path.rsplit("/", 1)[-1]
+        if slug in guides:
+            return True
+        # Guides often name an operation in prose ("NTT primes") rather than by slug.
+        words = slug.replace("-", " ")
+        return words in guides or words.replace(" ", "") in guides.replace(" ", "")
+
+    routes = sorted({
+        route.path for route in app.routes
+        if route.path.startswith("/api/")
+        and "{" not in route.path
+        and not route.path.startswith(INFRASTRUCTURE_PREFIXES)
+    })
+    assert len(routes) > 150, f"expected the full route surface, found {len(routes)}"
+    missing = [path for path in routes if not described(path)]
+    assert not missing, (
+        "these routes are described in no guide, only in the reference table: "
+        f"{missing}"
+    )
+
+
+def test_every_cross_check_is_described_on_the_verification_page():
+    """`/api/verify/*` exists to let engines check each other; that page says how.
+
+    A new cross-check added without a word there is invisible to the reader who went
+    looking for exactly that.
+    """
+
+    from numerisect.main import app
+
+    page = (ROOT / "docs" / "VERIFICATION.md").read_text(encoding="utf-8")
+    verify = sorted({
+        route.path for route in app.routes if route.path.startswith("/api/verify/")
+    })
+    assert len(verify) >= 5
+    missing = [path for path in verify if path.rsplit("/", 1)[-1] not in page]
+    assert not missing, f"cross-checks missing from VERIFICATION.md: {missing}"
+
+
+def test_every_pinned_engine_and_c_helper_is_named_in_the_documentation():
+    """The stack is a claim about what computes the results, so it must be stated.
+
+    The engine roles table called YAFU a factoring pipeline long after it became a
+    second proof engine, which this would not have caught — but a wholly undocumented
+    engine or helper it will.
+    """
+
+    import tomllib
+
+    manifest = tomllib.loads(
+        (ROOT / "numerisect" / "engine_manifest.toml").read_text(encoding="utf-8")
+    )
+    guides = _narrative_guides()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8").lower()
+    for engine in manifest["engine"]:
+        # "FLINT/Zeta" and "GGNFS lattice sievers" are named by their first word.
+        name = engine["name"].split("/")[0].split()[0].lower()
+        assert name in guides, f"{engine['name']} is named in no guide"
+        assert name in readme, f"{engine['name']} is not named in the README"
+    for helper in sorted((ROOT / "numerisect" / "native").glob("*.c")):
+        assert helper.stem in guides, f"{helper.name} is named in no guide"

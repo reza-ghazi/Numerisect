@@ -121,6 +121,13 @@ Four things must happen together, and two of them fail silently if forgotten:
 `tests/test_native_computation_policy.py` enforces 2, 3 and 4, so a forgotten step fails
 locally rather than in review.
 
+A new route or engine must also reach the documentation, which
+`tests/test_static_ui.py` enforces: every mathematical route has to be described in a
+narrative guide rather than only in the reference table, every `/api/verify/*` cross-check
+has to appear on the verification page, and every pinned engine has to be named in the
+README. Writing the feature's own guide is not enough; the summary pages are where readers
+start.
+
 Keep the tagged-output contract: `TAG:value` lines, a mandatory completion marker, and an
 exhausted bound reported as inconclusive rather than as an empty success.
 
