@@ -1,12 +1,12 @@
 # Installation and versioning
 
-Numerisect 0.12.1 is an experimental, source-distributed pre-release. No
+Numerisect 0.13.0 is an experimental, source-distributed pre-release. No
 official RPM, DEB, AppImage, macOS package, Windows executable, or other binary
 installer is published. The repository includes `install.sh` as a convenience
 for installing a checked-out source revision into a user-owned directory.
 
-The immutable `v0.12.1` source release is preserved at
-[DOI 10.5281/zenodo.23172885](https://doi.org/10.5281/zenodo.23172885). The DOI archive
+The immutable `v0.13.0` source release is preserved at
+[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026). The DOI archive
 is source code, not a binary package. The concept DOI
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) represents Numerisect
 across all released versions.
@@ -64,7 +64,7 @@ python3 -m venv .venv
 For the exact DOI-bearing release rather than the moving `main` branch, clone its tag:
 
 ```bash
-git clone --branch v0.12.1 --depth 1 https://github.com/reza-ghazi/Numerisect.git
+git clone --branch v0.13.0 --depth 1 https://github.com/reza-ghazi/Numerisect.git
 ```
 
 The browser opens `http://127.0.0.1:8765/`. The service binds to loopback only.
@@ -115,8 +115,8 @@ The default layout is:
 ```text
 ~/.local/share/numerisect/
 ├── bin/numerisect
-├── current -> releases/0.12.1
-├── releases/0.12.1/
+├── current -> releases/0.13.0
+├── releases/0.13.0/
 ├── state/
 └── output/
 ```
@@ -141,7 +141,7 @@ used. The current implementation uses Git rather than source archives, so no
 archive checksum applies. Third-party sources are not committed to this
 repository.
 
-The reviewed 0.12.1 manifest pins primesieve 12.15 and primecount 8.5 in
+The reviewed 0.13.0 manifest pins primesieve 12.15 and primecount 8.5 in
 addition to the existing engines. `primecount` is built against the managed
 primesieve development tree so a system executable without development files
 cannot produce a mismatched build.

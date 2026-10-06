@@ -1,6 +1,6 @@
 # Factorization workspace
 
-Numerisect 0.12.1 keeps factorization in native engines while Python manages
+Numerisect 0.13.0 keeps factorization in native engines while Python manages
 validation, processes, persistence, cancellation, and result verification.
 
 ## Routing and manual strategies

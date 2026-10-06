@@ -5,6 +5,8 @@ binary packages are published.
 
 ## Unreleased
 
+## 0.13.0 — 2026-10-05
+
 - Corrected the capability index's API total, which read 212 while the application
   served 221, and added the guard that would have caught it. The route reference was
   already held equal to the running app; the summary page a reader meets first was not.

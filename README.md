@@ -4,7 +4,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22679026.svg)](https://doi.org/10.5281/zenodo.22679026)
 
-Numerisect 0.12.1 is a local web workbench for integer factorization, primality
+Numerisect 0.13.0 is a local web workbench for integer factorization, primality
 proofs, prime generation, prime exploration, analytic prime distribution, and rigorous
 Riemann-zeta and L-function analysis.
 
@@ -870,9 +870,9 @@ being reproducible by anyone who clones the repository.
 Academic and educational users can cite the software using
 [CITATION.cff](CITATION.cff). GitHub renders this metadata through its
 **Cite this repository** interface. The permanent DOI for all Numerisect versions is
-[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.12.1`
+[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.13.0`
 snapshot specifically as
-[10.5281/zenodo.23172885](https://doi.org/10.5281/zenodo.23172885).
+[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026).
 See the [citation guide](docs/about/citation.md) for the formatted software citation and
 the distinction between the project-level concept DOI and the immutable version DOI.
 

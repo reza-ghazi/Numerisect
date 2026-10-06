@@ -4,14 +4,15 @@ Numerisect releases are preserved independently of GitHub by Zenodo. Use the
 version-specific DOI when the exact source used for a calculation matters:
 
 > Ghazi, Reza. (2026). *Numerisect: Multi-Engine Integer Factorization and Prime
-> Analysis* (Version 0.12.1) [Computer software]. Zenodo.
-> <https://doi.org/10.5281/zenodo.23172885>
+> Analysis* (Version 0.13.0) [Computer software]. Zenodo.
+> <https://doi.org/10.5281/zenodo.22679026>
 
 ## Which DOI should I use?
 
 | Purpose | DOI |
 |---|---|
-| Cite the exact immutable `v0.12.1` source snapshot | [10.5281/zenodo.23172885](https://doi.org/10.5281/zenodo.23172885) |
+| Cite the exact immutable `v0.13.0` source snapshot | [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) |
+| Cite the earlier `v0.12.1` source snapshot | [10.5281/zenodo.23172885](https://doi.org/10.5281/zenodo.23172885) |
 | Cite the earlier `v0.12.0` source snapshot | [10.5281/zenodo.23172229](https://doi.org/10.5281/zenodo.23172229) |
 | Cite the earlier `v0.11.0` source snapshot | [10.5281/zenodo.23168705](https://doi.org/10.5281/zenodo.23168705) |
 | Cite the earlier `v0.10.0` source snapshot | [10.5281/zenodo.23163322](https://doi.org/10.5281/zenodo.23163322) |
@@ -37,11 +38,12 @@ repository**, and common reference managers can import the DOI directly.
 ## Preserved release
 
 Zenodo archived the current source-only GitHub release as
-`reza-ghazi/Numerisect-v0.12.1.zip`. The public record identifies it as software,
+`reza-ghazi/Numerisect-v0.13.0.zip`. The public record identifies it as software,
 records the GPL-3.0-or-later licence, and links it to the exact Git tag.
 
+- [Zenodo record for version 0.13.0](https://zenodo.org/records/22679026)
+- [GitHub release `v0.13.0`](https://github.com/reza-ghazi/Numerisect/releases/tag/v0.13.0)
 - [Zenodo record for version 0.12.1](https://zenodo.org/records/23172885)
-- [GitHub release `v0.12.1`](https://github.com/reza-ghazi/Numerisect/releases/tag/v0.12.1)
 - [Zenodo record for version 0.12.0](https://zenodo.org/records/23172229)
 - [Zenodo record for version 0.11.0](https://zenodo.org/records/23168705)
 - [Zenodo record for version 0.10.0](https://zenodo.org/records/23163322)
