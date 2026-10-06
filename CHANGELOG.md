@@ -5,6 +5,23 @@ binary packages are published.
 
 ## Unreleased
 
+- Added three guards against documentation drift, after two summary pages were found
+  lagging behind the code in one day. Each time the feature's own guide was thorough and
+  nothing failed when the summaries were not.
+  - Every mathematical route must be described in a narrative guide. The reference table
+    is deliberately excluded, since another test already holds it equal to the running
+    application, so counting it would make this pass trivially. 181 routes are checked,
+    and a prose name counts: a guide may say "NTT primes" where the route says
+    `ntt-primes`.
+  - Every `/api/verify/*` cross-check must be described on the verification page, which is
+    where a reader goes looking for exactly that.
+  - Every pinned engine must be named in the README and in a guide, and every C helper in
+    a guide.
+  Each guard was verified by introducing the failure it exists for — an undocumented
+  route, a renamed cross-check, an engine pinned but never described — and confirming the
+  assertion names the offender. `CONTRIBUTING.md` points at them, because writing a
+  feature's own guide is not the whole job.
+
 - Swept every markdown file against ground truth computed from the code, after the roadmap
   counts turned out to be wrong. The per-group tool counts in the capability index all
   check out (11 groups summing to 139, plus 22 zeta pages), as do the version strings, the
