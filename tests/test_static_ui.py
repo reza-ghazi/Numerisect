@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20261005-factor-stages' in INDEX
-    assert '/assets/app.js?v=20261005-factor-stages' in INDEX
-    assert '/assets/favicon.svg?v=20261005-factor-stages' in INDEX
+    assert '/assets/styles.css?v=20261005-factor-tree' in INDEX
+    assert '/assets/app.js?v=20261005-factor-tree' in INDEX
+    assert '/assets/favicon.svg?v=20261005-factor-tree' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20261005-factor-stages#primes/prime-check' in RUNNER
+    assert '?ui=20261005-factor-tree#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -541,3 +541,76 @@ def test_the_capability_index_states_which_searches_are_bounded_by_nature():
     for ceiling in ceilings:
         rendered = "2^32" if ceiling == 2**32 else f"{ceiling:,}"
         assert rendered in section, rendered
+
+
+def test_the_factor_tree_is_drawn_from_the_servers_chain():
+    """The job view listed factors flat; the gap was that nothing drew the hierarchy.
+
+    The layout runs here against a known chain, out of app.js rather than a copy, so a
+    drawing that loses an edge, overlaps two boxes or drops the link to a continued
+    cofactor fails rather than merely looking wrong.
+    """
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is required to exercise the factor-tree layout")
+    harness = ROOT / "tests" / "factor_tree_layout.js"
+    assert harness.is_file()
+    result = subprocess.run(
+        [node, str(harness)], capture_output=True, text=True, cwd=ROOT
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "failures=0" in result.stdout
+
+
+def test_the_drawing_asks_the_server_for_the_chain_and_never_divides():
+    """Every cofactor in the picture is PARI/GP's; the browser only places boxes."""
+
+    assert "/api/jobs/${job.id}/tree" in APP
+    drawing = APP.split("const TREE_COLUMN", 1)[1].split("function renderDetail", 1)[0]
+    for arithmetic in ("BigInt", "/ Number(", "% Number(", "Math.sqrt"):
+        assert arithmetic not in drawing, arithmetic
+    # A failed request leaves the flat summary standing rather than inventing a tree.
+    assert "the flat summary stays" in APP
+
+
+def _ledger_gap_items() -> tuple[int, set[int]]:
+    """The entries under "Partially implemented", and the items they name."""
+
+    ledger = (ROOT / "docs" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
+    section = ledger.split("## Partially implemented", 1)[1].split("\n## ", 1)[0]
+    entries = re.findall(r"^- \*\*([^*]+)\*\*", section, re.M)
+    items: set[int] = set()
+    for entry in entries:
+        for part in re.split(r",| and ", entry):
+            part = part.strip()
+            span = re.fullmatch(r"(\d+)\s*[–-]\s*(\d+)", part)
+            if span:
+                items.update(range(int(span.group(1)), int(span.group(2)) + 1))
+            elif part.isdigit():
+                items.add(int(part))
+    return len(entries), items
+
+
+def test_the_roadmap_counts_match_the_ledger_they_summarise():
+    """The summary table once read 131/12/4/0, which sums to 147 of 150 items.
+
+    The counts are derived here from the ledger's own entries, so closing a gap without
+    updating the overview fails rather than leaving two files disagreeing about how much
+    is left.
+    """
+
+    entries, items = _ledger_gap_items()
+    overview = (ROOT / "docs" / "about" / "roadmap.md").read_text(encoding="utf-8")
+    row = re.search(r"\| Working with a named gap \| (\d+) \| (\d+) \|", overview)
+    assert row, "the summary table no longer states the gap counts"
+    assert int(row.group(2)) == entries, f"{row.group(2)} entries claimed, {entries} present"
+    assert int(row.group(1)) == len(items), f"{row.group(1)} items claimed, {len(items)} named"
+    implemented = int(re.search(r"\| Implemented with no caveat \| (\d+) \|", overview).group(1))
+    declined = int(re.search(r"\| Declined, with reasoning recorded \| (\d+) \|", overview).group(1))
+    deferred = int(re.search(r"\| Deferred, with no placeholder \| (\d+) \|", overview).group(1))
+    assert implemented + len(items) + declined + deferred == 150
+    ledger = (ROOT / "docs" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
+    words = {11: "eleven", 12: "twelve", 13: "thirteen", 10: "ten", 9: "nine"}
+    counts = {15: "fifteen", 16: "sixteen", 17: "seventeen", 14: "fourteen", 13: "thirteen"}
+    assert f"These {words[entries]} entries cover {counts[len(items)]} proposal items" in ledger

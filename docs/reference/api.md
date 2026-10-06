@@ -32,7 +32,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (221)
+## Routes (222)
 
 ### Engine adapters
 
@@ -193,6 +193,7 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/jobs/{job_id}/pause` | Suspend a running job's process group with SIGSTOP. |
 | `POST` | `/api/jobs/{job_id}/priority` | Change one job's scheduling priority; higher runs sooner. |
 | `POST` | `/api/jobs/{job_id}/resume` | Continue a paused job's process group with SIGCONT. |
+| `GET` | `/api/jobs/{job_id}/tree` | Arrange a job's factors into the cofactor chain PARI/GP computes, in discovery order. |
 | `POST` | `/api/jobs/{job_id}/resume-paused` | Continue a paused job's process group with SIGCONT. |
 
 ### Number theory

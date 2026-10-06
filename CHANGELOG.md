@@ -5,6 +5,30 @@ binary packages are published.
 
 ## Unreleased
 
+- Drew the factor tree, which closes roadmap items 1 and 116. The job view had always
+  been a flat root-plus-leaves list, because nothing computed the numbers between the
+  factors. `GET /api/jobs/{id}/tree` returns the chain PARI/GP builds in
+  `fl_factor_tree`: the input, each factor in the order the engines printed it, and the
+  cofactor left after every division, with `isprime` run on each part. Every division is
+  the engine's — dividing a hundred-digit cofactor is arithmetic, and a node's label has
+  to come from a proof rather than from whichever engine printed the factor. The browser
+  places boxes and edges and computes nothing; its layout is exercised against a known
+  chain by `tests/factor_tree_layout.js`, which reads the shipped code rather than a
+  copy of it. A cofactor continued as a child job carries that job's id, so the drawing
+  spans runs, and a chain that does not reach 1 is reported as the part of the
+  decomposition the engines established.
+- Captured when each factor was first printed. The job manager notes every number of
+  four or more digits as engine output streams past, and stamps the final factor list
+  from that record. This is an observation of the engine's log and is labelled as one:
+  it includes whatever buffering the engine does, shorter factors are not timed at all
+  because small numbers appear in output for every other reason, and a factor the
+  engines never printed as a whole number carries no time rather than inheriting the
+  job's elapsed time. The tree's peeling order follows these times where every factor
+  has one, and the response says which ordering it used.
+- Added a guard that derives the roadmap's summary counts from the ledger's own entries.
+  The table once read 131/12/4/0 — 147 of 150 items — and two files can no longer
+  disagree about how much is left.
+
 - Made CI install the distribution instead of the checkout. Every platform job — Linux
   ARM64, macOS ARM64 and Intel, Ubuntu under WSL — now runs `python -m build` and installs
   the resulting wheel into a fresh environment, so what is exercised is the artifact a

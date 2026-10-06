@@ -97,6 +97,7 @@ from .factor_lab import (
     batch_certificates,
     classic_factor,
     coppersmith_small_roots,
+    factor_tree,
     mersenne_factor_hunt,
     mersenne_factors,
     special_form_analysis,
@@ -4888,6 +4889,119 @@ def export_job(job_id: str) -> FileResponse:
     if path.parent.resolve() != OUTPUT_DIR.resolve():
         raise HTTPException(status_code=403, detail="Invalid output path")
     return FileResponse(path, filename=path.name, media_type="text/plain")
+
+
+@app.get("/api/jobs/{job_id}/tree")
+def get_job_tree(
+    job_id: str, timeout_seconds: int = Query(default=60, ge=1, le=600)
+) -> dict[str, object]:
+    """Arrange a completed job's factors into the hierarchy they actually form.
+
+    The factor list is a multiset; a tree needs the cofactor between each division and
+    a label for it, both of which come from PARI/GP (`fl_factor_tree`). Where the
+    engine's output gave a discovery time, the peeling order is the order the factors
+    were found in, so the drawing follows the run. A cofactor continued as a child job
+    carries that job's id, which is what makes the tree span more than one run.
+    """
+
+    job = database.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    records = [
+        factor
+        for factor in job.get("factors", [])
+        if factor.get("status") not in {"measurement", "polynomial", "candidates", "unit"}
+    ]
+    if not records:
+        raise HTTPException(
+            status_code=409,
+            detail="This job has no factors to arrange into a tree",
+        )
+    timed = [record for record in records if record.get("first_seen_seconds") is not None]
+    ordered = sorted(
+        enumerate(records),
+        key=lambda pair: (
+            pair[1].get("first_seen_seconds") is None,
+            pair[1].get("first_seen_seconds") or 0,
+            pair[0],
+        ),
+    )
+    sequence = [record for _, record in ordered]
+    try:
+        chain = factor_tree(
+            int(job["number"]),
+            [int(str(record["value"])) for record in sequence],
+            timeout=timeout_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PrimeEngineError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    children = {
+        str(child["number"]): child["id"] for child in database.child_jobs(job_id)
+    }
+    nodes: list[dict[str, object]] = [{
+        "id": 0,
+        "parent": None,
+        "value": str(job["number"]),
+        "digits": int(job["digits"]),
+        "kind": "input",
+        "status": "input",
+        "engine": "",
+        "first_seen_seconds": None,
+        "child_job_id": None,
+    }]
+    parent = 0
+    for node, record in zip(chain["nodes"], sequence, strict=True):
+        nodes.append({
+            "id": len(nodes),
+            "parent": parent,
+            "value": node["value"],
+            "digits": len(str(node["value"])),
+            "kind": "nondivisor" if node["kind"] == "nondivisor" else "factor",
+            "status": node["status"],
+            "engine": str(record.get("engine") or job["selected_backend"]),
+            "first_seen_seconds": record.get("first_seen_seconds"),
+            "child_job_id": None,
+        })
+        if node["kind"] != "split" or node["after"] == "1":
+            continue
+        nodes.append({
+            "id": len(nodes),
+            "parent": parent,
+            "value": node["after"],
+            "digits": len(str(node["after"])),
+            "kind": "cofactor",
+            "status": node["cofactor_status"],
+            "engine": "",
+            "first_seen_seconds": None,
+            "child_job_id": children.get(str(node["after"])),
+        })
+        parent = len(nodes) - 1
+
+    if len(timed) == len(records):
+        ordered_by = "discovery time"
+    elif timed:
+        ordered_by = "discovery time where the engine printed one, recorded order otherwise"
+    else:
+        ordered_by = "recorded order"
+    return {
+        "job_id": job["id"],
+        "expression": job["expression"],
+        "number": str(job["number"]),
+        "negative": bool(job["negative"]),
+        "digits": int(job["digits"]),
+        "complete": bool(chain["complete"]),
+        "remaining": chain["remaining"],
+        "ordered_by": ordered_by,
+        "nodes": nodes,
+        "children": [
+            {"job_id": child_id, "number": number} for number, child_id in children.items()
+        ],
+        "engine": chain["engine"],
+        "note": chain["note"],
+    }
 
 
 @app.get("/api/jobs/{job_id}/log")

@@ -28,6 +28,41 @@ status, decimal length, discovery engine, and total elapsed time. Composite or
 unknown leaves can be continued as linked child jobs. The parent result remains
 unchanged and the child records its parent job ID.
 
+### The tree is drawn, not listed
+
+`GET /api/jobs/{job_id}/tree` returns the hierarchy the run actually produced: the
+input, each factor in the order the engines printed it, and the cofactor left after
+every division. PARI/GP performs each division and runs `isprime` on each part
+(`fl_factor_tree`), because dividing a hundred-digit cofactor is arithmetic and does
+not belong in the interface, and because a node's label has to come from a proof
+rather than from whichever engine happened to print the factor. The browser receives
+the chain and places boxes; it computes no number in it. If the chain cannot be
+built — a `tune` measurement is a report about the input, not a decomposition — the
+flat summary stays and nothing is drawn.
+
+A cofactor that was continued as a child job carries that job's id, so the drawing
+spans more than one run: clicking the node opens the child. A chain that does not
+reach 1 is reported as the part of the decomposition the engines established, with
+the remaining cofactor named, and is never presented as a factorization.
+
+### When each factor appeared
+
+Each factor records `first_seen_seconds`: the offset, from the moment the job started
+running, at which its value first appeared in the engine's output. The job manager
+notes every number of four or more digits as the output streams past and matches the
+final factor list against that record.
+
+This is an observation of the engine's own log, not a measurement of the algorithm —
+it includes whatever buffering and staging the engine does, and a single number tells
+you when the engine announced the factor, not how long finding it cost. Shorter
+factors are not timed at all: three digits appear in engine output for every other
+reason, from curve counts to line numbers. A factor the engines never printed as a
+whole number, or one produced by a helper the manager calls directly rather than as a
+subprocess, carries no time, and an absent time means unknown. It is never filled in
+with the job's elapsed time, which would read as though that factor took the whole run.
+The peeling order of the tree follows these times where every factor has one, and the
+response says which ordering it used in `ordered_by`.
+
 Batch mode accepts newline text, CSV-like values, or a JSON array. Every
 expression is validated before any job is queued. The existing controlled
 worker count prevents a file import from bypassing CPU concurrency limits. A

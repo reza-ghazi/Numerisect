@@ -581,3 +581,42 @@ fl_mersenne_confirm(candidates, orders) =
   );
   print("DONE:", #candidates);
 };
+
+\\ --- Factor tree: the cofactor chain a discovery order implies ----------------------
+\\ The job view could only list factors flat because nothing computed the intermediate
+\\ cofactors: drawing the hierarchy needs n/p1, then (n/p1)/p2, and a primality label
+\\ for each one. PARI/GP performs every division and every test. Dividing a 100-digit
+\\ cofactor in Python would be arithmetic in the interface layer, which this repository
+\\ does not allow, and the labels must come from isprime rather than from the engine
+\\ that happened to print the factor.
+\\ Statuses: 1 prime, 0 composite, 2 the cofactor reached one, -1 the test timed out.
+fl_factor_tree(n, values, seconds) =
+{
+  my(remaining = abs(n), v, before, count = 0, fstatus, cstatus);
+  if(remaining < 1, error("A factor tree needs a nonzero integer"));
+  for(i = 1, #values,
+    v = abs(values[i]);
+    before = remaining;
+    if(v <= 1,
+      print("NODE:", i, "|", v, "|", before, "|", remaining, "|-1|-1|unit");
+      count++;
+      next;
+    );
+    if(before % v != 0,
+      print("NODE:", i, "|", v, "|", before, "|", remaining, "|-1|-1|nondivisor");
+      count++;
+      next;
+    );
+    remaining = before / v;
+    fstatus = -1;
+    alarm(seconds, fstatus = if(isprime(v), 1, 0));
+    cstatus = -1;
+    alarm(seconds, cstatus = if(remaining <= 1, 2, if(isprime(remaining), 1, 0)));
+    print("NODE:", i, "|", v, "|", before, "|", remaining, "|", fstatus, "|", cstatus,
+          "|split");
+    count++;
+  );
+  print("REMAINING:", remaining);
+  print("COMPLETE:", if(remaining == 1, 1, 0));
+  print("DONE:", count);
+};

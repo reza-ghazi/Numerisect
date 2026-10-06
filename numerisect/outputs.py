@@ -125,7 +125,13 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
     )
     details = "\n".join(
         f"  {factor['value']}  [{factor['status']}, {factor['digits']} digits; "
-        f"discovered by {factor.get('engine', job['selected_backend'])}]"
+        f"discovered by {factor.get('engine', job['selected_backend'])}"
+        + (
+            f"; first printed {factor['first_seen_seconds']}s into the run"
+            if factor.get("first_seen_seconds") is not None
+            else ""
+        )
+        + "]"
         for factor in factors
     )
     # The polynomial itself, when one was found, written in Msieve's own field order so

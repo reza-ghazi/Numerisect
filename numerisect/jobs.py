@@ -112,6 +112,12 @@ class JobManager:
         self._paused_since: dict[str, float] = {}
         self._paused_total: dict[str, float] = {}
         self._limit_hits: dict[str, str] = {}
+        # When each number was first printed by an engine, measured from the moment the
+        # job started running. The engines report a factor on the line that announces
+        # it, so the only honest timestamp available is "first seen in the output"; see
+        # `_note_sightings`.
+        self._first_seen: dict[str, dict[str, float]] = {}
+        self._job_clock: dict[str, float] = {}
 
     #: Backends whose result is a report, not a factorization: a measured crossover or
     #: a polynomial. The completeness gate cannot apply to them, because there is no
@@ -415,6 +421,62 @@ class JobManager:
                 self.database.update_job(job_id, phase=phase, progress=progress)
                 return
 
+    #: A job records at most this many distinct numbers from its output. YAFU and CADO
+    #: print millions of lines; the cap bounds the bookkeeping without affecting the
+    #: factors, which are few and appear early in their own lines.
+    MAX_TRACKED_SIGHTINGS = 50_000
+
+    #: Numbers shorter than this are not tracked: a line like "Run 3 out of 1000" would
+    #: otherwise claim a discovery time for the factor 3.
+    MIN_TRACKED_DIGITS = 4
+
+    _SIGHTING = re.compile(r"\d{%d,}" % MIN_TRACKED_DIGITS)
+
+    def _note_sightings(self, job_id: str, line: str) -> None:
+        """Record when each number in a line of engine output was first printed.
+
+        This is an observation of the engine's own log, not a measurement of the
+        algorithm: a factor's time is when the engine announced it, which includes
+        whatever buffering and staging the engine does. The honest label travels with
+        the number — see `_attach_discovery_times`.
+        """
+
+        seen = self._first_seen.get(job_id)
+        if seen is None or len(seen) >= self.MAX_TRACKED_SIGHTINGS:
+            return
+        started = self._job_clock.get(job_id)
+        if started is None:
+            return
+        elapsed = round(time.monotonic() - started, 3)
+        for number in self._SIGHTING.findall(line):
+            if number not in seen:
+                seen[number] = elapsed
+                if len(seen) >= self.MAX_TRACKED_SIGHTINGS:
+                    return
+
+    def _attach_discovery_times(
+        self, job_id: str, factors: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Stamp each factor with the moment its value first appeared in the output.
+
+        A factor the engines never printed as a whole number — one read out of a
+        structured report, or produced by a helper this manager calls directly rather
+        than as a subprocess — carries no time at all. An absent time means unknown,
+        and is never filled in with the job's elapsed time, which would read as though
+        the factor took the whole run to find.
+        """
+
+        seen = self._first_seen.get(job_id) or {}
+        if not seen:
+            return factors
+        for factor in factors:
+            value = str(factor.get("value", ""))
+            if len(value) < self.MIN_TRACKED_DIGITS or value not in seen:
+                continue
+            factor["first_seen_seconds"] = seen[value]
+            factor["first_seen_note"] = "first printed by the engine at this offset"
+        return factors
+
     def _run_process(
         self,
         job: dict[str, Any],
@@ -476,6 +538,7 @@ class JobManager:
             for line in process.stdout:
                 captured.append(line)
                 self._append_log(job, line)
+                self._note_sightings(job_id, line)
                 self._set_phase_from_line(job_id, line)
                 if event.is_set():
                     raise Cancelled("Job cancelled")
@@ -1115,6 +1178,9 @@ class JobManager:
                 finished_at=utc_now(),
             )
             return
+        with self._lock:
+            self._job_clock[job_id] = time.monotonic()
+            self._first_seen[job_id] = {}
         self.database.update_job(
             job_id,
             status="running",
@@ -1281,6 +1347,7 @@ class JobManager:
                 )
                 phase = "Complete" if complete else "Incomplete factorization"
             finished_at = utc_now()
+            factors = self._attach_discovery_times(job_id, factors)
             self.database.update_job(
                 job_id,
                 status="completed" if complete else "failed",
@@ -1304,6 +1371,7 @@ class JobManager:
                         warning=f"{warning} {export_warning}" if warning else export_warning,
                     )
         except Cancelled:
+            factors = self._attach_discovery_times(job_id, factors)
             self.database.update_job(
                 job_id,
                 status="cancelled",
@@ -1313,6 +1381,7 @@ class JobManager:
             )
         except LimitExceeded as exc:
             self._append_log(job, f"\nResource limit: {exc}\n")
+            factors = self._attach_discovery_times(job_id, factors)
             self.database.update_job(
                 job_id,
                 status="failed",
@@ -1324,6 +1393,7 @@ class JobManager:
             )
         except Exception as exc:
             self._append_log(job, f"\nApplication error: {exc}\n")
+            factors = self._attach_discovery_times(job_id, factors)
             self.database.update_job(
                 job_id,
                 status="failed",
@@ -1338,6 +1408,8 @@ class JobManager:
                 self._futures.pop(job_id, None)
                 self._paused_since.pop(job_id, None)
                 self._paused_total.pop(job_id, None)
+                self._first_seen.pop(job_id, None)
+                self._job_clock.pop(job_id, None)
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         job = self.database.get_job(job_id)

@@ -136,6 +136,22 @@ summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .factor-tree-branches::before { content: ''; position: absolute; top: -16px; left: 50%; width: 1px; height: 20px; background: var(--line); }
 .factor-tree-leaf { min-width: 0; padding: 13px; border: 1px solid var(--line); border-top: 2px solid var(--accent); border-radius: 8px; background: #111518; text-align: center; }
 .factor-tree-leaf.composite { border-top-color: var(--amber); }
+/* The drawn hierarchy: one box per node, edges from parent to child. The coordinates
+   come from the layout in app.js; the numbers in the boxes come from PARI/GP. */
+.factor-tree-drawing { overflow: auto; padding: 4px 0 10px; }
+.factor-tree-svg { display: block; min-width: 100%; }
+.factor-tree-svg line { stroke: var(--line); stroke-width: 1.5; }
+.factor-tree-svg rect { fill: #111518; stroke: var(--line); stroke-width: 1; }
+.factor-tree-svg .tree-value { fill: var(--text); font: 700 13px/1 "SFMono-Regular", Consolas, monospace; }
+.factor-tree-svg .tree-detail { fill: var(--muted); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.factor-tree-svg .tree-link { fill: var(--accent); font-size: 10px; font-weight: 700; }
+.factor-tree-svg .tree-node.input rect { fill: var(--accent-soft); stroke: rgba(79,156,249,.45); }
+.factor-tree-svg .tree-node.factor rect { stroke: var(--accent); }
+.factor-tree-svg .tree-node.cofactor rect { stroke: var(--amber); stroke-dasharray: 4 3; }
+.factor-tree-svg .tree-node.nondivisor rect { stroke: var(--amber); }
+.factor-tree-svg .tree-node.undetermined rect { stroke-dasharray: 2 3; }
+.factor-tree-svg .tree-node.linked { cursor: pointer; }
+.factor-tree-svg .tree-node.linked:hover rect, .factor-tree-svg .tree-node.linked:focus rect { stroke: var(--accent); stroke-width: 2; }
 .factor-kind { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 #job-log { max-height: 430px; overflow: auto; margin: 0; padding: 15px; color: #abb8bf; background: #080a0b; border-radius: 9px; font: 12px/1.55 "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .hidden { display: none !important; }

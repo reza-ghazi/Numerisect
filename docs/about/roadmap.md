@@ -13,8 +13,8 @@ every item's status and the precise gap where one remains.
 
 | Status | Proposal items | Ledger entries |
 |---|---:|---:|
-| Implemented with no caveat | 130 | — |
-| Working with a named gap | 17 | 12 |
+| Implemented with no caveat | 132 | — |
+| Working with a named gap | 15 | 11 |
 | Declined, with reasoning recorded | 3 | 4 |
 | Deferred, with no placeholder | 0 | 0 |
 | **Total** | **150** | |
@@ -66,16 +66,17 @@ Numerisect is at 0.x: the minor number carries the weight, and the version text 
 **The bar for 1.0 has not been set**, and this section does not set it — it records what
 is actually left, so that whoever sets it is choosing from facts.
 
-The remaining distance is **not** more mathematics. Of the twelve items that still carry
-a named gap, none is a missing computation; they divide into two kinds, and only one kind
-can be closed:
+The remaining distance is **not** more mathematics. Of the eleven entries that still
+carry a named gap, none is a missing computation; they divide into two kinds, and only
+one kind can be closed:
 
-**Presentation, and therefore closeable.** The factor view renders as a flat
-root-plus-leaves list rather than a tree, although the parent/child relationship already
-exists in the data. The engine decision path is returned as a list rather than drawn. Job
-search has no saved queries or facets. Per-factor discovery time is not captured. CADO's
-own stages cannot be run one at a time, because its workflow is driven by an upstream
-Python harness and isolating a stage means reproducing that harness's bookkeeping.
+**Presentation, and therefore closeable.** The engine decision path is returned as a list
+rather than drawn. Job search has no saved queries or facets. CADO's own stages cannot be
+run one at a time, because its workflow is driven by an upstream Python harness and
+isolating a stage means reproducing that harness's bookkeeping. The factor view has been
+drawn as a tree and per-factor discovery times are captured, which closes the first two
+of the five — see
+[the ledger's closed entries](../ROADMAP_STATUS.md#closed-after-the-original-ledger).
 
 **Bounded searches, and therefore permanent.** The pseudoprime taxonomy, Korselt
 analysis, covering-set verification, record-number families, sociable cycles and

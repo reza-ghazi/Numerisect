@@ -434,6 +434,97 @@ def _classic_primality(factor: str, cofactor: str, timeout: int) -> tuple[str, s
     return verdicts["1"], verdicts["2"]
 
 
+#: A tree is drawn from the factors one job found, so this is a generous ceiling on a
+#: factor multiset rather than a mathematical limit.
+MAX_TREE_FACTORS = 256
+
+#: Status codes `fl_factor_tree` prints, in both positions.
+_TREE_STATUS = {"1": "prime", "0": "composite", "2": "one", "-1": "undetermined"}
+
+
+def factor_tree(
+    number: int, values: list[int], timeout: int = 120
+) -> dict[str, Any]:
+    """Build the cofactor chain that a discovery order implies, in PARI/GP.
+
+    The factors of a completed job are a multiset, and a hierarchy needs the numbers
+    between them: `n/p1`, then `(n/p1)/p2`, and a primality label for each. PARI/GP
+    performs every division and runs `isprime` on every part, because dividing a
+    hundred-digit cofactor is arithmetic and does not belong in this layer, and because
+    the label on a node must come from a proof rather than from whichever engine
+    printed the factor.
+
+    Args:
+        number: The job's input, taken as its absolute value.
+        values: The factors in the order they are to be peeled off — discovery order
+            where the engine's output gave one, otherwise the recorded order.
+        timeout: Seconds allowed for each primality test; an expired test leaves the
+            node `undetermined` rather than guessing.
+
+    Returns:
+        A mapping with the chain under `nodes`, each entry carrying the factor, the
+        cofactor before and after the division, both labels, and `kind`: `split` for a
+        factor that divided, `nondivisor` for one that did not, `unit` for ±1. Also
+        `remaining` — the cofactor left at the end — and `complete`, true only when the
+        chain reached 1.
+
+    Raises:
+        ValueError: On an empty or oversized factor list, or a number below 1.
+        PrimeEngineError: If the engine returns a node count that disagrees with the
+            rows, or no completion marker.
+    """
+
+    if abs(number) < 1:
+        raise ValueError("A factor tree needs a nonzero integer")
+    if not values:
+        raise ValueError("A factor tree needs at least one factor")
+    if len(values) > MAX_TREE_FACTORS:
+        raise ValueError(f"At most {MAX_TREE_FACTORS} factors may be arranged into a tree")
+    if timeout < 1 or timeout > 3600:
+        raise ValueError("The per-test timeout must be between 1 and 3600 seconds")
+    vector = ", ".join(str(abs(int(value))) for value in values)
+    lines = _gp_call(
+        f"fl_factor_tree({abs(int(number))}, [{vector}], {int(timeout)})", timeout + 30
+    )
+    nodes: list[dict[str, Any]] = []
+    for record in _tagged(lines, "NODE"):
+        parts = [part.strip() for part in record.split("|")]
+        if len(parts) != 7:
+            raise PrimeEngineError("PARI/GP returned a malformed factor-tree node")
+        nodes.append({
+            "index": int(parts[0]),
+            "value": parts[1],
+            "before": parts[2],
+            "after": parts[3],
+            "status": _TREE_STATUS.get(parts[4], "undetermined"),
+            "cofactor_status": _TREE_STATUS.get(parts[5], "undetermined"),
+            "kind": parts[6],
+        })
+    declared = _one(lines, "DONE")
+    if str(len(nodes)) != declared:
+        raise PrimeEngineError(
+            f"PARI/GP reported {declared} tree nodes but printed {len(nodes)}"
+        )
+    remaining = _one(lines, "REMAINING")
+    complete = _one(lines, "COMPLETE") == "1"
+    note = (
+        "PARI/GP divided out each factor in turn and proved every label with isprime."
+        if complete
+        else (
+            f"The chain ended at {remaining} rather than 1, so this is the part of the "
+            "decomposition the engines established, not a complete factorization."
+        )
+    )
+    return {
+        "number": str(abs(int(number))),
+        "nodes": nodes,
+        "remaining": remaining,
+        "complete": complete,
+        "engine": "PARI/GP",
+        "note": note,
+    }
+
+
 def classic_factor(
     method: str, number: int, bound: int | None = None, timeout: int = 300
 ) -> dict[str, Any]:

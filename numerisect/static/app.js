@@ -129,7 +129,7 @@ function renderFactors(job) {
   container.innerHTML = job.factors.map((factor, index) => `
     <div class="factor-row">
       <code>${escapeHtml(factor.value)}</code>
-      <span class="factor-kind">${escapeHtml(factor.status.replace('_', ' '))} · ${factor.digits}d · ${escapeHtml(factor.engine || job.selected_backend)}${['composite', 'unknown'].includes(factor.status) ? `<button class="cofactor-continue secondary" type="button" data-factor-index="${index}">Continue cofactor</button>` : ''}</span>
+      <span class="factor-kind">${escapeHtml(factor.status.replace('_', ' '))} · ${factor.digits}d · ${escapeHtml(factor.engine || job.selected_backend)}${factor.first_seen_seconds === undefined || factor.first_seen_seconds === null ? '' : ` · first printed at ${Number(factor.first_seen_seconds).toFixed(3)} s`}${['composite', 'unknown'].includes(factor.status) ? `<button class="cofactor-continue secondary" type="button" data-factor-index="${index}">Continue cofactor</button>` : ''}</span>
     </div>
   `).join('');
   container.querySelectorAll('.cofactor-continue').forEach((button) => {
@@ -178,6 +178,10 @@ function renderFactors(job) {
   const tree = $('#factor-tree');
   tree.innerHTML = `<div class="factor-tree-root"><span>Input</span><code>${job.negative ? '−' : ''}${escapeHtml(shortNumber(job.number, 64))}</code><small>${job.digits} digits${elapsed === null ? '' : ` · ${elapsed.toFixed(3)} s total`}</small></div><div class="factor-tree-branches">${[...grouped.values()].map((factor) => `<article class="factor-tree-leaf ${escapeHtml(factor.status)}"><span>${escapeHtml(factor.status.replace('_', ' '))}</span><code>${escapeHtml(shortNumber(factor.value, 64))}${factor.exponent > 1 ? `<sup>${factor.exponent}</sup>` : ''}</code><small>${factor.digits} digits · ${escapeHtml(factor.engine || job.selected_backend)}</small></article>`).join('')}</div>`;
   tree.classList.remove('hidden');
+  // The flat summary above is what remains if the hierarchy cannot be built — a report
+  // job has no decomposition to draw. The drawing replaces it when the server returns
+  // one, and the cofactors in it are PARI/GP's, never computed here.
+  drawFactorTree(job);
 
   // Cross-engine verification: each engine's own answer, side by side. Agreement is on
   // the factor multiset; the primality column is each engine's own conclusion, and the
@@ -192,6 +196,108 @@ function renderFactors(job) {
     comparison.innerHTML = '';
     comparison.classList.add('hidden');
   }
+}
+
+// --- The factor tree, drawn ----------------------------------------------------------
+// The server returns the chain PARI/GP computed: the input, each factor in the order
+// the engines printed it, and the cofactor left after each division. Everything below
+// is layout — depths, column positions, line endpoints — and no number is derived here.
+
+const TREE_COLUMN = 188;
+const TREE_ROW = 104;
+const TREE_BOX = { width: 168, height: 62 };
+
+function layoutFactorTree(nodes) {
+  const children = new Map();
+  nodes.forEach((node) => {
+    if (node.parent === null || node.parent === undefined) return;
+    const list = children.get(node.parent) || [];
+    list.push(node.id);
+    children.set(node.parent, list);
+  });
+  const depth = new Map();
+  const column = new Map();
+  let cursor = 0;
+  const place = (id, level) => {
+    depth.set(id, level);
+    const kids = children.get(id) || [];
+    if (!kids.length) {
+      column.set(id, cursor);
+      cursor += 1;
+      return column.get(id);
+    }
+    const spans = kids.map((kid) => place(kid, level + 1));
+    const centre = (Math.min(...spans) + Math.max(...spans)) / 2;
+    column.set(id, centre);
+    return centre;
+  };
+  if (nodes.length) place(nodes[0].id, 0);
+  const placed = nodes.map((node) => ({
+    ...node,
+    x: column.get(node.id) * TREE_COLUMN + TREE_COLUMN / 2,
+    y: depth.get(node.id) * TREE_ROW + TREE_BOX.height / 2 + 8,
+  }));
+  const levels = Math.max(...placed.map((node) => depth.get(node.id))) + 1;
+  return {
+    nodes: placed,
+    width: Math.max(cursor, 1) * TREE_COLUMN,
+    height: levels * TREE_ROW + TREE_BOX.height,
+  };
+}
+
+function factorTreeSvg(tree) {
+  const { nodes, width, height } = layoutFactorTree(tree.nodes);
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const edges = nodes
+    .filter((node) => node.parent !== null && node.parent !== undefined)
+    .map((node) => {
+      const parent = byId.get(node.parent);
+      return `<line x1="${parent.x}" y1="${parent.y + TREE_BOX.height / 2}" x2="${node.x}" y2="${node.y - TREE_BOX.height / 2}" />`;
+    })
+    .join('');
+  const boxes = nodes.map((node) => {
+    const left = node.x - TREE_BOX.width / 2;
+    const top = node.y - TREE_BOX.height / 2;
+    const detail = [
+      node.kind === 'input' ? `${node.digits} digits` : `${node.digits}d`,
+      node.kind === 'input' ? '' : escapeHtml(String(node.status).replace('_', ' ')),
+      node.engine ? escapeHtml(shortNumber(node.engine, 22)) : '',
+      node.first_seen_seconds === null || node.first_seen_seconds === undefined
+        ? '' : `${Number(node.first_seen_seconds).toFixed(3)} s`,
+    ].filter(Boolean).join(' · ');
+    const link = node.child_job_id
+      ? `<title>Continued in job ${escapeHtml(node.child_job_id)}</title>`
+      : '';
+    return `<g class="tree-node ${escapeHtml(node.kind)} ${escapeHtml(String(node.status))}${node.child_job_id ? ' linked' : ''}"${node.child_job_id ? ` data-job="${escapeHtml(node.child_job_id)}" tabindex="0" role="button"` : ''}>${link}<rect x="${left}" y="${top}" width="${TREE_BOX.width}" height="${TREE_BOX.height}" rx="10" /><text x="${node.x}" y="${node.y - 6}" text-anchor="middle" class="tree-value">${escapeHtml(shortNumber(node.value, 20))}</text><text x="${node.x}" y="${node.y + 14}" text-anchor="middle" class="tree-detail">${detail}</text>${node.child_job_id ? `<text x="${node.x}" y="${node.y + 26}" text-anchor="middle" class="tree-link">continued →</text>` : ''}</g>`;
+  }).join('');
+  return `<svg class="factor-tree-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Factor tree for ${escapeHtml(tree.number)}">${edges}${boxes}</svg>`;
+}
+
+async function drawFactorTree(job) {
+  const container = $('#factor-tree');
+  let tree;
+  try {
+    tree = await api(`/api/jobs/${job.id}/tree`);
+  } catch {
+    return;                      // the flat summary stays; nothing is invented here
+  }
+  if (!tree.nodes?.length || state.selectedId !== job.id) return;
+  const caption = [
+    `Peeling order: ${escapeHtml(tree.ordered_by)}`,
+    `cofactors and labels by ${escapeHtml(tree.engine)}`,
+    tree.complete ? 'chain reaches 1' : `chain ends at ${escapeHtml(shortNumber(tree.remaining, 24))}`,
+  ].join(' · ');
+  container.innerHTML = `<div class="factor-tree-drawing">${factorTreeSvg(tree)}</div><p class="field-note">${caption}. ${escapeHtml(tree.note)}</p>`;
+  container.querySelectorAll('.tree-node.linked').forEach((node) => {
+    const open = async () => {
+      state.selectedId = node.dataset.job;
+      await loadJobs();
+    };
+    node.addEventListener('click', open);
+    node.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+    });
+  });
 }
 
 function renderDetail(job) {

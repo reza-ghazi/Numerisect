@@ -78,16 +78,11 @@ in five languages, and notebook integration.
 
 ## Partially implemented
 
-These twelve entries cover seventeen proposal items, and they are what the 1.0
+These eleven entries cover fifteen proposal items, and they are what the 1.0
 discussion weighs; see
 [what stands between 0.x and 1.0](about/roadmap.md#what-stands-between-0x-and-10) for how
 they divide into gaps that can be closed and limits that are permanent.
 
-- **1 and 116** — the factor view shows the input, every factor with its exponent,
-  primality status and discovering engine, and one total elapsed time. It renders as
-  a flat root-plus-leaves list, not a hierarchy, and per-factor discovery time is not
-  captured. Composite cofactors can be continued as linked child jobs, so the parent
-  and child relationship exists in the data but is not drawn as a tree.
 - **4** — every algorithm the installed YAFU build exposes is selectable
   (rho, p−1, p+1, ECM, SIQS, NFS, SNFS, Fermat, trial division), and its 15 expert
   bounds now reach the engine: they were validated and unit-tested but never passed to
@@ -125,6 +120,18 @@ they divide into gaps that can be closed and limits that are permanent.
   saved-query or faceted-search interface.
 
 ## Closed after the original ledger
+
+- **1 and 116 — the factor tree, drawn, with times.** The factor view was a flat
+  root-plus-leaves list and captured no per-factor time. `GET /api/jobs/{id}/tree` now
+  returns the chain PARI/GP computes — the input, each factor in the order the engines
+  printed it, and the cofactor left after each division, every one of them divided and
+  labelled by `fl_factor_tree` rather than in the interface — and the browser draws it,
+  placing boxes and edges only. A cofactor continued as a child job carries that job's
+  id, so the drawing spans runs. Each factor also records when its value first appeared
+  in the engine's output. That is an observation of the engine's log, not a measurement
+  of the algorithm: factors below four digits are not timed, because short numbers
+  appear in output for every other reason, and a factor the engines never printed as a
+  whole number carries no time rather than inheriting the job's elapsed time.
 
 - **10 — cross-engine verification.** `cross_verify` requires YAFU and Msieve to agree on
   the factor multiset, and since 0.11.0 it records the comparison: each engine's factors

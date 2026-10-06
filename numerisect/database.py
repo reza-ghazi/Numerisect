@@ -280,6 +280,19 @@ class Database:
             ).fetchall()
         return [self._decode(row) for row in rows]  # type: ignore[misc]
 
+    def child_jobs(self, job_id: str) -> list[dict[str, Any]]:
+        """Jobs started from a composite cofactor this job left behind.
+
+        The relationship is what makes a factor tree span more than one run: a
+        cofactor continued elsewhere is an internal node, not a dead end.
+        """
+
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM jobs WHERE parent_job_id=? ORDER BY created_at", (job_id,)
+            ).fetchall()
+        return [self._decode(row) for row in rows]  # type: ignore[misc]
+
     # ----- workspace tranche: search, workspaces, reports, cache, history -------------
 
     def search_jobs(
