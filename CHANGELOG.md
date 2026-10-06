@@ -5,6 +5,11 @@ binary packages are published.
 
 ## Unreleased
 
+- Recorded the Zenodo version DOI `10.5281/zenodo.23175872` for the `v0.13.0` source
+  snapshot in `CITATION.cff`, the README, the capability index, both installation
+  guides, and the citation, FAQ, publishing and changelog pages. The concept DOI
+  `10.5281/zenodo.22679026` continues to resolve to the newest archived version.
+
 ## 0.13.0 — 2026-10-05
 
 - Corrected the capability index's API total, which read 212 while the application

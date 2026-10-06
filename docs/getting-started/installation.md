@@ -3,7 +3,7 @@
 Numerisect is source-distributed. There are no official binary packages.
 
 Release `v0.13.0` is preserved as an immutable source snapshot at
-[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026). To reproduce
+[DOI 10.5281/zenodo.23175872](https://doi.org/10.5281/zenodo.23175872). To reproduce
 that released version instead of following the moving `main` branch, use:
 
 ```bash

@@ -6,7 +6,7 @@ installer is published. The repository includes `install.sh` as a convenience
 for installing a checked-out source revision into a user-owned directory.
 
 The immutable `v0.13.0` source release is preserved at
-[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026). The DOI archive
+[DOI 10.5281/zenodo.23175872](https://doi.org/10.5281/zenodo.23175872). The DOI archive
 is source code, not a binary package. The concept DOI
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026) represents Numerisect
 across all released versions.

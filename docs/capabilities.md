@@ -11,7 +11,7 @@ work.
 
 This capability inventory corresponds to the `v0.13.0` source release. Its archived
 snapshot is preserved at
-[DOI 10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026).
+[DOI 10.5281/zenodo.23175872](https://doi.org/10.5281/zenodo.23175872).
 
 The current application exposes five top-level workspaces, 139 individually routed
 Prime Tools pages, 22 individually routed zeta pages, and 228 HTTP API operations. The

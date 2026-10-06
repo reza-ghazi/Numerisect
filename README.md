@@ -872,7 +872,7 @@ Academic and educational users can cite the software using
 **Cite this repository** interface. The permanent DOI for all Numerisect versions is
 [10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026); cite the `v0.13.0`
 snapshot specifically as
-[10.5281/zenodo.22679026](https://doi.org/10.5281/zenodo.22679026).
+[10.5281/zenodo.23175872](https://doi.org/10.5281/zenodo.23175872).
 See the [citation guide](docs/about/citation.md) for the formatted software citation and
 the distinction between the project-level concept DOI and the immutable version DOI.
 
