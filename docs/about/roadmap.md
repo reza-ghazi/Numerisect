@@ -11,12 +11,20 @@ every item's status and the precise gap where one remains.
 
 ## Summary
 
-| Status | Count |
-|---|---:|
-| Fully implemented | 131 |
-| Working with a named gap | 12 |
-| Declined, with reasoning recorded | 4 |
-| Deferred | 0 |
+| Status | Proposal items | Ledger entries |
+|---|---:|---:|
+| Implemented with no caveat | 130 | — |
+| Working with a named gap | 17 | 12 |
+| Declined, with reasoning recorded | 3 | 4 |
+| Deferred, with no placeholder | 0 | 0 |
+| **Total** | **150** | |
+
+The two columns differ because a ledger entry can cover several proposal items — 29, 30
+and 37 share one, as do 112 and 113 — and because item 16 is recorded as two entries, its
+autotuning half delivered in a narrower form and its benchmarking half declined. Each
+item is counted once above, under the strongest caveat that applies to it: items 4 and 14
+appear in the ledger's implemented narrative *and* in the gap list, because part of each
+shipped and part did not, and they are counted here as gaps.
 
 Beyond the proposal, an audit compared what the installed libraries expose against what
 the application calls, and closed the gaps that fall within the subject: a prime-counting

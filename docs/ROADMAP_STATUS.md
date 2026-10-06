@@ -78,7 +78,8 @@ in five languages, and notebook integration.
 
 ## Partially implemented
 
-These are the twelve items the 1.0 discussion weighs; see
+These twelve entries cover seventeen proposal items, and they are what the 1.0
+discussion weighs; see
 [what stands between 0.x and 1.0](about/roadmap.md#what-stands-between-0x-and-10) for how
 they divide into gaps that can be closed and limits that are permanent.
 
@@ -93,29 +94,19 @@ they divide into gaps that can be closed and limits that are permanent.
   YAFU until 0.9.1. SQUFOF is supplied by `numerisect-squfof` because no installed
   library provides it. SQUFOF is limited to inputs below 2^62 by its 64-bit cycle; larger inputs
   are rejected explicitly rather than answered.
-- **10 — now complete.** Cross-verification compares YAFU and Msieve factor multisets and
-  rejects a disagreement, and the comparison is recorded side by side: each engine's
-  factors with the primality label that engine assigned, the cofactor it left, and its
-  elapsed time. A primality disagreement on an agreed factor set raises a warning naming
-  the factor and both labels. The times are single measurements, not a benchmark, and are
-  labelled as such.
 - **13** — certificates are generated and independently verified for every prime factor
   of a completed job. Certifying a factor that is only a probable prime still depends on
   PARI proving it first.
 - **14** — prime ranges and standard k-tuplets of sizes 2, 4 and 6 use primesieve.
   Sizes 3 and 5 stay on PARI: primesieve emits both admissible shapes together, and
   separating them would require offset arithmetic outside the engines.
-- **17** — YAFU's own `-np` poly-search switch is deliberately not exposed: YAFU's
-  documentation states that its "multi-threaded polynomial selection is handled via
-  msieve library function calls", and its log confirms it, so the switch is a second
-  front end to the selection already reachable through the `msieve_poly` strategy. It
-  would add neither a capability nor an independent check.
 - **17** — CADO-NFS parameters are exposed, including the `tasks.polyselect.*` keys, and
   stage progress is parsed from its log. **Polynomial selection** now runs in isolation
   in Msieve, whole or one stage at a time, and reports the polynomial it chose. Running
   CADO's own stages one at a time is still not implemented: its workflow is driven by the
   Python harness upstream, and isolating a stage means reproducing that harness's
-  bookkeeping rather than passing a flag.
+  bookkeeping rather than passing a flag. YAFU's own `-np` switch is deliberately not
+  exposed: YAFU's documentation states that its "multi-threaded polynomial selection is handled via msieve library function calls", and its log confirms it, so the switch is a second front end to the selection already reachable through the `msieve_poly` strategy. It would add neither a capability nor an independent check.
 - **29, 30, 37** — the taxonomy, Korselt analysis, and covering-set verification are
   complete within documented finite bounds; results beyond those bounds are
   inconclusive rather than negative.
@@ -132,6 +123,14 @@ they divide into gaps that can be closed and limits that are permanent.
   measurements from this machine's job history, not a benchmark of the engines.
 - **135** — job and report search covers text, status, engine, and date. There is no
   saved-query or faceted-search interface.
+
+## Closed after the original ledger
+
+- **10 — cross-engine verification.** `cross_verify` requires YAFU and Msieve to agree on
+  the factor multiset, and since 0.11.0 it records the comparison: each engine's factors
+  with the primality label that engine assigned, the cofactor it left, and its elapsed
+  time. A primality disagreement on an agreed factor set raises a warning naming the
+  factor and both labels. The times are single measurements, not a benchmark.
 
 ## Deferred, with no placeholder implementation
 

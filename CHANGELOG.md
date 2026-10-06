@@ -5,6 +5,21 @@ binary packages are published.
 
 ## Unreleased
 
+- Made the roadmap summary verifiable. The table read "Fully implemented 131 / Working
+  with a named gap 12 / Declined 4 / Deferred 0", which sums to 147 rather than 150 and
+  mixed two units: the gap row counted *ledger entries* while the implemented row counted
+  *proposal items*. It now reports both columns — 17 items in 12 entries carry a gap,
+  3 items in 4 entries were declined, 130 are implemented with no caveat — and the rows
+  partition the 150 exactly. The note explains why the columns differ: an entry can cover
+  several items (29, 30 and 37 share one), item 16 is split into a delivered half and a
+  declined half, and items 4 and 14 appear in both the implemented narrative and the gap
+  list because part of each shipped.
+- Fixed two defects introduced when item 10 was closed in 0.11.0: its entry was marked
+  "now complete" but left sitting under **Partially implemented**, and the note about
+  YAFU's `-np` switch was added as a second entry numbered 17. Item 10 now has its own
+  "Closed after the original ledger" section, and the YAFU note is folded into the single
+  item-17 entry.
+
 - Cross-linked the two roadmap files, which have confusingly similar names.
   `docs/ROADMAP_STATUS.md` (the 150-item ledger) now opens with a note saying which file
   holds what and links to the 1.0 questions, and its partial-items list points at the
