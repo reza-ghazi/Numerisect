@@ -5,6 +5,21 @@ binary packages are published.
 
 ## Unreleased
 
+- Made CI install the distribution instead of the checkout. Every platform job — Linux
+  ARM64, macOS ARM64 and Intel, Ubuntu under WSL — now runs `python -m build` and installs
+  the resulting wheel into a fresh environment, so what is exercised is the artifact a
+  user would install. The suite still runs from the checkout, because many tests read
+  repository files, but it imports the installed wheel.
+- Found that the existing wheel smoke test proved nothing. It ran `python -c` from the
+  source directory, which puts the working directory first on `sys.path`, so every
+  assertion about the packaged resources was satisfied by the checkout and would have
+  passed with an empty wheel. `scripts/check_installed_distribution.py` replaces it: it
+  asserts the import came out of site-packages before checking anything, then checks the
+  packaged GP programs, C sources, browser assets and engine manifest, and finally factors
+  8051 and proves 32416190071 through the installed console script — a wheel that imports
+  but cannot compute is not an installation. `pari-gp` was added to the packaging job for
+  that last part.
+
 - Recorded the author's answers to the four open questions about 1.0 (2026-10-05): the
   version will not promise a stable API, the five closeable presentation gaps are to be
   built rather than declined, the permanent limits are to be restated outside the ledger,

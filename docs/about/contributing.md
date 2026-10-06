@@ -63,6 +63,15 @@ analysed at all. `tests/test_native_computation_policy.py` enforces the last thr
 
 [:octicons-arrow-right-24: The full checklist](https://github.com/reza-ghazi/Numerisect/blob/main/CONTRIBUTING.md#adding-a-compiled-c-helper)
 
+## How CI installs the project
+
+Every platform job builds the distribution and installs the **wheel** into a fresh
+environment; nothing installs from the checkout, so CI exercises the artifact a user
+would install. `scripts/check_installed_distribution.py` asserts the import came from
+site-packages rather than the source tree — a smoke test run in the checkout imports the
+checkout and proves nothing — then checks the packaged GP programs, C sources and browser
+assets, and factors a number through the installed console script.
+
 ## What a change should include
 
 - Tests for success, invalid input, engine failure, cancellation or resource limits, and

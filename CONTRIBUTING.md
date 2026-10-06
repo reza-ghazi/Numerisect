@@ -121,6 +121,25 @@ Four things must happen together, and two of them fail silently if forgotten:
 `tests/test_native_computation_policy.py` enforces 2, 3 and 4, so a forgotten step fails
 locally rather than in review.
 
+## How CI installs the project
+
+Every platform job — Linux ARM64, both macOS architectures, Windows under WSL — builds the
+distribution with `python -m build` and installs the resulting wheel into a fresh virtual
+environment. Nothing installs from the checkout, so what is tested is the artifact a user
+would install.
+
+`scripts/check_installed_distribution.py` runs in that environment and is the reason the
+claim means anything. It first asserts that `import numerisect` came out of site-packages
+and not out of the source tree, because a check that imports from the working directory —
+which `python -c` does by default — passes whether or not the wheel contains a single data
+file. Then it checks the packaged GP programs, C sources, browser assets and pinned engine
+manifest, and finally factors and proves a number through the installed console script,
+since a wheel that imports but cannot compute is not an installation.
+
+The test suite itself still runs from the checkout: many tests read repository files such
+as `install.sh`, the guides and the browser assets. It imports the installed wheel all the
+same, because pytest places `tests/` on the path and not the project root.
+
 A new route or engine must also reach the documentation, which
 `tests/test_static_ui.py` enforces: every mathematical route has to be described in a
 narrative guide rather than only in the reference table, every `/api/verify/*` cross-check

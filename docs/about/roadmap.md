@@ -87,12 +87,12 @@ So whatever 1.0 comes to mean here, it is a decision about the interface and abo
 stability rather than about capability. The author settled the four open questions on
 2026-10-05:
 
-| Question | Decision |
-|---|---|
-| Does 1.0 promise a stable API? | **No.** Route paths and response keys stay free to change; the version number does not promise otherwise. |
-| Must the closeable presentation gaps be built, or is declining them enough? | **Built.** The five items below are to be implemented rather than declined. |
-| Should the permanent limits be restated outside this ledger? | **Yes**, in the capability index, so a bounded search is not mistaken for an unfinished one. |
-| Must CI install the published artifact on each platform? | **Yes**, from the built distribution rather than from a checkout. |
+| Question | Decision | State |
+|---|---|---|
+| Does 1.0 promise a stable API? | **No.** Route paths and response keys stay free to change; the version number does not promise otherwise. | recorded here |
+| Must the closeable presentation gaps be built, or is declining them enough? | **Built.** The five items below are to be implemented rather than declined. | in progress |
+| Should the permanent limits be restated outside this ledger? | **Yes**, in the capability index, so a bounded search is not mistaken for an unfinished one. | [done](../capabilities.md#searches-that-are-bounded-by-nature) |
+| Must CI install the published artifact on each platform? | **Yes**, from the built distribution rather than from a checkout. | done |
 
 The first answer is the consequential one: because the API is not frozen, a 1.0 here
 would signal that the application is complete and exercised, not that its routes are
