@@ -152,6 +152,41 @@ summary { color: var(--muted); font-size: 13px; cursor: pointer; }
 .factor-tree-svg .tree-node.undetermined rect { stroke-dasharray: 2 3; }
 .factor-tree-svg .tree-node.linked { cursor: pointer; }
 .factor-tree-svg .tree-node.linked:hover rect, .factor-tree-svg .tree-node.linked:focus rect { stroke: var(--accent); stroke-width: 2; }
+/* The engine decision path, drawn as a flow: one node per question PARI/GP answered,
+   with its answer beside it and the consequence on the connector below. */
+.decision-flow { list-style: none; margin: 0 0 16px; padding: 0; }
+.decision-step { position: relative; }
+.decision-node { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; background: #111518; }
+.decision-node.terminal { border-left-color: var(--amber); background: var(--accent-soft); }
+.decision-index { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--line); color: var(--muted); font-size: 11px; font-weight: 800; }
+.decision-question { color: var(--text); font-size: 13px; }
+.decision-answer { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
+.decision-node.terminal .decision-answer { color: var(--amber); }
+.decision-node small { grid-column: 2 / -1; color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.decision-chips { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.decision-chips code { padding: 2px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 11px; }
+.decision-edge { position: relative; margin: 0; padding: 7px 0 7px 34px; color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.decision-edge::before { content: ''; position: absolute; top: 0; bottom: 0; left: 13px; width: 1px; background: var(--line); }
+.decision-edge::after { content: '▾'; position: absolute; left: 9px; bottom: -2px; color: var(--line); font-size: 11px; }
+/* Faceted job search: each chip is a count under the current filters, and clicking it
+   adds that filter rather than replacing the search. */
+.search-facets { display: grid; gap: 10px; margin: 14px 0; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: #0b0e10; }
+.facet-total { margin: 0; color: var(--text); font-size: 12px; font-weight: 700; }
+.facet-group { display: grid; grid-template-columns: 72px 1fr; align-items: start; gap: 10px; }
+.facet-group > span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding-top: 5px; }
+.facet-group > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.facet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; background: #111518; color: var(--text); font-size: 11px; cursor: pointer; }
+.facet-chip[disabled] { cursor: default; opacity: .75; }
+.facet-chip:not([disabled]):hover { border-color: var(--accent); color: var(--accent); }
+.facet-chip span { padding: 0 6px; border-radius: 999px; background: var(--line); color: var(--muted); font-weight: 700; }
+.saved-search-bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; margin: 12px 0; }
+.saved-search-bar label { color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.saved-search-list { display: grid; gap: 7px; margin-bottom: 14px; }
+.saved-search { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; background: #111518; }
+.saved-search-apply { border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 12px; cursor: pointer; padding: 0; }
+.saved-search small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.saved-search-delete { border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--muted); font-size: 13px; line-height: 1; padding: 2px 7px; cursor: pointer; }
+.saved-search-delete:hover { border-color: var(--amber); color: var(--amber); }
 .factor-kind { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
 #job-log { max-height: 430px; overflow: auto; margin: 0; padding: 15px; color: #abb8bf; background: #080a0b; border-radius: 9px; font: 12px/1.55 "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .hidden { display: none !important; }

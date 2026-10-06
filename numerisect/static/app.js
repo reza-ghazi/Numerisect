@@ -321,6 +321,21 @@ function renderDetail(job) {
   const active = ['queued', 'running', 'cancelling'].includes(job.status);
   $('#cancel-job').classList.toggle('hidden', !active);
   $('#resume-job').classList.toggle('hidden', active || job.status === 'completed');
+  // A staged CADO job can be continued, and only forwards: the stages before the one
+  // it finished are already done, and the server refuses to re-run them.
+  const stages = state.cadoStages || [];
+  const current = stages.findIndex((item) => item.stage === job.cado_stage);
+  const remaining = current < 0 ? [] : stages.slice(current + 1);
+  const canAdvance = !active && job.selected_backend === 'cado_stage' && remaining.length > 0;
+  const select = $('#advance-cado-stage');
+  const button = $('#advance-cado');
+  select.classList.toggle('hidden', !canAdvance);
+  button.classList.toggle('hidden', !canAdvance);
+  if (canAdvance) {
+    select.innerHTML = remaining
+      .map((item) => `<option value="${escapeHtml(item.stage)}">${escapeHtml(item.label)}</option>`)
+      .join('');
+  }
   renderFactors(job);
 }
 
@@ -429,6 +444,7 @@ $('#factor-form').addEventListener('submit', async (event) => {
         ...optionalText({ ecm_b2: '#ecm-b2', ecm_sigma: '#ecm-sigma', ecm_group_order: '#ecm-group-order' }),
         ...yafuExpertOptions(),
         polyselect_stage: $('#polyselect-stage').value,
+        ...($('#backend').value === 'cado_stage' ? { cado_stage: $('#cado-stage').value } : {}),
         ...polyselectOptions($('#backend').value),
       }),
     });
@@ -539,6 +555,24 @@ $('#cancel-job').addEventListener('click', async () => {
   if (!state.selectedId) return;
   await api(`/api/jobs/${state.selectedId}/cancel`, { method: 'POST' });
   await refreshSelected();
+});
+
+$('#advance-cado').addEventListener('click', async () => {
+  if (!state.selectedId) return;
+  const button = $('#advance-cado');
+  button.disabled = true;
+  try {
+    await api(`/api/jobs/${state.selectedId}/cado-stage`, {
+      method: 'POST',
+      body: JSON.stringify({ stage: $('#advance-cado-stage').value }),
+    });
+    await refreshSelected();
+  } catch (error) {
+    $('#job-error').textContent = error.message;
+    $('#job-error').classList.remove('hidden');
+  } finally {
+    button.disabled = false;
+  }
 });
 
 $('#resume-job').addEventListener('click', async () => {
@@ -3882,15 +3916,131 @@ if ($('#workspace-form')) {
 }
 
 if ($('#history-search-form')) {
-  $('#history-search-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const params = new URLSearchParams({ limit: '50' });
+  // Faceted search: the counts come from /api/jobs/facets under the same filters as
+  // the result list, so a chip says how many of *these* match, not how many exist.
+  function historyFilters() {
+    const filters = {};
     const query = $('#history-query').value.trim();
     const status = $('#history-status').value;
     const engine = $('#history-engine').value.trim();
+    if (query) filters.q = query;
+    if (status) filters.status = status;
+    if (engine) filters.engine = engine;
+    return filters;
+  }
+
+  function renderFacets(facets) {
+    const panel = $('#history-facets');
+    const groups = [
+      ['Status', 'status', 'status'],
+      ['Engine', 'engine', 'engine'],
+      ['Size', 'digits', null],
+    ];
+    const blocks = groups.map(([label, key, field]) => {
+      const entries = facets[key] || [];
+      if (!entries.length) return '';
+      const chips = entries.map((entry) => {
+        const attributes = field
+          ? ` data-facet-field="${escapeHtml(field)}" data-facet-value="${escapeHtml(entry.value)}"`
+          : ' disabled';
+        return `<button type="button" class="facet-chip"${attributes}>${escapeHtml(entry.value)}
+          <span>${entry.count}</span></button>`;
+      }).join('');
+      return `<div class="facet-group"><span>${escapeHtml(label)}</span><div>${chips}</div></div>`;
+    }).join('');
+    panel.innerHTML = `<p class="facet-total">${facets.total} job${facets.total === 1 ? '' : 's'} match this search</p>${blocks}`;
+    panel.classList.toggle('hidden', !facets.total && !blocks);
+  }
+
+  async function loadSavedSearches() {
+    const panel = $('#history-saved-searches');
+    let searches = [];
+    try {
+      searches = (await api('/api/searches')).searches || [];
+    } catch {
+      panel.innerHTML = '';
+      return;
+    }
+    if (!searches.length) {
+      panel.innerHTML = '<p class="field-note">No saved searches yet.</p>';
+      return;
+    }
+    panel.innerHTML = searches.map((saved) => {
+      const summary = Object.entries(saved.query || {})
+        .map(([key, value]) => `${escapeHtml(key)}=${escapeHtml(value)}`).join(' · ') || 'everything';
+      return `<div class="saved-search"><button type="button" class="saved-search-apply"
+        data-query='${escapeHtml(JSON.stringify(saved.query || {}))}'>${escapeHtml(saved.name)}</button>
+        <small>${summary}</small>
+        <button type="button" class="saved-search-delete" data-search="${escapeHtml(saved.id)}"
+          aria-label="Delete saved search">×</button></div>`;
+    }).join('');
+  }
+
+  $('#history-facets').addEventListener('click', async (event) => {
+    const chip = event.target.closest('.facet-chip[data-facet-field]');
+    if (!chip) return;
+    const field = chip.dataset.facetField;
+    if (field === 'status') $('#history-status').value = chip.dataset.facetValue;
+    if (field === 'engine') $('#history-engine').value = chip.dataset.facetValue;
+    $('#history-search-form').requestSubmit();
+  });
+
+  $('#history-save-search').addEventListener('click', async () => {
+    const name = $('#history-search-name').value.trim();
+    const panel = $('#history-saved-searches');
+    if (!name) {
+      panel.innerHTML = '<p class="field-note">Give the search a name first.</p>';
+      return;
+    }
+    try {
+      await api('/api/searches', {
+        method: 'POST',
+        body: JSON.stringify({ name, query: historyFilters() }),
+      });
+      $('#history-search-name').value = '';
+      await loadSavedSearches();
+    } catch (error) {
+      panel.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+
+  $('#history-saved-searches').addEventListener('click', async (event) => {
+    const apply = event.target.closest('.saved-search-apply');
+    if (apply) {
+      const saved = JSON.parse(apply.dataset.query || '{}');
+      $('#history-query').value = saved.q || '';
+      $('#history-status').value = saved.status || '';
+      $('#history-engine').value = saved.engine || '';
+      $('#history-search-form').requestSubmit();
+      return;
+    }
+    const remove = event.target.closest('.saved-search-delete');
+    if (!remove) return;
+    try {
+      await api(`/api/searches/${encodeURIComponent(remove.dataset.search)}`, { method: 'DELETE' });
+      await loadSavedSearches();
+    } catch (error) {
+      $('#history-saved-searches').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+    }
+  });
+
+  loadSavedSearches();
+
+  $('#history-search-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const params = new URLSearchParams({ limit: '50' });
+    const filters = historyFilters();
+    const query = filters.q || '';
+    const status = filters.status || '';
+    const engine = filters.engine || '';
     if (query) params.set('q', query);
     if (status) params.set('status', status);
     if (engine) params.set('engine', engine);
+    try {
+      renderFacets(await api(`/api/jobs/facets?${new URLSearchParams(filters).toString()}`));
+    } catch {
+      $('#history-facets').classList.add('hidden');
+    }
     try {
       const [jobs, reports] = await Promise.all([
         api(`/api/jobs?${params.toString()}`),
@@ -4046,7 +4196,9 @@ if ($('#cache-stats')) {
 // SQUFOF is computed by the numerisect-squfof C helper; every other operation here is
 // computed by PARI/GP. This code only submits forms and renders returned values.
 
-function renderFactorLab(title, rows, note, outputFile, panelSelector = '#factor-lab-result') {
+function renderFactorLab(
+  title, rows, note, outputFile, panelSelector = '#factor-lab-result', extra = '',
+) {
   const panel = $(panelSelector);
   panel.classList.remove('hidden');
   const table = rows.length
@@ -4058,7 +4210,7 @@ function renderFactorLab(title, rows, note, outputFile, panelSelector = '#factor
     ? `<p class="notice">Result saved automatically to <code>output/${escapeHtml(outputFile)}</code>
        · <a href="/api/outputs/${encodeURIComponent(outputFile)}" download>Download report</a></p>`
     : '';
-  panel.innerHTML = `<h3>${escapeHtml(title)}</h3>${table}
+  panel.innerHTML = `<h3>${escapeHtml(title)}</h3>${extra}${table}
     ${note ? `<p class="hint">${escapeHtml(note)}</p>` : ''}${saved}`;
 }
 
@@ -4068,7 +4220,10 @@ function factorLabError(message, panelSelector = '#factor-lab-result') {
   panel.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
 }
 
-function bindFactorLab(formId, path, buildBody, buildRows, title, panelSelector = '#factor-lab-result') {
+function bindFactorLab(
+  formId, path, buildBody, buildRows, title, panelSelector = '#factor-lab-result',
+  buildExtra = null,
+) {
   const form = $(formId);
   if (!form) return;
   form.addEventListener('submit', async (event) => {
@@ -4078,7 +4233,10 @@ function bindFactorLab(formId, path, buildBody, buildRows, title, panelSelector 
     try {
       const data = await api(path, { method: 'POST', body: JSON.stringify(buildBody()) });
       const resolvedTitle = typeof title === 'function' ? title(data) : title;
-      renderFactorLab(resolvedTitle, buildRows(data), data.note, data.output_file, panelSelector);
+      renderFactorLab(
+        resolvedTitle, buildRows(data), data.note, data.output_file, panelSelector,
+        buildExtra ? buildExtra(data) : '',
+      );
     } catch (error) {
       factorLabError(error.message, panelSelector);
     } finally {
@@ -4214,6 +4372,38 @@ bindFactorLab('#factor-lab-classic-form', '/api/factor-lab/classic', () => ({
   return rows;
 }, 'Classical methods');
 
+// The engine decision path, drawn. PARI/GP answers every question in it (fl_strategy);
+// this turns the steps it returned into connected nodes and labels the edges with the
+// consequence it stated. No question is answered here and no step is inferred.
+function decisionDiagram(data) {
+  const steps = data.decision_path || [];
+  if (!steps.length) return '';
+  const factors = data.small_factors || [];
+  const nodes = steps.map((step, index) => {
+    const terminal = step.consequence === 'final'
+      || step.consequence === 'no factoring required';
+    const classes = ['decision-node', terminal ? 'terminal' : 'open'].join(' ');
+    // Small factors belong to the question that found them, not to a list below.
+    const chips = /below 10\^6/.test(step.question) && factors.length
+      ? `<div class="decision-chips">${factors
+          .map((value) => `<code>${escapeHtml(value)}</code>`).join('')}</div>`
+      : '';
+    const edge = index < steps.length - 1 && !terminal
+      ? `<p class="decision-edge">${escapeHtml(step.consequence)}</p>`
+      : '';
+    return `<li class="decision-step">
+      <article class="${classes}">
+        <span class="decision-index">${index + 1}</span>
+        <span class="decision-question">${escapeHtml(step.question)}</span>
+        <code class="decision-answer">${escapeHtml(step.answer)}</code>
+        ${terminal ? `<small>${escapeHtml(step.consequence)}</small>` : ''}
+        ${chips}
+      </article>${edge}
+    </li>`;
+  });
+  return `<ol class="decision-flow" aria-label="Engine decision path">${nodes.join('')}</ol>`;
+}
+
 bindFactorLab('#factor-lab-strategy-form', '/api/factor-lab/strategy', () => ({
   expression: $('#strategy-expression').value.trim(),
   pretest_level: Number($('#strategy-pretest').value),
@@ -4228,7 +4418,7 @@ bindFactorLab('#factor-lab-strategy-form', '/api/factor-lab/strategy', () => ({
   });
   (data.small_factors || []).forEach((value) => rows.push(['Small factor', value]));
   return rows;
-}, 'Strategy advice');
+}, 'Strategy advice', '#factor-lab-result', decisionDiagram);
 
 bindFactorLab('#factor-lab-special-form', '/api/factor-lab/special-form', () => ({
   expression: $('#special-form-expression').value.trim(),
@@ -4544,10 +4734,25 @@ if ($('#run-self-test')) {
   });
 }
 
+async function loadCadoStages() {
+  // CADO's own stage order, read from the server so the browser holds no second copy.
+  try {
+    const data = await api('/api/factor/cado-stages');
+    state.cadoStages = data.stages || [];
+  } catch {
+    state.cadoStages = [];
+  }
+  const select = $('#cado-stage');
+  select.innerHTML = state.cadoStages
+    .map((item) => `<option value="${escapeHtml(item.stage)}">${escapeHtml(item.label)}</option>`)
+    .join('');
+  if (state.cadoStages.length) select.value = state.cadoStages[1]?.stage || state.cadoStages[0].stage;
+}
+
 async function initializeApplication() {
   const session = await api('/api/session');
   state.requestToken = session.request_token;
-  await Promise.all([loadCapabilities(), loadJobs()]);
+  await Promise.all([loadCapabilities(), loadCadoStages(), loadJobs()]);
   state.poller = setInterval(async () => {
     await loadJobs();
   }, 1200);

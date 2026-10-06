@@ -312,6 +312,132 @@ def validate_msieve_polyselect_parameters(options: dict[str, object]) -> str:
     return " ".join(parts)
 
 
+#: CADO-NFS's own workflow stages, in the order its harness runs them for a
+#: factorization, with the parameter that disables each one and a human label.
+#:
+#: Every CADO task accepts a `run` parameter, and setting it false makes the harness
+#: stop *at* that task — it logs "Stopping at <task>", finishes with status 0, and
+#: leaves everything before it complete in the working directory. A later invocation on
+#: the same working directory continues from there, because CADO's own state database
+#: records which tasks have run. So running the stages one at a time needs no
+#: reimplementation of the upstream harness: it is a parameter, and the stage after the
+#: one requested is the one disabled.
+#:
+#: Verified on this workstation against CADO-NFS 3.0.0 with a 60-digit input: a run
+#: gated at `sieving` stopped after polynomial selection, a second run on the same
+#: working directory gated at `purge` sieved and removed duplicates, and a third with
+#: no gate finished and returned both 30-digit primes.
+CADO_STAGES: tuple[tuple[str, str, str], ...] = (
+    ("polyselect_size", "tasks.polyselect.polyselect1.run",
+     "Polynomial selection, size optimization"),
+    ("polyselect_root", "tasks.polyselect.polyselect2.run",
+     "Polynomial selection, root optimization"),
+    ("factorbase", "tasks.sieve.factorbase.run", "Factor base generation"),
+    ("freerel", "tasks.sieve.freerel.run", "Free relations"),
+    ("sieving", "tasks.sieve.sieving.run", "Lattice sieving"),
+    ("duplicates1", "tasks.filter.duplicates1.run", "Duplicate removal, pass 1"),
+    ("duplicates2", "tasks.filter.duplicates2.run", "Duplicate removal, pass 2"),
+    ("purge", "tasks.filter.purge.run", "Singleton removal"),
+    ("merge", "tasks.filter.mergetask.run", "Matrix merging"),
+    ("linalg", "tasks.linalg.linalg.run", "Linear algebra"),
+    ("characters", "tasks.linalg.characters.run", "Quadratic characters"),
+    ("sqrt", "tasks.sqrt.sqrt.run", "Square root, and the factors"),
+)
+
+#: The stage slugs in order, for validation and for comparing two stages.
+CADO_STAGE_ORDER: tuple[str, ...] = tuple(slug for slug, _, _ in CADO_STAGES)
+
+
+def cado_stage_label(stage: str) -> str:
+    """The human label for a stage slug."""
+
+    for slug, _, label in CADO_STAGES:
+        if slug == stage:
+            return label
+    raise ValueError(f"'{stage}' is not a CADO-NFS workflow stage")
+
+
+def cado_stage_gate(stage: str) -> str | None:
+    """The assignment that stops CADO after ``stage``.
+
+    Returns:
+        ``tasks.<path>.<task>.run=false`` for the stage *following* the requested one,
+        or ``None`` when the requested stage is the last, since a run that reaches the
+        square root is an ordinary complete factorization.
+
+    Raises:
+        ValueError: If the stage is not one of :data:`CADO_STAGES`.
+    """
+
+    if stage not in CADO_STAGE_ORDER:
+        raise ValueError(f"'{stage}' is not a CADO-NFS workflow stage")
+    index = CADO_STAGE_ORDER.index(stage)
+    if index + 1 >= len(CADO_STAGES):
+        return None
+    return f"{CADO_STAGES[index + 1][1]}=false"
+
+
+#: What CADO prints as each stage finishes. Each pattern reads one fact out of its own
+#: log line; nothing here is computed.
+_CADO_STOPPED = re.compile(r"Stopping at (\w+)")
+_CADO_STAGE_START = re.compile(r"^Info:([^:]+): Starting$", re.M)
+_CADO_MURPHY = re.compile(
+    r"(?:Finished, best polynomial has|Best polynomial previously has) "
+    r"Murphy_E = ([0-9.e+-]+)"
+)
+_CADO_FREE = re.compile(r"Found (\d+) free relations")
+_CADO_RELATIONS = re.compile(r"Total number of relations: (\d+)")
+_CADO_UNIQUE = re.compile(r"(\d+) unique relations remain in total")
+_CADO_PURGED = re.compile(
+    r"After purge, (\d+) relations with (\d+) primes remain with weight (\d+)"
+)
+_CADO_MATRIX = re.compile(r"Merged matrix has (\d+) rows and total weight (\d+)")
+
+
+def parse_cado_stage_report(output: str) -> dict[str, object]:
+    """Read what a staged CADO run achieved out of its own log.
+
+    Args:
+        output: The combined output of one `cado-nfs.py` invocation.
+
+    Returns:
+        A mapping with ``stopped_at`` (the task the gate halted, or ``None`` for a run
+        that was not gated), ``stages`` (the task titles that started, in order), and
+        whichever of ``murphy_e``, ``free_relations``, ``relations``,
+        ``unique_relations``, ``purged_relations``, ``purged_primes``,
+        ``purged_weight``, ``matrix_rows`` and ``matrix_weight`` the run printed. A
+        value that was not printed is absent rather than zero.
+    """
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
+    stopped = _CADO_STOPPED.search(plain)
+    report: dict[str, object] = {
+        "stopped_at": stopped.group(1) if stopped else None,
+        "stages": _CADO_STAGE_START.findall(plain),
+    }
+    single = {
+        "murphy_e": _CADO_MURPHY,
+        "free_relations": _CADO_FREE,
+        "relations": _CADO_RELATIONS,
+        "unique_relations": _CADO_UNIQUE,
+    }
+    for key, pattern in single.items():
+        found = pattern.findall(plain)
+        if found:
+            report[key] = found[-1]
+    purged = _CADO_PURGED.findall(plain)
+    if purged:
+        relations, primes, weight = purged[-1]
+        report.update(
+            purged_relations=relations, purged_primes=primes, purged_weight=weight
+        )
+    matrix = _CADO_MATRIX.findall(plain)
+    if matrix:
+        rows, weight = matrix[-1]
+        report.update(matrix_rows=rows, matrix_weight=weight)
+    return report
+
+
 def validate_cado_polyselect_parameters(options: dict[str, object]) -> list[str]:
     """Render CADO polynomial-selection overrides as `key=value` arguments.
 

@@ -186,11 +186,11 @@ def test_zeta_tools_use_individual_routes_and_local_results():
 
 
 def test_interface_assets_are_cache_busted():
-    assert '/assets/styles.css?v=20261005-factor-tree' in INDEX
-    assert '/assets/app.js?v=20261005-factor-tree' in INDEX
-    assert '/assets/favicon.svg?v=20261005-factor-tree' in INDEX
+    assert '/assets/styles.css?v=20261005-closeable-gaps' in INDEX
+    assert '/assets/app.js?v=20261005-closeable-gaps' in INDEX
+    assert '/assets/favicon.svg?v=20261005-closeable-gaps' in INDEX
     assert '--app-dir "$project_dir"' in RUNNER
-    assert '?ui=20261005-factor-tree#primes/prime-check' in RUNNER
+    assert '?ui=20261005-closeable-gaps#primes/prime-check' in RUNNER
     assert '"$browser_open" "$ui_url"' in RUNNER
     assert 'NUMERISECT_NO_BROWSER' in RUNNER
 
@@ -611,6 +611,74 @@ def test_the_roadmap_counts_match_the_ledger_they_summarise():
     deferred = int(re.search(r"\| Deferred, with no placeholder \| (\d+) \|", overview).group(1))
     assert implemented + len(items) + declined + deferred == 150
     ledger = (ROOT / "docs" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
-    words = {11: "eleven", 12: "twelve", 13: "thirteen", 10: "ten", 9: "nine"}
-    counts = {15: "fifteen", 16: "sixteen", 17: "seventeen", 14: "fourteen", 13: "thirteen"}
-    assert f"These {words[entries]} entries cover {counts[len(items)]} proposal items" in ledger
+    words = {
+        1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven",
+        8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen",
+        14: "fourteen", 15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
+        19: "nineteen", 20: "twenty",
+    }
+    assert (
+        f"These {words[entries]} entries cover {words[len(items)]} proposal items"
+        in ledger
+    )
+
+
+def test_the_engine_decision_path_is_drawn_as_a_diagram():
+    """It was rendered as table rows, which is the list the roadmap recorded.
+
+    The drawing runs here over a captured strategy result, out of app.js rather than a
+    copy, so a diagram that loses a step, draws a connector after the terminal node or
+    fails to escape an engine answer fails the suite.
+    """
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is required to exercise the decision diagram")
+    harness = ROOT / "tests" / "decision_diagram.js"
+    assert harness.is_file()
+    result = subprocess.run([node, str(harness)], capture_output=True, text=True, cwd=ROOT)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "failures=0" in result.stdout
+    # The diagram draws what the engine returned and answers nothing itself.
+    drawing = APP.split("function decisionDiagram", 1)[1].split("bindFactorLab", 1)[0]
+    for decision in ("isprime", "> 10", "Math.", "digits <"):
+        assert decision not in drawing, decision
+
+
+def test_the_job_search_offers_facets_and_saved_searches():
+    """The last of the five presentation gaps: counts beside the search, and recall.
+
+    The chips are the filter controls, so this checks the browser asks the server for
+    the counts rather than deriving them, and that saving and deleting a search are
+    both reachable.
+    """
+
+    for element in ("history-facets", "history-saved-searches", "history-search-name",
+                    "history-save-search"):
+        assert f'id="{element}"' in INDEX, element
+    assert "/api/jobs/facets?" in APP
+    assert "/api/searches" in APP
+    assert "saved-search-delete" in APP and "saved-search-apply" in APP
+    # A chip applies its own field; nothing is counted in the browser.
+    facets = APP.split("function renderFacets", 1)[1].split("async function loadSavedSearches", 1)[0]
+    for counting in ("filter(", "reduce(", "+= 1"):
+        assert counting not in facets, counting
+
+
+def test_the_capability_index_states_the_real_api_total():
+    """It read 212 while the application served 221, and nothing failed.
+
+    The route reference is held equal to the running app by another test; this holds the
+    summary page to the same number, which is where a reader looks first.
+    """
+
+    from numerisect.main import app
+
+    routes = {
+        (method, route.path)
+        for route in app.routes
+        for method in (getattr(route, "methods", None) or set())
+        if method in {"GET", "POST", "DELETE"} and route.path.startswith("/api/")
+    }
+    page = (ROOT / "docs" / "capabilities.md").read_text(encoding="utf-8")
+    assert f"{len(routes)} HTTP API operations" in page

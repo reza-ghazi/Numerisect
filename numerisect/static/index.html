@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Numerisect</title>
-    <link rel="icon" href="/assets/favicon.svg?v=20261005-factor-tree" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css?v=20261005-factor-tree" />
+    <link rel="icon" href="/assets/favicon.svg?v=20261005-closeable-gaps" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20261005-closeable-gaps" />
   </head>
   <body>
     <header class="topbar">
@@ -83,6 +83,7 @@
                   <option value="yafu_fermat">Fermat · near-square search</option>
                   <option value="ecm_campaign">ECM campaign · GMP-ECM, resumable</option>
                   <option value="msieve_poly">NFS polynomial selection · Msieve</option>
+                  <option value="cado_stage">CADO-NFS · one stage at a time</option>
                 </optgroup>
               </select>
             </label>
@@ -185,6 +186,11 @@
               <strong>CADO-NFS</strong> or <strong>YAFU pretest → CADO</strong> run.
             </p>
             <div class="controls-grid advanced">
+              <label>
+                CADO stage to run up to
+                <select id="cado-stage"></select>
+                <span class="field-note">Used by the staged CADO backend; it stops at the task after this one</span>
+              </label>
               <label>
                 Msieve stage
                 <select id="polyselect-stage">
@@ -565,6 +571,8 @@
                 <h2 id="detail-status">Queued</h2>
               </div>
               <div class="actions">
+                <select id="advance-cado-stage" class="hidden" aria-label="Next CADO stage"></select>
+                <button id="advance-cado" class="secondary hidden">Run next stage</button>
                 <button id="resume-job" class="secondary hidden">Resume / restart</button>
                 <button id="cancel-job" class="danger hidden">Stop</button>
               </div>
@@ -2909,6 +2917,13 @@
             <input id="history-engine" name="engine" type="text" maxlength="60" placeholder="yafu, cado, pari_trial" />
             <button class="primary" type="submit"><span>Search</span><span>→</span></button>
           </form>
+          <section id="history-facets" class="search-facets hidden" aria-live="polite"></section>
+          <div class="saved-search-bar">
+            <label for="history-search-name">Save this search as</label>
+            <input id="history-search-name" type="text" maxlength="80" placeholder="failed CADO runs" />
+            <button id="history-save-search" class="secondary" type="button">Save search</button>
+          </div>
+          <section id="history-saved-searches" class="saved-search-list" aria-live="polite"></section>
           <section id="history-search-result" class="prime-results hidden" aria-live="polite"></section>
         </section>
 
@@ -2958,6 +2973,6 @@
         </p>
       </div>
     </div>
-    <script src="/assets/app.js?v=20261005-factor-tree" defer></script>
+    <script src="/assets/app.js?v=20261005-closeable-gaps" defer></script>
   </body>
 </html>

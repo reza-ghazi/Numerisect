@@ -5,6 +5,48 @@ binary packages are published.
 
 ## Unreleased
 
+- Corrected the capability index's API total, which read 212 while the application
+  served 221, and added the guard that would have caught it. The route reference was
+  already held equal to the running app; the summary page a reader meets first was not.
+
+- Gave job search facets and a memory, which closes roadmap item 135 and with it the
+  last of the five closeable presentation gaps. `GET /api/jobs/facets` counts the
+  matches by status, engine and digit band under the same shared WHERE clause the
+  result list uses, so a chip reading "failed 2" means two of *these* jobs rather than
+  two in the database, and a band that matches nothing is absent rather than zero. The
+  chips are the filter controls. Saved searches live in their own SQLite table, hold
+  only the fields `GET /api/jobs` accepts, validate each on the way in, drop blanks,
+  and replace by name while keeping their id and creation time.
+
+- Drew the engine decision path, which closes roadmap item 129. PARI/GP already computed
+  the path and returned it as explicit steps; the interface rendered them as table rows.
+  Each question is now a node with the engine's answer beside it, the consequence labels
+  the connector to the next node, the recommendation is the terminal node, and small
+  factors appear on the question that found them. The table stays below the diagram for
+  reading and copying. `tests/decision_diagram.js` runs the shipped drawing over a
+  captured strategy result and checks the node and connector counts, the terminal
+  marking and the escaping.
+
+- Made CADO-NFS's own stages runnable one at a time, which closes roadmap item 17 and
+  corrects what that entry claimed. It said isolating a stage would mean reproducing
+  CADO's upstream Python harness's bookkeeping. It does not: every CADO task takes a
+  `run` parameter, and disabling the task after the one wanted makes the harness stop
+  there, log `Stopping at <task>`, exit cleanly and leave the finished work in its
+  working directory. The new `cado_stage` backend runs up to a chosen stage on that
+  basis; `GET /api/factor/cado-stages` lists the twelve in CADO's own order;
+  `POST /api/jobs/{id}/cado-stage` moves the gate forward and CADO's state database
+  continues the work. Verified against CADO-NFS 3.0.0 on a 60-digit input in three
+  passes over one working directory, the last returning both 30-digit primes, and again
+  with the exact argument array this code builds.
+
+  A staged run is recorded as a report — the stages that ran and the figures CADO
+  printed for them — and only the square root yields factors. A gated run that ends
+  without CADO's stop marker fails rather than reporting a stage it may not have
+  reached. An earlier stage cannot be re-run, because that work is already done. The
+  report-status list now lives in `outputs.py` and is shared with the job manager, so
+  one definition decides both what the exporter prints and where the completeness check
+  applies.
+
 - Drew the factor tree, which closes roadmap items 1 and 116. The job view had always
   been a flat root-plus-leaves list, because nothing computed the numbers between the
   factors. `GET /api/jobs/{id}/tree` returns the chain PARI/GP builds in

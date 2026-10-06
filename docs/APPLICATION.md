@@ -86,6 +86,30 @@ DELETE /api/workspaces/{id}
 factor list. Every clause is parameterized SQL; quoting characters in `q` are treated
 as data.
 
+### Facets
+
+`GET /api/jobs/facets` takes the same filters and returns how many jobs each status,
+engine and digit band accounts for **within that search**. The counts and the result
+list are built from one shared WHERE clause, so a chip reading "failed 2" means two of
+the jobs this search matched, not two in the database. A band that matches nothing is
+absent rather than reported as zero. In the browser the chips are the filter controls:
+clicking one adds it to the search and runs it again.
+
+### Saved searches
+
+```
+GET    /api/searches
+POST   /api/searches          {"name": "...", "query": {...}}
+DELETE /api/searches/{id}
+```
+
+A saved search holds only the fields `GET /api/jobs` accepts — `q`, `status`, `engine`,
+`since`, `until`, `sort`, `order` — and each is validated on the way in, so a stored
+search cannot ask for a column that is not sortable or an order that is not asc or
+desc. Blank values are dropped rather than stored as filters. Saving under an existing
+name replaces that search and keeps its id and creation time. Deleting one touches no
+job and no report.
+
 `GET /api/reports` searches an index of saved report files by `q` and `kind`. The
 index is populated automatically whenever a report is written, through a listener
 registered on `numerisect.outputs`; an indexing failure can never prevent a report

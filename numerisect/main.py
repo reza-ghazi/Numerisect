@@ -56,7 +56,7 @@ from .config import (
     ensure_state_dirs,
     prepend_managed_tools_to_path,
 )
-from .database import Database
+from .database import JOB_SORT_COLUMNS, Database
 from .diagnostics import system_diagnostics
 from .distributed import (
     DistributedConfigurationError,
@@ -78,7 +78,7 @@ from .distribution_lab import (
     singular_series,
     tuple_prediction,
 )
-from .engines import discover_cado_parameters, executable_path
+from .engines import CADO_STAGES, discover_cado_parameters, executable_path
 from .evaluator import ExpressionError, evaluate_arbitrary_integer, evaluate_integer
 from .exports import (
     EXTENSIONS,
@@ -336,6 +336,7 @@ Backend = Literal[
     "auto", "yafu", "hybrid", "cado", "msieve", "cross_verify",
     "pari_trial", "squfof", "ecm_campaign", "tune", "yafu_rho", "yafu_pm1", "yafu_pp1",
     "yafu_ecm", "yafu_siqs", "yafu_nfs", "yafu_snfs", "yafu_fermat", "msieve_poly",
+    "cado_stage",
 ]
 
 
@@ -367,6 +368,9 @@ class JobRequest(BaseModel):
     # options are validated against whichever engine will receive them.
     polyselect_stage: Literal["full", "stage1", "size", "root"] = "full"
     polyselect_options: dict[str, float] | None = None
+    # One of engines.CADO_STAGE_ORDER, required by the `cado_stage` backend and ignored
+    # by every other. Validated in the manager so the stage list has one definition.
+    cado_stage: str | None = Field(default=None, max_length=40)
 
 
 class BatchJobRequest(BaseModel):
@@ -1033,6 +1037,7 @@ def _public_job(job: dict[str, object]) -> dict[str, object]:
         "ecm_group_order",
         "ecm_curves_done",
         "polyselect_stage",
+        "cado_stage",
         "cado_parameter_size",
         "factors",
         "warning",
@@ -4772,6 +4777,7 @@ def create_job(request: JobRequest) -> dict[str, object]:
             yafu_options=request.yafu_options,
             polyselect_stage=request.polyselect_stage,
             polyselect_options=request.polyselect_options,
+            cado_stage=request.cado_stage,
         )
         return _public_job(job)
     except (ExpressionError, ValueError) as exc:
@@ -4869,6 +4875,94 @@ def list_jobs(
     return [_public_job(job) for job in rows]
 
 
+#: The filter fields a saved search may carry: exactly the parameters `GET /api/jobs`
+#: accepts, so a stored search cannot ask for anything the endpoint would refuse.
+SAVED_SEARCH_FIELDS = {"q", "status", "engine", "since", "until", "sort", "order"}
+
+
+class SavedSearchRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    query: dict[str, str] = Field(default_factory=dict)
+
+
+def _validated_search(query: dict[str, str]) -> dict[str, str]:
+    """Check a saved search's fields against what the job search accepts."""
+
+    unknown = sorted(set(query) - SAVED_SEARCH_FIELDS)
+    if unknown:
+        raise ValueError(
+            "A saved search may only hold " + ", ".join(sorted(SAVED_SEARCH_FIELDS))
+            + f"; got {', '.join(unknown)}"
+        )
+    cleaned: dict[str, str] = {}
+    for key, value in query.items():
+        text = str(value).strip()
+        if not text:
+            continue
+        if len(text) > 200:
+            raise ValueError(f"'{key}' is limited to 200 characters")
+        if key == "sort" and text not in JOB_SORT_COLUMNS:
+            raise ValueError(f"'{text}' is not a sortable column")
+        if key == "order" and text not in {"asc", "desc"}:
+            raise ValueError("The sort order must be 'asc' or 'desc'")
+        cleaned[key] = text
+    return cleaned
+
+
+@app.get("/api/jobs/facets")
+def job_facets(
+    q: str | None = Query(default=None, max_length=200),
+    status: str | None = Query(default=None, max_length=40),
+    engine: str | None = Query(default=None, max_length=60),
+    since: str | None = Query(default=None, max_length=40),
+    until: str | None = Query(default=None, max_length=40),
+) -> dict[str, object]:
+    """Count the jobs this search matches, grouped by status, engine and digit band.
+
+    The filters are the ones `GET /api/jobs` takes, and the counts are computed under
+    exactly those filters, so each one answers "how many of these" rather than "how
+    many altogether" (roadmap item 135).
+    """
+
+    return {
+        **database.job_facets(q=q, status=status, engine=engine, since=since, until=until),
+        "filters": {
+            key: value
+            for key, value in (
+                ("q", q), ("status", status), ("engine", engine),
+                ("since", since), ("until", until),
+            )
+            if value
+        },
+    }
+
+
+@app.get("/api/searches")
+def list_saved_searches() -> dict[str, object]:
+    """The saved job searches, most recently updated first."""
+
+    return {"searches": database.list_searches()}
+
+
+@app.post("/api/searches", status_code=201)
+def save_search(request: SavedSearchRequest) -> dict[str, object]:
+    """Store a named job search, replacing one that already has the name."""
+
+    try:
+        return database.save_search(request.name.strip(), _validated_search(request.query))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.delete("/api/searches/{search_id}")
+def delete_saved_search(search_id: str) -> dict[str, object]:
+    """Delete one saved search. Jobs and reports are untouched."""
+
+    if not database.delete_search(search_id):
+        raise HTTPException(status_code=404, detail="Saved search not found")
+    return {"deleted": search_id}
+
+
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str) -> dict[str, object]:
     job = database.get_job(job_id)
@@ -4889,6 +4983,44 @@ def export_job(job_id: str) -> FileResponse:
     if path.parent.resolve() != OUTPUT_DIR.resolve():
         raise HTTPException(status_code=403, detail="Invalid output path")
     return FileResponse(path, filename=path.name, media_type="text/plain")
+
+
+@app.get("/api/factor/cado-stages")
+def list_cado_stages() -> dict[str, object]:
+    """CADO-NFS's own workflow stages, in the order its harness runs them.
+
+    A staged job runs up to the chosen stage and stops there, because every CADO task
+    takes a `run` parameter and disabling the next one halts the workflow cleanly.
+    """
+
+    return {
+        "stages": [
+            {"stage": slug, "label": label, "parameter": parameter}
+            for slug, parameter, label in CADO_STAGES
+        ],
+        "engine": "CADO-NFS",
+        "note": (
+            "Each stage runs in the job's own working directory and stops at the task "
+            "after it. A later stage continues from there; an earlier one cannot be "
+            "re-run, because the work is already done."
+        ),
+    }
+
+
+class CadoStageRequest(BaseModel):
+    stage: str = Field(max_length=40)
+
+
+@app.post("/api/jobs/{job_id}/cado-stage", status_code=202)
+def advance_cado_stage(job_id: str, request: CadoStageRequest) -> dict[str, object]:
+    """Continue a staged CADO-NFS job up to a later stage."""
+
+    try:
+        return _public_job(manager.advance_cado_stage(job_id, request.stage))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Job not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/jobs/{job_id}/tree")

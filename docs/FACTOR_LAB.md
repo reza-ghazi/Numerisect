@@ -180,6 +180,13 @@ smaller factor unlikely. The response states which basis was used.
 Routing thresholds: below 20 digits SQUFOF or SIQS, below 60 digits SIQS, below 95
 digits an ECM pretest then SIQS, and CADO-NFS above that.
 
+The path is **drawn** rather than listed: each question PARI/GP answered is a node, its
+answer sits beside it, the consequence the engine stated labels the connector to the
+next node, and the recommendation is the terminal node. Small factors appear on the
+question that found them. The browser answers no question and infers no step — it draws
+the steps the response contains, and nothing when there are none. The table of the same
+rows remains below the diagram for reading or copying.
+
 ## Special forms, algebraic and Aurifeuillean factors
 
 Recognises perfect powers via `ispower`, values a^k ± 1 by applying `ispower` directly

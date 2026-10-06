@@ -78,7 +78,7 @@ in five languages, and notebook integration.
 
 ## Partially implemented
 
-These eleven entries cover fifteen proposal items, and they are what the 1.0
+These eight entries cover twelve proposal items, and they are what the 1.0
 discussion weighs; see
 [what stands between 0.x and 1.0](about/roadmap.md#what-stands-between-0x-and-10) for how
 they divide into gaps that can be closed and limits that are permanent.
@@ -95,13 +95,6 @@ they divide into gaps that can be closed and limits that are permanent.
 - **14** — prime ranges and standard k-tuplets of sizes 2, 4 and 6 use primesieve.
   Sizes 3 and 5 stay on PARI: primesieve emits both admissible shapes together, and
   separating them would require offset arithmetic outside the engines.
-- **17** — CADO-NFS parameters are exposed, including the `tasks.polyselect.*` keys, and
-  stage progress is parsed from its log. **Polynomial selection** now runs in isolation
-  in Msieve, whole or one stage at a time, and reports the polynomial it chose. Running
-  CADO's own stages one at a time is still not implemented: its workflow is driven by the
-  Python harness upstream, and isolating a stage means reproducing that harness's
-  bookkeeping rather than passing a flag. YAFU's own `-np` switch is deliberately not
-  exposed: YAFU's documentation states that its "multi-threaded polynomial selection is handled via msieve library function calls", and its log confirms it, so the switch is a second front end to the selection already reachable through the `msieve_poly` strategy. It would add neither a capability nor an independent check.
 - **29, 30, 37** — the taxonomy, Korselt analysis, and covering-set verification are
   complete within documented finite bounds; results beyond those bounds are
   inconclusive rather than negative.
@@ -112,14 +105,43 @@ they divide into gaps that can be closed and limits that are permanent.
 - **127** — bounded educational step traces exist for Pollard rho, p−1, and ECM,
   computed by PARI/GP. Stage traces for the quadratic sieve and NFS are read from
   engine logs rather than instrumented.
-- **129** — the engine decision tree is computed by PARI/GP and returned as an
-  explicit decision path. It is rendered as a list, not yet as a diagram.
 - **128** — the complexity table is cited literature and the timings are local
   measurements from this machine's job history, not a benchmark of the engines.
-- **135** — job and report search covers text, status, engine, and date. There is no
-  saved-query or faceted-search interface.
 
 ## Closed after the original ledger
+
+- **135 — faceted search, and searches worth keeping.** Search filtered by text,
+  status, engine and date but could not say how much of each kind it had matched, and
+  forgot every search as soon as it ran. `GET /api/jobs/facets` counts the matches by
+  status, engine and digit band under the same shared WHERE clause the result list
+  uses, so a count answers "how many of these"; the chips are the filter controls.
+  Saved searches live in their own SQLite table, hold only the fields the job search
+  accepts, validate each one on the way in, and replace by name while keeping their id.
+
+- **129 — the engine decision path, drawn.** PARI/GP computed the path and returned it
+  as explicit steps, and the interface rendered them as table rows. It now draws them:
+  one node per question the engine answered, its answer beside it, the consequence on
+  the connector to the next node, the recommendation as the terminal node, and the
+  small factors on the question that found them. The browser answers nothing and infers
+  no step; `tests/decision_diagram.js` runs the shipped drawing over a captured
+  strategy result.
+
+- **17 — CADO-NFS one stage at a time.** This entry recorded for a long time that
+  isolating a CADO stage would mean reproducing its upstream Python harness's
+  bookkeeping. That was wrong, and the engine's own source says so: every CADO task
+  takes a `run` parameter, and disabling the task *after* the one wanted makes the
+  harness stop there, exit cleanly, and leave the finished work in its working
+  directory. The `cado_stage` backend runs the twelve stages one at a time on that
+  basis, `POST /api/jobs/{id}/cado-stage` moves the gate forward, and CADO's own state
+  database continues the work. Verified against CADO-NFS 3.0.0 on a 60-digit input in
+  three passes over one working directory, the last of which returned both 30-digit
+  primes. A gated run that ends without CADO's stop marker fails rather than reporting
+  a stage it may not have reached, and only the square root yields factors. YAFU's own
+  `-np` switch remains deliberately unexposed: YAFU's documentation states that its
+  "multi-threaded polynomial selection is handled via msieve library function calls",
+  and its log confirms it, so the switch is a second front end to the selection already
+  reachable through the `msieve_poly` strategy and would add neither a capability nor
+  an independent check.
 
 - **1 and 116 — the factor tree, drawn, with times.** The factor view was a flat
   root-plus-leaves list and captured no per-factor time. `GET /api/jobs/{id}/tree` now

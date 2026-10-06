@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,7 @@ JOB_COLUMNS = {
 ECM_COLUMNS = {"ecm_b1", "ecm_b2", "ecm_curves", "ecm_sigma", "ecm_param", "ecm_curves_done",
                "ecm_maxmem", "ecm_stage2_steps", "ecm_base2", "ecm_group_order",
                "yafu_options_json", "polyselect_stage", "polyselect_options_json",
+               "cado_stage",
                "verification_json",
                "distributed_json"}
 WORKSPACE_COLUMNS = {"name", "notes", "job_ids_json", "report_files_json", "ui_state_json"}
@@ -168,6 +170,7 @@ class Database:
             "ecm_group_order": "TEXT",
             "yafu_options_json": "TEXT",
             "polyselect_stage": "TEXT",
+            "cado_stage": "TEXT",
             "polyselect_options_json": "TEXT",
             "verification_json": "TEXT",
             "distributed_json": "TEXT",
@@ -220,6 +223,17 @@ class Database:
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS cache_operation_idx ON result_cache(operation)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS saved_searches (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                query_json TEXT NOT NULL
+            )
+            """
+        )
 
     @staticmethod
     def _decode(row: sqlite3.Row | None) -> dict[str, Any] | None:
@@ -295,6 +309,153 @@ class Database:
 
     # ----- workspace tranche: search, workspaces, reports, cache, history -------------
 
+    @staticmethod
+    def _job_filters(
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        engine: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+    ) -> tuple[str, list[Any]]:
+        """Build the parameterized WHERE clause shared by the search and the facets.
+
+        A facet count that did not come from the same filters as the result list would
+        be a different question's answer displayed beside it, so both call this.
+        """
+
+        clauses: list[str] = []
+        values: list[Any] = []
+        if q:
+            pattern = f"%{q}%"
+            clauses.append("(expression LIKE ? OR number LIKE ? OR factors_json LIKE ?)")
+            values.extend([pattern, pattern, pattern])
+        if status:
+            clauses.append("status = ?")
+            values.append(status)
+        if engine:
+            clauses.append("(selected_backend LIKE ? OR requested_backend LIKE ?)")
+            values.extend([f"%{engine}%", f"%{engine}%"])
+        if since:
+            clauses.append("created_at >= ?")
+            values.append(since)
+        if until:
+            clauses.append("created_at <= ?")
+            values.append(until)
+        return (f"WHERE {' AND '.join(clauses)}" if clauses else "", values)
+
+    def job_facets(
+        self,
+        *,
+        q: str | None = None,
+        status: str | None = None,
+        engine: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+    ) -> dict[str, Any]:
+        """Count the jobs a search matches, grouped by status, engine and digit band.
+
+        The filters are the search's own, so each count answers "how many of these",
+        not "how many in the database".
+
+        Returns:
+            ``{"total": n, "status": [...], "engine": [...], "digits": [...]}`` with
+            each list holding ``{"value", "count"}`` entries, ordered by count. The
+            digit bands are fixed decimal ranges, counted in SQL.
+        """
+
+        where, values = self._job_filters(
+            q=q, status=status, engine=engine, since=since, until=until
+        )
+        bands = (
+            ("1-19 digits", 1, 19),
+            ("20-59 digits", 20, 59),
+            ("60-94 digits", 60, 94),
+            ("95+ digits", 95, 10**6),
+        )
+        with self.connect() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM jobs {where}", values
+            ).fetchone()[0]
+            grouped: dict[str, list[dict[str, Any]]] = {}
+            for key, column in (("status", "status"), ("engine", "selected_backend")):
+                rows = conn.execute(
+                    f"SELECT {column}, COUNT(*) FROM jobs {where} GROUP BY {column} "
+                    "ORDER BY COUNT(*) DESC, 1 ASC",
+                    values,
+                ).fetchall()
+                grouped[key] = [
+                    {"value": row[0], "count": row[1]} for row in rows if row[0]
+                ]
+            digits = []
+            for label, low, high in bands:
+                clause = f"{where} AND digits BETWEEN ? AND ?" if where else (
+                    "WHERE digits BETWEEN ? AND ?"
+                )
+                count = conn.execute(
+                    f"SELECT COUNT(*) FROM jobs {clause}", [*values, low, high]
+                ).fetchone()[0]
+                if count:
+                    digits.append({"value": label, "count": count})
+        return {"total": total, **grouped, "digits": digits}
+
+    # ----- saved searches (roadmap item 135) ------------------------------------------
+
+    def save_search(self, name: str, query: dict[str, Any]) -> dict[str, Any]:
+        """Store a named search, replacing one of the same name.
+
+        Args:
+            name: The name shown in the interface; unique, and the key for a replace.
+            query: The already-validated filter fields.
+        """
+
+        now = utc_now()
+        with self.connect() as conn:
+            existing = conn.execute(
+                "SELECT id, created_at FROM saved_searches WHERE name=?", (name,)
+            ).fetchone()
+            identifier = existing["id"] if existing else uuid.uuid4().hex
+            created = existing["created_at"] if existing else now
+            conn.execute(
+                "INSERT OR REPLACE INTO saved_searches "
+                "(id, name, created_at, updated_at, query_json) VALUES (?,?,?,?,?)",
+                (identifier, name, created, now, json.dumps(query)),
+            )
+        return self.get_search(identifier)  # type: ignore[return-value]
+
+    def get_search(self, identifier: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM saved_searches WHERE id=?", (identifier,)
+            ).fetchone()
+        return self._decode_search(row)
+
+    def list_searches(self) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM saved_searches ORDER BY updated_at DESC"
+            ).fetchall()
+        return [self._decode_search(row) for row in rows]  # type: ignore[misc]
+
+    def delete_search(self, identifier: str) -> bool:
+        with self.connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM saved_searches WHERE id=?", (identifier,)
+            )
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def _decode_search(row: sqlite3.Row | None) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        record = dict(row)
+        try:
+            record["query"] = json.loads(record.pop("query_json"))
+        except (TypeError, json.JSONDecodeError):
+            record.pop("query_json", None)
+            record["query"] = {}
+        return record
+
     def search_jobs(
         self,
         *,
@@ -327,25 +488,9 @@ class Database:
 
         if sort not in JOB_SORT_COLUMNS:
             raise ValueError(f"Unsupported sort column: {sort}")
-        clauses: list[str] = []
-        values: list[Any] = []
-        if q:
-            pattern = f"%{q}%"
-            clauses.append("(expression LIKE ? OR number LIKE ? OR factors_json LIKE ?)")
-            values.extend([pattern, pattern, pattern])
-        if status:
-            clauses.append("status = ?")
-            values.append(status)
-        if engine:
-            clauses.append("(selected_backend LIKE ? OR requested_backend LIKE ?)")
-            values.extend([f"%{engine}%", f"%{engine}%"])
-        if since:
-            clauses.append("created_at >= ?")
-            values.append(since)
-        if until:
-            clauses.append("created_at <= ?")
-            values.append(until)
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        where, values = self._job_filters(
+            q=q, status=status, engine=engine, since=since, until=until
+        )
         direction = "DESC" if descending else "ASC"
         query = (
             f"SELECT * FROM jobs {where} ORDER BY {sort} {direction}, created_at DESC "

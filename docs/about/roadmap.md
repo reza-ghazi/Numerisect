@@ -13,8 +13,8 @@ every item's status and the precise gap where one remains.
 
 | Status | Proposal items | Ledger entries |
 |---|---:|---:|
-| Implemented with no caveat | 132 | — |
-| Working with a named gap | 15 | 11 |
+| Implemented with no caveat | 135 | — |
+| Working with a named gap | 12 | 8 |
 | Declined, with reasoning recorded | 3 | 4 |
 | Deferred, with no placeholder | 0 | 0 |
 | **Total** | **150** | |
@@ -66,23 +66,33 @@ Numerisect is at 0.x: the minor number carries the weight, and the version text 
 **The bar for 1.0 has not been set**, and this section does not set it — it records what
 is actually left, so that whoever sets it is choosing from facts.
 
-The remaining distance is **not** more mathematics. Of the eleven entries that still
-carry a named gap, none is a missing computation; they divide into two kinds, and only
-one kind can be closed:
-
-**Presentation, and therefore closeable.** The engine decision path is returned as a list
-rather than drawn. Job search has no saved queries or facets. CADO's own stages cannot be
-run one at a time, because its workflow is driven by an upstream Python harness and
-isolating a stage means reproducing that harness's bookkeeping. The factor view has been
-drawn as a tree and per-factor discovery times are captured, which closes the first two
-of the five — see
+The remaining distance is **not** more mathematics, and after 2026-10-05 it is not
+presentation either. All five closeable gaps are closed: the factor view is drawn as a
+tree, per-factor discovery times are captured, the engine decision path is drawn as a
+diagram, job search has facets and saved searches, and CADO's stages run one at a time —
+which turned out not to need the upstream harness reproduced at all, only the `run`
+parameter every CADO task already takes. See
 [the ledger's closed entries](../ROADMAP_STATUS.md#closed-after-the-original-ledger).
+
+What remains under a named gap is of two kinds, and neither is closeable by building
+more:
 
 **Bounded searches, and therefore permanent.** The pseudoprime taxonomy, Korselt
 analysis, covering-set verification, record-number families, sociable cycles and
 number-field work are all complete *within documented finite bounds*, and report
 inconclusive beyond them. That is the honest shape of those questions, not a defect
-waiting to be fixed, and 1.0 should not pretend otherwise.
+waiting to be fixed, and 1.0 should not pretend otherwise. They are restated in the
+[capability index](../capabilities.md#searches-that-are-bounded-by-nature), where a
+reader meets the feature.
+
+**Limits of the engines and of the subject.** SQUFOF stops below \(2^{62}\) because its
+cycle is 64-bit, and the algorithms offered are the ones the installed YAFU build has
+(item 4). Certifying a factor needs PARI to prove it prime first (13). primesieve emits
+both admissible 3- and 5-tuplet shapes together, so those sizes stay on PARI rather than
+have offset arithmetic added outside an engine (14). Quadratic-sieve and NFS stage traces
+are read from engine logs, because instrumenting those engines is not this project's
+work (127). The complexity table is cited literature and its timings are this machine's
+job history, which is what a local measurement can honestly be (128).
 
 So whatever 1.0 comes to mean here, it is a decision about the interface and about
 stability rather than about capability. The author settled the four open questions on

@@ -19,12 +19,16 @@ from .adapters import REGISTRY as ADAPTER_REGISTRY
 from .config import DEFAULT_CADO_THRESHOLD, JOBS_DIR, MAX_PARALLEL_JOBS
 from .database import Database, utc_now
 from .engines import (
+    CADO_STAGE_ORDER,
     MSIEVE_POLYSELECT_STAGES,
     CadoParameter,
     cado_parameter_warning,
+    cado_stage_gate,
+    cado_stage_label,
     discover_cado_parameters,
     executable_path,
     parse_cado_factors,
+    parse_cado_stage_report,
     parse_ecm_output,
     parse_msieve_factors,
     parse_msieve_polynomial,
@@ -42,7 +46,7 @@ from .factor_lab import (
     tune_recommendation,
     validate_yafu_parameters,
 )
-from .outputs import save_factorization
+from .outputs import REPORT_STATUSES, save_factorization
 from .sievers import siever_directory
 
 PHASES = (
@@ -153,6 +157,7 @@ class JobManager:
         yafu_options: dict[str, int] | None = None,
         polyselect_stage: str = "full",
         polyselect_options: dict[str, Any] | None = None,
+        cado_stage: str | None = None,
         distributed: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not 2 <= trial_bound <= 100_000_000:
@@ -175,6 +180,12 @@ class JobManager:
                 "The polynomial-selection stage must be one of "
                 + ", ".join(sorted(MSIEVE_POLYSELECT_STAGES))
             )
+        if cado_stage is not None and cado_stage not in CADO_STAGE_ORDER:
+            raise ValueError(
+                "The CADO-NFS stage must be one of " + ", ".join(CADO_STAGE_ORDER)
+            )
+        if requested_backend == "cado_stage" and cado_stage is None:
+            raise ValueError("A staged CADO-NFS run needs the stage to run up to")
         if polyselect_options:
             # Validated against whichever engine will receive them, so an Msieve-only
             # parameter cannot be queued for a CADO job or the reverse.
@@ -194,7 +205,9 @@ class JobManager:
         selected = requested_backend
         if requested_backend == "auto":
             selected = "yafu" if digits < DEFAULT_CADO_THRESHOLD else "hybrid"
-        if selected in {"cado", "hybrid"} and not executable_path("cado-nfs.py"):
+        if selected in {"cado", "hybrid", "cado_stage"} and not executable_path(
+            "cado-nfs.py"
+        ):
             raise RuntimeError("cado-nfs.py is not available")
         yafu_modes = {
             "yafu", "hybrid", "cross_verify", "yafu_rho",
@@ -218,7 +231,7 @@ class JobManager:
 
         warning: str | None = None
         parameter: CadoParameter | None = None
-        if selected in {"cado", "hybrid"}:
+        if selected in {"cado", "hybrid", "cado_stage"}:
             # A first-run installer may have added CADO after this manager was created.
             self.parameters = discover_cado_parameters()
             parameter = select_cado_parameter(
@@ -270,6 +283,7 @@ class JobManager:
                 "ecm_group_order": ecm_group_order,
                 "yafu_options_json": json.dumps(yafu_options) if yafu_options else None,
                 "polyselect_stage": polyselect_stage,
+                "cado_stage": cado_stage,
                 "polyselect_options_json": (
                     json.dumps(polyselect_options) if polyselect_options else None
                 ),
@@ -1098,14 +1112,30 @@ class JobManager:
         snapshots = sorted(cado_dir.glob("*.parameters_snapshot.*"))
         return snapshots[-1] if snapshots else None
 
-    def _run_cado(
+    def _cado_command(
         self,
         job: dict[str, Any],
         number: int,
         *,
         resume: bool,
-    ) -> list[dict[str, object]]:
-        snapshot = self._snapshot(job) if resume else None
+        gate: str | None = None,
+        staged: bool = False,
+    ) -> list[str]:
+        """Build the `cado-nfs.py` argument array for this job.
+
+        Args:
+            job: The job row.
+            number: The integer CADO is given.
+            resume: Whether to resume from the newest parameters snapshot.
+            gate: A `tasks.<path>.<task>.run=false` assignment that stops the workflow
+                at that task, or None for an ungated run.
+            staged: True for a staged run, which always uses the working-directory form
+                even when resuming. CADO's own state database is what continues the
+                work, and the snapshot file records the gate from the previous run,
+                which would stop this one at the stage that already finished.
+        """
+
+        snapshot = self._snapshot(job) if resume and not staged else None
         if snapshot:
             command = ["cado-nfs.py", str(snapshot)]
         else:
@@ -1155,6 +1185,18 @@ class JobManager:
                 # Required whenever -p is passed; see the note in distributed.py.
                 assignments.append("slaves.hostnames=localhost")
             command += [str(number), *assignments]
+            if gate:
+                command.append(gate)
+        return command
+
+    def _run_cado(
+        self,
+        job: dict[str, Any],
+        number: int,
+        *,
+        resume: bool,
+    ) -> list[dict[str, object]]:
+        command = self._cado_command(job, number, resume=resume)
         return_code, output = self._run_process(
             job, command, cwd=Path(job["workdir"])
         )
@@ -1164,6 +1206,90 @@ class JobManager:
         if not records:
             raise RuntimeError("CADO-NFS finished without a verifiable factorization")
         return [{**record, "engine": "CADO-NFS"} for record in records]
+
+    def _run_cado_stage(
+        self, job: dict[str, Any], number: int, *, resume: bool
+    ) -> list[dict[str, object]]:
+        """Run CADO-NFS up to one of its own workflow stages and report what it did.
+
+        Every CADO task takes a `run` parameter, so disabling the task after the
+        requested one stops the harness there: it logs "Stopping at <task>", exits
+        cleanly, and leaves the finished work in its working directory. Running the
+        stages one at a time therefore needs no reimplementation of CADO's upstream
+        harness — see :data:`engines.CADO_STAGES`.
+
+        Args:
+            job: The job row, carrying ``cado_stage``.
+            number: The integer to factor.
+            resume: Whether this is a continuation of the same working directory, which
+                is how a later stage picks up where the previous one stopped.
+
+        Returns:
+            One record describing what the stage produced, with status ``stage``, or —
+            when the stage is the last one — the factorization itself.
+
+        Raises:
+            RuntimeError: If CADO fails, or if a gated run ends without the stop marker
+                its gate should have produced. A missing marker means the workflow
+                ended for some other reason, and reporting the stage as finished would
+                be a claim the log does not support.
+        """
+
+        stage = str(job.get("cado_stage") or "")
+        gate = cado_stage_gate(stage)
+        label = cado_stage_label(stage)
+        self.database.update_job(
+            job["id"], phase=f"CADO-NFS up to {label}", progress=10
+        )
+        command = self._cado_command(
+            job, number, resume=resume, gate=gate, staged=True
+        )
+        return_code, output = self._run_process(
+            job, command, cwd=Path(job["workdir"])
+        )
+        if return_code != 0:
+            raise RuntimeError(f"CADO-NFS exited with status {return_code}")
+        if gate is None:
+            # The last stage is the square root, which is an ordinary complete run.
+            records = parse_cado_factors(output, number)
+            if not records:
+                raise RuntimeError(
+                    "CADO-NFS reached the square root without a verifiable "
+                    "factorization; this is inconclusive, not a statement about "
+                    "the input"
+                )
+            return [{**record, "engine": "CADO-NFS (staged)"} for record in records]
+        report = parse_cado_stage_report(output)
+        expected = gate.split("=")[0].split(".")[-2]
+        if report["stopped_at"] != expected:
+            raise RuntimeError(
+                f"CADO-NFS ended without stopping at {expected}; the run did not "
+                "reach the requested stage, so nothing is reported for it"
+            )
+        detail = ", ".join(
+            f"{key.replace('_', ' ')} {value}"
+            for key, value in report.items()
+            if key not in {"stopped_at", "stages"} and value
+        )
+        return [
+            {
+                "value": f"{label}: {detail}" if detail else label,
+                "digits": 0,
+                "status": "stage",
+                "engine": f"CADO-NFS stage '{stage}'",
+                "cado_stage": {
+                    "stage": stage,
+                    "label": label,
+                    "stopped_before": expected,
+                    "stages_run": list(report["stages"]),
+                    **{
+                        key: value
+                        for key, value in report.items()
+                        if key not in {"stopped_at", "stages"}
+                    },
+                },
+            }
+        ]
 
     def _run(self, job_id: str, resume: bool) -> None:
         job = self.database.get_job(job_id)
@@ -1281,6 +1407,9 @@ class JobManager:
             elif backend == "cado":
                 self.database.update_job(job_id, engine_target=str(number))
                 factors.extend(self._run_cado(job, number, resume=False))
+            elif backend == "cado_stage":
+                self.database.update_job(job_id, engine_target=str(number))
+                factors.extend(self._run_cado_stage(job, number, resume=resume))
             elif backend.startswith("adapter:"):
                 factors.extend(self._run_adapter(job, number, backend.removeprefix("adapter:")))
             elif backend == "hybrid":
@@ -1331,7 +1460,14 @@ class JobManager:
             else:
                 raise RuntimeError(f"Unsupported backend: {backend}")
 
-            reporting = backend in self.REPORTING_BACKENDS
+            # A report, not a decomposition: either the backend always reports, or
+            # the records say so. A staged CADO run is the second case, because the
+            # same backend reports a stage when gated short of the square root and a
+            # factorization when it is not. REPORT_STATUSES is the exporter's list, so
+            # one definition decides both.
+            reporting = backend in self.REPORTING_BACKENDS or any(
+                factor.get("status") in REPORT_STATUSES for factor in factors
+            )
             if reporting:
                 # Success here means the engine delivered its report.
                 complete = bool(factors)
@@ -1466,6 +1602,48 @@ class JobManager:
         )
         self._submit(job_id, resume=True)
         return self.database.get_job(job_id)  # type: ignore[return-value]
+
+    def advance_cado_stage(self, job_id: str, stage: str) -> dict[str, Any]:
+        """Continue a staged CADO-NFS job up to a later stage.
+
+        The working directory already holds everything the earlier stages produced, and
+        CADO's own state database knows which tasks have run, so continuing is a matter
+        of moving the gate and running again.
+
+        Args:
+            job_id: A job created with the ``cado_stage`` backend.
+            stage: A stage from :data:`engines.CADO_STAGE_ORDER`, later than the one
+                the job last ran.
+
+        Raises:
+            KeyError: If the job does not exist.
+            ValueError: If the job is not a staged CADO run, is still active, or the
+                requested stage is not later than the one already finished — an earlier
+                stage cannot be re-run, because its work is done.
+        """
+
+        job = self.database.get_job(job_id)
+        if not job:
+            raise KeyError(job_id)
+        if job["selected_backend"] != "cado_stage":
+            raise ValueError("Only a staged CADO-NFS job can be advanced to a later stage")
+        if job["status"] in ACTIVE_STATUSES:
+            raise ValueError("Job is already active")
+        if stage not in CADO_STAGE_ORDER:
+            raise ValueError(
+                "The CADO-NFS stage must be one of " + ", ".join(CADO_STAGE_ORDER)
+            )
+        current = str(job.get("cado_stage") or "")
+        if current in CADO_STAGE_ORDER and (
+            CADO_STAGE_ORDER.index(stage) <= CADO_STAGE_ORDER.index(current)
+        ):
+            raise ValueError(
+                f"The next stage must come after '{current}'; a finished stage cannot "
+                "be run again"
+            )
+        self.database.update_job(job_id, cado_stage=stage)
+        self._append_log(job, f"\n--- Advancing to {cado_stage_label(stage)} ---\n")
+        return self.resume(job_id)
 
     def shutdown(self) -> None:
         with self._lock:

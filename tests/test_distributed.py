@@ -60,12 +60,15 @@ def test_named_workers_replace_the_localhost_default():
 
 
 def test_the_plain_cado_backend_also_sets_hostnames():
-    # Regression guard for the same bug on the non-distributed path.
+    # Regression guard for the same bug on the non-distributed path. The command
+    # builder is shared by the plain, hybrid and staged CADO runs, so this covers all
+    # three; `tests/test_polyselect.py` and `tests/test_cado_stages.py` assert it on
+    # the commands those runs actually launch.
     import inspect
 
     from numerisect.jobs import JobManager
 
-    source = inspect.getsource(JobManager._run_cado)
+    source = inspect.getsource(JobManager._cado_command)
     assert "slaves.hostnames=localhost" in source
     # The integer and its key=value assignments must stay contiguous, or CADO
     # rejects the whole command line.

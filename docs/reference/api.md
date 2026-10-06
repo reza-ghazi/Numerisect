@@ -32,7 +32,7 @@ in-process. See the [command-line reference](cli.md).
   `output/<filename>` path.
 - Searches that stop at a bound set a truncation flag and give a continuation point.
 
-## Routes (222)
+## Routes (228)
 
 ### Engine adapters
 
@@ -142,6 +142,7 @@ in-process. See the [command-line reference](cli.md).
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/api/factor/cado-stages` | List CADO-NFS's own workflow stages in order, with the task parameter that halts each one. |
 | `POST` | `/api/factor-lab/certificates` | Generate and independently verify a primality certificate per prime factor. |
 | `POST` | `/api/factor-lab/special-form` | Detect special algebraic forms, algebraic factors, and SNFS suitability. |
 | `POST` | `/api/factor-lab/classic` | Factor with CFRAC, Lehman's deterministic method or Hart's one-line factorization in the compiled helper, reporting the split with each part's primality decided by PARI/GP. |
@@ -184,8 +185,10 @@ in-process. See the [command-line reference](cli.md).
 | `POST` | `/api/jobs/batch` | Queue multiple factorizations. Enter one integer expression per line or import a TXT, CSV, or JSON array. |
 | `POST` | `/api/jobs/batch-export` | Export several factorization jobs at once in a chosen interchange format. |
 | `POST` | `/api/jobs/reorder` | Reorder queued jobs; the supplied order becomes the dispatch order. |
+| `GET` | `/api/jobs/facets` | Count the jobs a search matches, grouped by status, engine and digit band. |
 | `GET` | `/api/jobs/{job_id}` | Fetch one factorization job's status, phase and result. |
 | `POST` | `/api/jobs/{job_id}/cancel` | Cancel a running job by signalling its engine process group. |
+| `POST` | `/api/jobs/{job_id}/cado-stage` | Continue a staged CADO-NFS job up to a later stage of its workflow. |
 | `POST` | `/api/jobs/{job_id}/certificates` | Certify every prime factor of a completed factorization (roadmap item 13). |
 | `POST` | `/api/jobs/{job_id}/continue-cofactor` | Start a linked child job on a composite cofactor the parent could not split. |
 | `GET` | `/api/jobs/{job_id}/export` | Download one factorization job in a chosen interchange format. |
@@ -323,6 +326,9 @@ in-process. See the [command-line reference](cli.md).
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/api/searches` | List the saved job searches, most recently updated first. |
+| `POST` | `/api/searches` | Save a named job search, replacing one that already has the name. |
+| `DELETE` | `/api/searches/{search_id}` | Delete one saved job search; jobs and reports are untouched. |
 | `GET` | `/api/session` | Issue the per-process request token; the only unauthenticated route. |
 
 ### Engine setup

@@ -65,6 +65,10 @@ Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
   splits in milliseconds when 200 bits of its 512-bit prime are unknown
 - NFS polynomial selection as its own job in Msieve, whole or one stage at a time, and
   CADO's `tasks.polyselect.*` keys inside a factoring run
+- CADO-NFS run one stage at a time — polynomial selection, sieving, filtering, linear
+  algebra, square root — each stopping cleanly and continuing where the last left off
+- A drawn factor tree, with the cofactor between every division computed and proven by
+  PARI/GP, and the moment each factor was first printed by its engine
 - Two independent proof engines for primality, PARI's `isprime` and YAFU's APR-CL, with
   the Mersenne verdict and the n-th prime each cross-checked across unrelated codebases
 - Polynomial factorization over 𝔽_p shown stage by stage: square-free, distinct-degree,
@@ -96,10 +100,10 @@ opens a versioned URL in the default browser when `xdg-open` is available. It
 prefers `.venv/bin/python` when present and explicitly loads this source tree.
 Set `NUMERISECT_NO_BROWSER=1`
 if you prefer to open it manually. The main routes are Prime Tools at
-<http://127.0.0.1:8765/?ui=20261005-factor-tree#primes/prime-check>, Riemann Zeta at
-<http://127.0.0.1:8765/?ui=20261005-factor-tree#zeta>, and diagnostics at
-<http://127.0.0.1:8765/?ui=20261005-factor-tree#diagnostics>. The dedicated Mersenne
-factor search is at <http://127.0.0.1:8765/?ui=20261005-factor-tree#factor/mersenne>.
+<http://127.0.0.1:8765/?ui=20261005-closeable-gaps#primes/prime-check>, Riemann Zeta at
+<http://127.0.0.1:8765/?ui=20261005-closeable-gaps#zeta>, and diagnostics at
+<http://127.0.0.1:8765/?ui=20261005-closeable-gaps#diagnostics>. The dedicated Mersenne
+factor search is at <http://127.0.0.1:8765/?ui=20261005-closeable-gaps#factor/mersenne>.
 
 After updating the source, restart the server and reload the browser page.
 The application shell and assets send `no-store` headers; restarting a server
@@ -221,8 +225,17 @@ runs at a time unless `NUMERISECT_MAX_PARALLEL_JOBS` is changed. Very large
 factorizations may still take hours, days, or substantially longer; thread count
 and digit count alone cannot predict completion time.
 
-Each completed factorization receives an equation view, factor tree,
-per-factor engine status, text report, and JSON reproducibility manifest.
+Each completed factorization receives an equation view, a drawn factor tree, per-factor
+engine status, a text report, and a JSON reproducibility manifest. The tree is the
+hierarchy the run produced: PARI/GP divides out each factor in the order its engine
+printed it and proves the label on every cofactor, and a cofactor continued as a child
+job links to that job. Each factor also carries the offset at which its value first
+appeared in the engine's output, which is an observation of that log and not a
+measurement of the algorithm; factors too short to identify in output carry no time
+rather than an invented one.
+
+Job search counts what it matched — by status, engine and digit band, under the filters
+in force — and a search worth repeating can be saved by name.
 Unresolved composite factors can be submitted as linked child jobs. A result
 is accepted only when every returned factor divides the input and their product
 equals it; cross-check mode additionally requires identical YAFU and Msieve

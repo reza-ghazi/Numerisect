@@ -107,6 +107,13 @@ def _factorization_manifest(
     }
 
 
+#: Factor-record statuses that describe the input rather than decompose it: a measured
+#: crossover, a selected polynomial, the candidates one selection stage saved, and a
+#: CADO workflow stage. A report must not be printed as "N = <report>", and the job
+#: manager must not apply the completeness check to one.
+REPORT_STATUSES = frozenset({"measurement", "polynomial", "candidates", "stage"})
+
+
 def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) -> Path:
     filename = f"factorization-{job['id'][:12]}.txt"
     path = OUTPUT_DIR / filename
@@ -114,10 +121,7 @@ def save_factorization(job: dict[str, Any], factors: list[dict[str, object]]) ->
     values = [str(factor["value"]) for factor in factors]
     # A measurement or a polynomial is a report about the input, not a decomposition of
     # it, so printing "N = <report>" would state something false.
-    reporting = any(
-        factor.get("status") in {"measurement", "polynomial", "candidates"}
-        for factor in factors
-    )
+    reporting = any(factor.get("status") in REPORT_STATUSES for factor in factors)
     equation = (
         f"Report for {signed_number}"
         if reporting

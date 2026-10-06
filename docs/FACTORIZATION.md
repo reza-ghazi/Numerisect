@@ -45,6 +45,33 @@ spans more than one run: clicking the node opens the child. A chain that does no
 reach 1 is reported as the part of the decomposition the engines established, with
 the remaining cofactor named, and is never presented as a factorization.
 
+### CADO-NFS one stage at a time
+
+The `cado_stage` backend runs CADO's own workflow up to a stage you choose and stops
+there. `GET /api/factor/cado-stages` lists the stages in the order its harness runs
+them: size and root optimization of the polynomial, factor base, free relations,
+lattice sieving, the two duplicate-removal passes, singleton removal, matrix merging,
+linear algebra, quadratic characters and the square root.
+
+This needs no reimplementation of CADO's upstream harness, which is what the roadmap
+ledger assumed for a long time. Every CADO task accepts a `run` parameter, so
+disabling the task *after* the requested one makes the harness stop at it: it logs
+`Stopping at <task>`, exits cleanly, and leaves the finished work in the job's working
+directory. `POST /api/jobs/{job_id}/cado-stage` moves the gate forward and runs again;
+CADO's own state database knows which tasks have already run, so the next stage
+continues from where the last one stopped. Verified here against CADO-NFS 3.0.0 on a
+60-digit input: gated at sieving it stopped after polynomial selection, gated at
+singleton removal it sieved and removed duplicates, and ungated it finished and
+returned both 30-digit primes.
+
+A staged run is a **report**, not a factorization, and is recorded as one: it names the
+stages that ran and the figures CADO printed for them — the best Murphy E, the free and
+unique relation counts, what singleton removal left, the merged matrix dimensions. Only
+the last stage, the square root, yields factors, and then the usual completeness check
+applies. A gated run that ends without CADO's own stop marker fails rather than
+reporting the stage as finished, because the workflow ended for some other reason. A
+stage earlier than the one already finished is refused: that work is done.
+
 ### When each factor appeared
 
 Each factor records `first_seen_seconds`: the offset, from the moment the job started
