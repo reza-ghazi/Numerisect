@@ -5,6 +5,21 @@ binary packages are published.
 
 ## Unreleased
 
+- Applied the four open Dependabot updates by hand, because three of them could not
+  land as Dependabot wrote them:
+  - `github/codeql-action/init` and `/analyze` to v4.39.0. These arrived as two
+    separate pull requests, and either one alone fails the scan: the action refuses to
+    run when init and analyze are different versions. Both move in this commit.
+  - `Vampire/setup-wsl` to v7.2.0. `tests/test_platform_workflow.py` pins the action's
+    revision on purpose, so a bump has to update the test in the same change; the
+    pull request could not.
+  - `fastapi` to `<0.162`. Dependabot's pull request proposed `<0.144` on 13 October
+    and 0.161.1 has since been released, so the cap it asked for was already seventeen
+    minors behind. The full suite was run against 0.161.1 before the cap moved, which
+    is what the cap is meant to mean here.
+  Both action revisions were verified by dereferencing the upstream tags rather than
+  trusting the pull-request text.
+
 - Fixed the flaky job-test idiom that was failing those pull requests for an unrelated
   reason. `manager._futures[job_id].result()` is a race: the manager drops the future
   in its worker's `finally`, after writing the terminal row, so a stubbed job that

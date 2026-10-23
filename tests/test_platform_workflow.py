@@ -14,7 +14,7 @@ def test_supported_ci_hosts_are_real_github_runner_targets():
 
 
 def test_wsl_job_uses_a_pinned_action_and_real_ubuntu_distribution():
-    assert "Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364" in WORKFLOW
+    assert "Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4" in WORKFLOW
     assert "distribution: Ubuntu-24.04" in WORKFLOW
     assert "wsl-version: 1" in WORKFLOW
     assert "grep -qi microsoft /proc/version" in WORKFLOW
