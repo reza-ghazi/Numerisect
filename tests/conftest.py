@@ -13,6 +13,8 @@ Use it as::
 from __future__ import annotations
 
 import shutil
+import time
+from typing import Any
 
 import pytest
 
@@ -56,3 +58,48 @@ def requires(*names: str):
     missing = [name for name in names if not engine_available(name)]
     reason = "Optional engine not installed: " + ", ".join(missing) if missing else ""
     return pytest.mark.skipif(bool(missing), reason=reason)
+
+
+#: Statuses a job no longer moves out of.
+TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
+
+
+def wait_for_job(manager: Any, job_id: str, timeout: float = 60) -> dict[str, Any]:
+    """Wait for one factorization job to finish, and return its stored row.
+
+    `JobManager` drops a job's future in the `finally` of its worker, *after* writing
+    the terminal row, so `manager._futures[job_id]` is a race: a job that finishes
+    before the test looks it up raises `KeyError`. Every job test used that expression
+    directly, and it flaked in CI on a stubbed run that completed immediately.
+
+    Waiting on the future when it is still there keeps the exact behaviour tests
+    relied on, including propagating a worker exception. A missing future means the
+    row is already terminal, because the status is written before the future is
+    dropped; the short poll covers the gap between those two statements.
+
+    Args:
+        manager: The `JobManager` under test.
+        job_id: The job to wait for.
+        timeout: Seconds to wait before failing.
+
+    Returns:
+        The job row, with its terminal status.
+
+    Raises:
+        AssertionError: If the job has not reached a terminal status in time.
+    """
+
+    future = manager._futures.get(job_id)
+    if future is not None:
+        future.result(timeout=timeout)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        row = manager.database.get_job(job_id)
+        if row and row["status"] in TERMINAL_STATUSES:
+            return row
+        time.sleep(0.02)
+    row = manager.database.get_job(job_id)
+    raise AssertionError(
+        f"job {job_id} did not finish within {timeout}s; "
+        f"status was {row['status'] if row else 'missing'}"
+    )

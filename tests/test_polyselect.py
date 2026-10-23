@@ -7,6 +7,7 @@ fixture is real output captured from a 91-digit run.
 """
 
 import pytest
+from conftest import wait_for_job
 
 from numerisect import jobs, outputs
 from numerisect.database import Database
@@ -144,7 +145,7 @@ def test_the_msieve_selection_command_carries_the_stage_and_its_options(tmp_path
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
             polyselect_stage="full", polyselect_options={"degree": 4, "deadline": 15},
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -168,7 +169,7 @@ def test_each_stage_uses_its_own_msieve_flag(tmp_path, monkeypatch, stage, flag)
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
             polyselect_stage=stage,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -188,7 +189,7 @@ def test_a_full_selection_that_never_completes_is_an_error(tmp_path, monkeypatch
             expression="10403", number=10403, requested_backend="msieve_poly", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -211,7 +212,7 @@ def test_cado_receives_the_selection_overrides(tmp_path, monkeypatch):
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
             polyselect_options={"P": 20000, "admax": 50000, "ropteffort": 0.5},
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
     finally:
         manager.shutdown()
     command = commands[0]
@@ -276,7 +277,7 @@ def test_a_reporting_backend_completes_instead_of_failing_the_product_check(tmp_
             expression="10403", number=10403, requested_backend="tune", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -296,7 +297,7 @@ def test_a_factoring_backend_still_has_to_reconstruct_the_input(tmp_path, monkey
             expression="10403", number=10403, requested_backend="yafu", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -313,7 +314,7 @@ def test_the_report_states_a_result_rather_than_a_false_equation(tmp_path, monke
             expression="10403", number=10403, requested_backend="msieve_poly", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
     finally:
         manager.shutdown()
     report = (tmp_path / "output" / f"factorization-{created['id'][:12]}.txt").read_text(

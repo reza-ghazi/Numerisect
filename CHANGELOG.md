@@ -5,6 +5,14 @@ binary packages are published.
 
 ## Unreleased
 
+- Fixed the flaky job-test idiom that was failing those pull requests for an unrelated
+  reason. `manager._futures[job_id].result()` is a race: the manager drops the future
+  in its worker's `finally`, after writing the terminal row, so a stubbed job that
+  finished before the test looked it up raised `KeyError`. All 25 call sites now use
+  `conftest.wait_for_job`, which waits on the future when it is still there and falls
+  back to the stored row when it is not — the row is terminal by then, because the
+  status is written first. A hung job now fails with its last status instead of hanging.
+
 - Moved the HTTP calls in the new saved-search and tree tests out of their assertions,
   which CodeQL flagged. `python -O` strips asserts, so a request that only happens when
   assertions are enabled tests nothing.

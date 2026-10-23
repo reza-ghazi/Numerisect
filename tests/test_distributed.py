@@ -8,7 +8,7 @@ without ``slaves.hostnames`` it starts a bare work-unit server and polls forever
 import json
 
 import pytest
-from conftest import requires
+from conftest import requires, wait_for_job
 from fastapi.testclient import TestClient
 
 from numerisect.distributed import (
@@ -265,7 +265,7 @@ def test_a_loopback_distributed_run_actually_factors(tmp_path, monkeypatch):
             threads=4, pretest_level=20, trial_bound=100_000,
             cado_parameter_size=None, distributed=plan,
         )
-        manager._futures[created["id"]].result(timeout=900)
+        wait_for_job(manager, created["id"], 900)
         completed = database.get_job(created["id"])
         assert completed["status"] == "completed", completed.get("error")
         product = 1

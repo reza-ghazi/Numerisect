@@ -11,6 +11,7 @@ as a whole number carries no time at all rather than inheriting the job's elapse
 """
 
 import pytest
+from conftest import wait_for_job
 from fastapi.testclient import TestClient
 
 from numerisect import jobs, main, outputs
@@ -113,7 +114,7 @@ def test_discovery_times_are_recorded_from_the_engine_output(tmp_path, monkeypat
             expression="1022117", number=1022117, requested_backend="pari_trial",
             threads=1, pretest_level=20, trial_bound=2000, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         completed = manager.database.get_job(created["id"])
         assert completed is not None and completed["status"] == "completed"
         times = [factor.get("first_seen_seconds") for factor in completed["factors"]]
@@ -141,7 +142,7 @@ def test_a_factor_the_engines_never_printed_carries_no_time(tmp_path, monkeypatc
             expression="8051", number=8051, requested_backend="pari_trial",
             threads=1, pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=30)
+        wait_for_job(manager, created["id"], 30)
         completed = manager.database.get_job(created["id"])
         assert completed is not None
         assert [factor["value"] for factor in completed["factors"]] == ["83", "97"]

@@ -4,7 +4,7 @@ import pathlib
 import subprocess
 
 import pytest
-from conftest import requires
+from conftest import requires, wait_for_job
 from fastapi.testclient import TestClient
 
 from numerisect import jobs as jobs_module
@@ -263,7 +263,7 @@ def test_squfof_runs_as_a_job_backend_with_engine_decided_primality(tmp_path, mo
             expression="11111111111", number=11111111111, requested_backend="squfof",
             threads=1, pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=120)
+        wait_for_job(manager, created["id"], 120)
         completed = database.get_job(created["id"])
         assert completed["status"] == "completed"
         values = {factor["value"] for factor in completed["factors"]}
@@ -445,7 +445,7 @@ def test_ecm_campaign_runs_and_produces_a_consistent_decomposition(tmp_path, mon
             threads=1, pretest_level=20, trial_bound=100, cado_parameter_size=None,
             ecm_b1=2000, ecm_curves=40,
         )
-        manager._futures[created["id"]].result(timeout=300)
+        wait_for_job(manager, created["id"], 300)
         completed = database.get_job(created["id"])
         assert completed["status"] == "completed"
         assert completed["factors"]

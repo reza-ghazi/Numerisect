@@ -4,6 +4,7 @@ import json
 import threading
 
 import pytest
+from conftest import wait_for_job
 from fastapi.testclient import TestClient
 
 from numerisect import jobs, outputs
@@ -321,7 +322,7 @@ def test_job_limits_recorded_in_manifest(tmp_path, monkeypatch):
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
             priority=5, cpu_seconds=60, memory_mb=512, wall_seconds=120,
         )
-        manager._futures[created["id"]].result(timeout=30)
+        wait_for_job(manager, created["id"], 30)
         completed = database.get_job(created["id"])
         assert completed["status"] == "completed"
         assert completed["priority"] == 5

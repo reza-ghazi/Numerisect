@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from conftest import wait_for_job
 
 from numerisect import jobs, outputs
 from numerisect.database import Database
@@ -26,7 +27,7 @@ def test_bounded_native_trial_job_and_reproducible_manifest(tmp_path, monkeypatc
             trial_bound=100,
             cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=10)
+        wait_for_job(manager, created["id"], 10)
         completed = database.get_job(created["id"])
         assert completed is not None
         assert completed["status"] == "completed"
@@ -84,7 +85,7 @@ def test_yafu_expert_parameters_reach_the_engine(tmp_path, monkeypatch):
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
             yafu_options={"b1_ecm": 50_000, "siqs_relations": 100_000},
         )
-        manager._futures[created["id"]].result(timeout=30)
+        wait_for_job(manager, created["id"], 30)
     finally:
         manager.shutdown()
     assert commands, "YAFU was never launched"
@@ -126,7 +127,7 @@ def test_ecm_campaign_passes_the_stage_two_and_special_form_flags(tmp_path, monk
             ecm_b1=50_000, ecm_curves=10, ecm_maxmem=512, ecm_stage2_steps=4,
             ecm_base2=-101, ecm_group_order="2*101",
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
     finally:
         manager.shutdown()
     assert commands, "GMP-ECM was never launched"
@@ -152,7 +153,7 @@ def _cross_verify_job(tmp_path, monkeypatch, yafu_output, msieve_output):
             expression="10403", number=10403, requested_backend="cross_verify", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         return manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -225,3 +226,47 @@ def test_the_report_carries_the_comparison(tmp_path, monkeypatch):
     assert "Independent verification" in report
     assert "Factor multisets: agree" in report
     assert "101 [prime]" in report and "101 [probable_prime]" in report
+
+
+def test_a_job_is_waited_for_even_once_its_future_is_dropped(tmp_path, monkeypatch):
+    """The manager drops a job's future after writing the terminal row.
+
+    Every job test used to index `manager._futures[job_id]` directly, which is a race:
+    a stubbed job that finished before the test looked it up raised `KeyError`, and that
+    is how CI flaked on an unrelated Dependabot pull request. `wait_for_job` falls back
+    to the stored row, which is already terminal whenever the future is gone.
+    """
+
+    manager = _manager(tmp_path, monkeypatch)
+    try:
+        created = manager.create(
+            expression="8051", number=8051, requested_backend="pari_trial",
+            threads=1, pretest_level=20, trial_bound=100, cado_parameter_size=None,
+        )
+        assert wait_for_job(manager, created["id"], 30)["status"] == "completed"
+        # Exactly what the worker's `finally` does once the row is written.
+        manager._futures.pop(created["id"], None)
+        row = wait_for_job(manager, created["id"], 5)
+        assert row["status"] == "completed"
+        assert [factor["value"] for factor in row["factors"]] == ["83", "97"]
+    finally:
+        manager.shutdown()
+
+
+def test_waiting_for_a_job_that_never_finishes_fails_with_its_status(tmp_path, monkeypatch):
+    """A hung job must fail the test loudly rather than hang or pass quietly."""
+
+    manager = _manager(tmp_path, monkeypatch)
+    try:
+        database = manager.database
+        database.create_job({
+            "id": "stuck", "expression": "8051", "number": "8051", "digits": 4,
+            "negative": 0, "requested_backend": "pari_trial",
+            "selected_backend": "pari_trial", "status": "running", "phase": "Sieving",
+            "threads": 1, "pretest_level": 20, "trial_bound": 100,
+            "workdir": str(tmp_path), "log_path": str(tmp_path / "job.log"),
+        })
+        with pytest.raises(AssertionError, match="status was running"):
+            wait_for_job(manager, "stuck", 0.1)
+    finally:
+        manager.shutdown()

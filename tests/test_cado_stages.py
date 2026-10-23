@@ -12,6 +12,7 @@ installed — CI has none.
 """
 
 import pytest
+from conftest import wait_for_job
 from fastapi.testclient import TestClient
 
 from numerisect import jobs, main, outputs
@@ -176,7 +177,7 @@ def test_a_staged_run_gates_the_next_task_and_reports_the_stage(tmp_path, monkey
     commands = _capture(manager, monkeypatch, [STOPPED_AT_SIEVING])
     try:
         created = _staged(manager, "freerel")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -203,7 +204,7 @@ def test_a_gated_run_without_the_stop_marker_fails(tmp_path, monkeypatch):
     _capture(manager, monkeypatch, ["Info:Polynomial Selection (size optimized): Starting\n"])
     try:
         created = _staged(manager, "freerel")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -216,7 +217,7 @@ def test_the_last_stage_is_an_ordinary_complete_factorization(tmp_path, monkeypa
     commands = _capture(manager, monkeypatch, [FINISHED])
     try:
         created = _staged(manager, "sqrt")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -232,7 +233,7 @@ def test_the_last_stage_without_factors_is_inconclusive(tmp_path, monkeypatch):
     _capture(manager, monkeypatch, ["Info:Square Root: Starting\n"])
     try:
         created = _staged(manager, "sqrt")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -247,14 +248,14 @@ def test_advancing_continues_in_the_same_working_directory(tmp_path, monkeypatch
     commands = _capture(manager, monkeypatch, [STOPPED_AT_SIEVING, STOPPED_AT_PURGE])
     try:
         created = _staged(manager, "freerel")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         # A snapshot exists after the first pass, as it would in a real run.
         snapshot = tmp_path / "jobs" / created["id"] / "cado"
         snapshot.mkdir(parents=True, exist_ok=True)
         (snapshot / "c60.parameters_snapshot.0").write_text("N=1\n", encoding="utf-8")
         advanced = manager.advance_cado_stage(created["id"], "duplicates2")
         assert advanced["cado_stage"] == "duplicates2"
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         row = manager.database.get_job(created["id"])
     finally:
         manager.shutdown()
@@ -272,7 +273,7 @@ def test_an_earlier_stage_cannot_be_re_run(tmp_path, monkeypatch):
     _capture(manager, monkeypatch, [STOPPED_AT_SIEVING])
     try:
         created = _staged(manager, "sieving")
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         with pytest.raises(ValueError, match="must come after 'sieving'"):
             manager.advance_cado_stage(created["id"], "freerel")
         with pytest.raises(ValueError, match="must come after 'sieving'"):
@@ -291,7 +292,7 @@ def test_only_a_staged_job_can_be_advanced(tmp_path, monkeypatch):
             expression="10403", number=10403, requested_backend="cado", threads=1,
             pretest_level=20, trial_bound=100, cado_parameter_size=None,
         )
-        manager._futures[created["id"]].result(timeout=60)
+        wait_for_job(manager, created["id"], 60)
         with pytest.raises(ValueError, match="Only a staged CADO-NFS job"):
             manager.advance_cado_stage(created["id"], "sieving")
         with pytest.raises(KeyError):
