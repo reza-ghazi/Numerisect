@@ -5,6 +5,15 @@ binary packages are published.
 
 ## Unreleased
 
+- Widened the `fastapi` bound to `<1`, by the author's decision on 2026-10-27, replacing
+  a ceiling that moved every week. FastAPI is pre-1.0 and releases a minor roughly
+  weekly; this application imports four names from its stable core, and the suite drives
+  all 228 routes through `TestClient`. The bound now says what it can honestly say — not
+  "tested up to this minor", but "no major version jump without a decision" — and CI
+  installs the newest allowed release on every run, so an incompatible one is a red run
+  rather than a quiet surprise in someone's install. `.github/dependabot.yml` is
+  unchanged: security alerts still arrive, and this only stops the weekly ceiling bump.
+
 - `fastapi` to `<0.163`. 0.162.0 shipped hours after the previous cap went in, and the
   full suite passes against it, which is what the cap is meant to assert.
 

@@ -27,7 +27,12 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-  "fastapi>=0.110,<0.163",
+  # FastAPI is pre-1.0 and ships a minor roughly weekly, while the surface used here is
+  # four imports of its stable core. A per-minor ceiling therefore asserted little and
+  # generated a pull request a week, so the bound is the next major instead. CI installs
+  # the newest allowed version on every run, including into the wheel the platform jobs
+  # build, so an incompatible release shows up as a red run rather than a silent install.
+  "fastapi>=0.110,<1",
   "starlette>=0.40,<2",
   "uvicorn>=0.29,<0.55",
 ]
