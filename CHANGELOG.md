@@ -5,6 +5,9 @@ binary packages are published.
 
 ## Unreleased
 
+- `fastapi` to `<0.163`. 0.162.0 shipped hours after the previous cap went in, and the
+  full suite passes against it, which is what the cap is meant to assert.
+
 - Applied this week's three Dependabot action updates: `github/codeql-action/init`
   and `/analyze` to v4.39.1 together, and `actions/setup-python` to v7.1.0 across all
   five steps that use it. Both revisions were verified against the upstream tags.
