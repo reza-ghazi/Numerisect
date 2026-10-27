@@ -5,6 +5,17 @@ binary packages are published.
 
 ## Unreleased
 
+- Applied this week's three Dependabot action updates: `github/codeql-action/init`
+  and `/analyze` to v4.39.1 together, and `actions/setup-python` to v7.1.0 across all
+  five steps that use it. Both revisions were verified against the upstream tags.
+- Grouped the CodeQL action in `.github/dependabot.yml`, so this stops recurring.
+  `init` and `analyze` are two dependencies but one action, and the scan fails with
+  "Loaded a configuration file for version X, but running version Y" unless every
+  step matches. Ungrouped, each arrived as its own pull request and failed on its own
+  — three times now (#18/#19, #24/#26, #28/#29), each needing a hand-merge. The
+  failure message recommends exactly this group, so future bumps should arrive as one
+  mergeable pull request.
+
 - Applied the four open Dependabot updates by hand, because three of them could not
   land as Dependabot wrote them:
   - `github/codeql-action/init` and `/analyze` to v4.39.0. These arrived as two

@@ -63,6 +63,14 @@ analysed at all. `tests/test_native_computation_policy.py` enforces the last thr
 
 [:octicons-arrow-right-24: The full checklist](https://github.com/reza-ghazi/Numerisect/blob/main/CONTRIBUTING.md#adding-a-compiled-c-helper)
 
+## Bumping a pinned action
+
+Actions are pinned to commit SHAs. `github/codeql-action`'s `init` and `analyze` steps
+must move together — the scan fails when their versions differ — and
+`.github/dependabot.yml` groups them for that reason; `Vampire/setup-wsl` also needs the
+revision assertion in `tests/test_platform_workflow.py` updated in the same change.
+Verify a proposed SHA against the upstream tag rather than the pull-request text.
+
 ## How CI installs the project
 
 Every platform job builds the distribution and installs the **wheel** into a fresh

@@ -121,6 +121,23 @@ Four things must happen together, and two of them fail silently if forgotten:
 `tests/test_native_computation_policy.py` enforces 2, 3 and 4, so a forgotten step fails
 locally rather than in review.
 
+## Bumping a pinned action
+
+Every action is pinned to a commit SHA with the tag in a trailing comment. Two of them
+have rules a dependency bot cannot follow on its own:
+
+- **`github/codeql-action`**: `init` and `analyze` are separate dependencies but one
+  action, and the scan fails outright when their versions differ ("Loaded a
+  configuration file for version X, but running version Y"). They must move in the same
+  commit. `.github/dependabot.yml` now groups them so the update arrives as one pull
+  request.
+- **`Vampire/setup-wsl`**: `tests/test_platform_workflow.py` asserts the pinned
+  revision, so the workflow and the test move together.
+
+Verify a proposed SHA against the upstream tag rather than trusting the pull-request
+text: `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` gives the tag object, and for an
+annotated tag `gh api repos/<owner>/<repo>/git/tags/<sha>` dereferences it to the commit.
+
 ## How CI installs the project
 
 Every platform job — Linux ARM64, both macOS architectures, Windows under WSL — builds the

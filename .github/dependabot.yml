@@ -25,3 +25,13 @@ updates:
       - reza-ghazi
     commit-message:
       prefix: "ci"
+    groups:
+      # `init` and `analyze` are separate dependencies but one action: the scan fails
+      # with "Loaded a configuration file for version X, but running version Y" unless
+      # every step is on the same version. Ungrouped, Dependabot opened one pull
+      # request per step and each failed on its own, three times in a row (#18/#19,
+      # #24/#26, #28/#29), and each had to be merged by hand. The failure message
+      # itself recommends this group.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
